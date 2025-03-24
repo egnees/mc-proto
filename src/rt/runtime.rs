@@ -96,9 +96,13 @@ impl Runtime {
         };
 
         self.set_current_handle();
-        let waker = futures::task::waker(Arc::new(Waker::new(self.handle(), task_id)));
-        let mut ctx = futures::task::Context::from_waker(&waker);
-        let poll_result = task.as_mut().poll(&mut ctx);
+        let poll_result = {
+            let waker = futures::task::waker(Arc::new(Waker::new(self.handle(), task_id)));
+            let mut ctx = futures::task::Context::from_waker(&waker);
+            let poll_result = task.as_mut().poll(&mut ctx);
+            poll_result
+        };
+        self.remove_current_handle();
 
         if poll_result.is_pending() {
             self.0.borrow_mut().tasks.insert(task_id, task);
@@ -118,6 +122,12 @@ impl Runtime {
     fn set_current_handle(&self) {
         HANDLE.with(|h| {
             *h.borrow_mut() = Some(self.handle());
+        });
+    }
+
+    fn remove_current_handle(&self) {
+        HANDLE.with(|h| {
+            *h.borrow_mut() = None;
         });
     }
 
