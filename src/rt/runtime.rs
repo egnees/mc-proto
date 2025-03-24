@@ -34,12 +34,18 @@ thread_local! {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Handle {
+    fn is_not_destroyed(&self) -> bool {
+        self.0.strong_count() > 0
+    }
+
     fn state(&self) -> Rc<RefCell<State>> {
         self.0.upgrade().unwrap()
     }
 
     pub fn schedule(&self, task: TaskId) {
-        self.state().borrow_mut().pending.push_back(task);
+        if self.is_not_destroyed() {
+            self.state().borrow_mut().pending.push_back(task);
+        }
     }
 
     pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output>
@@ -119,13 +125,13 @@ impl Runtime {
         processed
     }
 
-    fn set_current_handle(&self) {
+    pub fn set_current_handle(&self) {
         HANDLE.with(|h| {
             *h.borrow_mut() = Some(self.handle());
         });
     }
 
-    fn remove_current_handle(&self) {
+    pub fn remove_current_handle(&self) {
         HANDLE.with(|h| {
             *h.borrow_mut() = None;
         });

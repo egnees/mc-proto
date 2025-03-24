@@ -1,0 +1,15 @@
+use tokio::sync::oneshot;
+
+use super::event::TimerFiredEvent;
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub type TimerId = usize;
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct TimerInfo {
+    pub id: TimerId,
+    pub waker: oneshot::Sender<bool>,
+    pub event: TimerFiredEvent,
+}
