@@ -118,3 +118,17 @@ async fn join_handle() {
     let r = handle.await.unwrap();
     assert_eq!(r, true);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+#[should_panic]
+fn current_2() {
+    let rt = Runtime::default();
+    rt.spawn(async {
+        let handle = RuntimeHandle::current();
+        handle.spawn(async {});
+    });
+    rt.process_tasks();
+    RuntimeHandle::current();
+}
