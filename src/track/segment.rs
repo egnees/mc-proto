@@ -1,17 +1,17 @@
 //! Definition of segment in the one dimention space.
 
 ////////////////////////////////////////////////////////////////////////////////
-pub trait Endpoint: Ord + Copy {}
+pub trait Endpoint: Ord + Copy + Default {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<T> Endpoint for T where T: Ord + Copy {}
+impl<T> Endpoint for T where T: Ord + Copy + Default {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Represents segment with custom type of endpoints.
 /// Segments can be customized with [tags](Segment::tag).
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Segment<T>
 where
     T: Endpoint,

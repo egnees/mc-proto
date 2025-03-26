@@ -5,12 +5,24 @@ use super::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct SimpleTracker<T>
+#[derive(Default)]
+pub struct SimpleTracker<T>
 where
     T: Endpoint,
 {
     /// Segments are sorted by the left end.
     segments: Vec<Segment<T>>,
+}
+
+// ////////////////////////////////////////////////////////////////////////////////
+
+impl<T> SimpleTracker<T>
+where
+    T: Endpoint,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,3 +77,22 @@ where
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic() {
+        let mut t = SimpleTracker::<i32>::new();
+        t.add(1, 2, 0);
+        t.add(1, 3, 1);
+        t.add(3, 5, 2);
+        assert_eq!(t.ready_count(), 2);
+        let remove_result = t.remove_with_tag(0);
+        assert!(remove_result.is_some());
+        assert_eq!(t.ready_count(), 2);
+        let remove_result = t.remove_ready(0);
+        assert!(remove_result.is_some());
+    }
+}
