@@ -18,6 +18,8 @@ pub struct JoinHandle<T> {
     result: tokio::sync::oneshot::Receiver<T>,
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 impl<T> JoinHandle<T> {
     pub fn new(task_id: TaskId, result: tokio::sync::oneshot::Receiver<T>) -> Self {
         Self { task_id, result }
@@ -27,6 +29,8 @@ impl<T> JoinHandle<T> {
         self.task_id
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 impl<T> Future for JoinHandle<T> {
     type Output = Result<T, JoinError>;
