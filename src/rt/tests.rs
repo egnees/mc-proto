@@ -132,3 +132,18 @@ fn current_2() {
     rt.process_tasks();
     RuntimeHandle::current();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn drop_runtime() {
+    let (tx, rx) = oneshot::channel();
+    let rt = Runtime::default();
+    rt.spawn(async move {
+        rx.await.unwrap();
+    });
+    rt.spawn(async move {
+        tx.send(1).unwrap();
+    });
+    rt.process_next_task();
+}
