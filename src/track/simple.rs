@@ -1,5 +1,5 @@
 use super::{
-    segment::{self, Endpoint, Segment},
+    segment::{Endpoint, Segment},
     tracker::Tracker,
 };
 
@@ -81,6 +81,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    ////////////////////////////////////////////////////////////////////////////////
 
     #[test]
     fn basic() {
