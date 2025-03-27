@@ -10,7 +10,7 @@ pub struct SimpleTracker<T>
 where
     T: Endpoint,
 {
-    /// Segments are sorted by the left end.
+    /// Segments are sorted by the left endpoint.
     segments: Vec<Segment<T>>,
 }
 
