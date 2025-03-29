@@ -6,6 +6,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::util;
+
 use super::{
     task::{JoinHandle, Task, TaskId},
     waker::Waker,
@@ -28,7 +30,7 @@ pub struct Handle(Weak<RefCell<State>>);
 ////////////////////////////////////////////////////////////////////////////////
 
 thread_local! {
-    static HANDLE: RefCell<Option<Handle>> = RefCell::new(None);
+    static HANDLE: RefCell<Option<Handle>> = const { RefCell::new(None) };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +60,7 @@ impl Handle {
         let task_id = state.next_task_id;
         state.next_task_id += 1;
 
-        let (sender, receiver) = tokio::sync::oneshot::channel();
+        let (sender, receiver) = util::oneshot::channel();
         let task = async move {
             let result = task.await;
             let _ = sender.send(result); // receiver can be dropped which is ok

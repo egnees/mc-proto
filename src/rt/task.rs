@@ -1,5 +1,7 @@
 use std::{future::Future, pin::Pin};
 
+use crate::util;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 pub type TaskId = usize;
@@ -15,13 +17,13 @@ pub struct JoinError {}
 
 pub struct JoinHandle<T> {
     task_id: TaskId,
-    result: tokio::sync::oneshot::Receiver<T>,
+    result: util::oneshot::Receiver<T>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T> JoinHandle<T> {
-    pub fn new(task_id: TaskId, result: tokio::sync::oneshot::Receiver<T>) -> Self {
+    pub fn new(task_id: TaskId, result: util::oneshot::Receiver<T>) -> Self {
         Self { task_id, result }
     }
 
