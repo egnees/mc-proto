@@ -76,6 +76,12 @@ impl<T> Future for Receiver<T> {
     }
 }
 
+impl<T> Drop for Receiver<T> {
+    fn drop(&mut self) {
+        *self.shared.borrow_mut() = SharedState::ReceiverDropped;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -95,6 +101,8 @@ mod tests {
 
     use super::*;
 
+    ////////////////////////////////////////////////////////////////////////////////
+
     #[test]
     fn basic() {
         let (tx, rx) = channel::<i32>();
@@ -107,6 +115,34 @@ mod tests {
             let result = tx.send(2);
             assert!(result.is_ok());
         });
-        rt.process_tasks();
+        let proc = rt.process_tasks();
+        assert!(proc > 2);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    fn drop_sender() {
+        let (tx, rx) = channel::<i32>();
+        let rt = rt::Runtime::default();
+        rt.spawn(async move {
+            let result = rx.await;
+            assert!(result.is_err());
+        });
+        rt.spawn(async move {
+            drop(tx);
+        });
+        let proc = rt.process_tasks();
+        assert!(proc > 2);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    fn drop_receiver() {
+        let (tx, rx) = channel::<i32>();
+        drop(rx);
+        let result = tx.send(2);
+        assert!(result.is_err());
     }
 }
