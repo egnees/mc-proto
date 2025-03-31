@@ -1,8 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
-
 use tokio::sync::{mpsc, oneshot};
 
-use crate::rt::spawn;
+use crate::runtime::spawn;
 
 use super::{Runtime, RuntimeHandle};
 

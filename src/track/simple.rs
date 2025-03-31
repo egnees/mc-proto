@@ -32,7 +32,7 @@ where
     T: Endpoint,
 {
     fn add(&mut self, from: T, to: T, tag: usize) {
-        let segment = Segment { from, to, tag };
+        let segment = Segment::new(from, to, tag);
         self.segments.push(segment);
         self.segments.sort();
     }

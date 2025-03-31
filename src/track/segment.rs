@@ -32,7 +32,7 @@ impl<T> Segment<T>
 where
     T: Endpoint,
 {
-    fn new(from: T, to: T, tag: usize) -> Self {
+    pub fn new(from: T, to: T, tag: usize) -> Self {
         Self { from, to, tag }
     }
 }

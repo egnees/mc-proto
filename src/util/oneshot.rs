@@ -97,7 +97,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 
 #[cfg(test)]
 mod tests {
-    use crate::rt;
+    use crate::runtime;
 
     use super::*;
 
@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn basic() {
         let (tx, rx) = channel::<i32>();
-        let rt = rt::Runtime::default();
+        let rt = runtime::Runtime::default();
         rt.spawn(async move {
             let x = rx.await.unwrap();
             assert_eq!(x, 2);
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn drop_sender() {
         let (tx, rx) = channel::<i32>();
-        let rt = rt::Runtime::default();
+        let rt = runtime::Runtime::default();
         rt.spawn(async move {
             let result = rx.await;
             assert_eq!(result, Err(RecvError::SenderDropped));

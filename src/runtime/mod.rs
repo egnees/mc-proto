@@ -1,10 +1,13 @@
-mod runtime;
+mod rt;
 mod task;
 mod waker;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub use runtime::{spawn, Handle as RuntimeHandle, Runtime};
+#[allow(unused)]
+pub use rt::{spawn, Handle as RuntimeHandle, Runtime};
+
+#[allow(unused)]
 pub use task::{JoinError, JoinHandle, TaskId};
 
 ////////////////////////////////////////////////////////////////////////////////

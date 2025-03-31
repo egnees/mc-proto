@@ -1,5 +1,5 @@
 use std::{
-    cell::{RefCell, RefMut},
+    cell::RefCell,
     collections::{HashMap, VecDeque},
     future::Future,
     rc::{Rc, Weak},
@@ -121,6 +121,7 @@ impl Runtime {
         true
     }
 
+    #[allow(unused)]
     pub fn process_tasks(&self) -> usize {
         let mut processed = 0;
         while self.process_next_task() {
@@ -145,6 +146,7 @@ impl Runtime {
         self.0.borrow().pending.front().copied()
     }
 
+    #[allow(unused)]
     pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output>
     where
         F: Future + 'static,
@@ -155,6 +157,7 @@ impl Runtime {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[allow(unused)]
 pub fn spawn<F>(task: F) -> JoinHandle<F::Output>
 where
     F: Future + 'static,
