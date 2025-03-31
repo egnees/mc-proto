@@ -24,7 +24,7 @@ use super::{
     context::{self, Guard},
     error::Error,
     log::{
-        Log, LogEntry, ProcessReceivedLocalMessage, ProcessWokeUp, UdpMessageDropped,
+        FutureWokeUp, Log, LogEntry, ProcessReceivedLocalMessage, UdpMessageDropped,
         UdpMessageReceived,
     },
     net::{self, Network},
@@ -258,10 +258,11 @@ impl System {
 
         // add entry to log
         let log_entry = if timer.with_sleep {
-            let wokeup = ProcessWokeUp {
+            let wokeup = FutureWokeUp {
+                tag: timer.timer_id,
                 proc: timer.proc.clone(),
             };
-            LogEntry::ProcessWokeUp(wokeup)
+            LogEntry::FutureWokeUp(wokeup)
         } else {
             unreachable!("basic timers without sleep is not supported")
         };

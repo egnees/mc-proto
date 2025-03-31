@@ -18,4 +18,6 @@ pub use system::{
 
 pub use check::checker::Checker as ModelChecker;
 
-pub use search::{dfs::DfsSearcher, error::SearchError, SearchConfig, SearchConfigBuilder};
+pub use search::{
+    bfs::BfsSearcher, dfs::DfsSearcher, error::SearchError, SearchConfig, SearchConfigBuilder,
+};

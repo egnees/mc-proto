@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use super::{
     control::{GoalChecker, InvariantChecker, Pruner},
@@ -12,28 +12,30 @@ use crate::system::sys::HashType;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct DfsSearcher {
+pub struct BfsSearcher {
     cfg: SearchConfig,
 }
 
-impl DfsSearcher {
+impl BfsSearcher {
     pub fn new(cfg: SearchConfig) -> Self {
         Self { cfg }
     }
 }
 
-impl Searcher for DfsSearcher {
+impl Searcher for BfsSearcher {
     fn check(
         &mut self,
-        mut start: Vec<Trace>,
+        start: Vec<Trace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
         goal: impl GoalChecker,
     ) -> Result<usize, SearchError> {
+        let mut queue: VecDeque<Trace> = start.into_iter().collect();
+
         let mut cnt = 0;
         let mut goal_achieved = false;
-        while let Some(v) = start.pop() {
+        while let Some(v) = queue.pop_front() {
             cnt += 1;
 
             let sys = v.system();
@@ -84,20 +86,19 @@ impl Searcher for DfsSearcher {
                     u.add_step(s.clone());
                     u
                 })
-                .for_each(|u| start.push(u));
+                .for_each(|u| queue.push_back(u));
         }
 
         if goal_achieved {
             Ok(cnt)
         } else {
-            let err = LivenessViolation::no_one();
-            Err(SearchError::LivenessViolation(err))
+            Err(SearchError::LivenessViolation(LivenessViolation::no_one()))
         }
     }
 
     fn collect(
         &mut self,
-        mut start: Vec<Trace>,
+        start: Vec<Trace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
@@ -105,7 +106,9 @@ impl Searcher for DfsSearcher {
     ) -> Result<Vec<Trace>, SearchError> {
         let mut collected = Vec::new();
 
-        while let Some(v) = start.pop() {
+        let mut queue: VecDeque<Trace> = start.into_iter().collect();
+
+        while let Some(v) = queue.pop_front() {
             let sys = v.system();
             let h = sys.hash();
             if !visited.insert(h) {
@@ -114,11 +117,12 @@ impl Searcher for DfsSearcher {
 
             // check invariant
             invariant.check(sys.handle()).map_err(|report| {
-                SearchError::InvariantViolation(InvariantViolation {
+                let err = InvariantViolation {
                     trace: v.clone(),
                     log: sys.log(),
                     report,
-                })
+                };
+                SearchError::InvariantViolation(err)
             })?;
 
             // check goal achieved
@@ -132,15 +136,21 @@ impl Searcher for DfsSearcher {
                 continue;
             }
 
+            // check depth restriction
+            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) {
+                continue;
+            }
+
             // branch
-            sys.search_steps(&self.cfg)
+            let steps = sys.search_steps(&self.cfg);
+            steps
                 .iter()
                 .map(|s| {
                     let mut u = v.clone();
                     u.add_step(s.clone());
                     u
                 })
-                .for_each(|u| start.push(u));
+                .for_each(|u| queue.push_back(u));
         }
 
         Ok(collected)

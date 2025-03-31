@@ -1,3 +1,4 @@
+pub mod bfs;
 pub mod config;
 pub mod control;
 pub mod dfs;

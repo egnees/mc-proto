@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use crate::system::log::Log;
 
@@ -19,6 +19,17 @@ impl Debug for InvariantViolation {
             .field("log", &self.log)
             .field("report", &self.report)
             .finish()
+    }
+}
+
+impl Display for InvariantViolation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Invariant violation: {}.", self.report)?;
+        writeln!(f, "========= TRACE =========")?;
+        write!(f, "{}", self.trace)?;
+        writeln!(f, "========= LOG =========")?;
+        write!(f, "{}", self.log)?;
+        Ok(())
     }
 }
 
@@ -54,10 +65,39 @@ impl Debug for LivenessViolation {
     }
 }
 
+impl Display for LivenessViolation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Liveness violation: ")?;
+        if self.trace.is_some() {
+            writeln!(f, "found terminal state not achieving goal.")?;
+            writeln!(f, "========= TRACE =========")?;
+            write!(f, "{}", self.trace.as_ref().unwrap())?;
+            writeln!(f, "========= LOG =========")?;
+            write!(f, "{}", self.log.as_ref().unwrap())?;
+        } else {
+            writeln!(f, "not found states achieving goal.")?;
+        }
+        Ok(())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
 pub enum SearchError {
     InvariantViolation(InvariantViolation),
     LivenessViolation(LivenessViolation),
+}
+
+impl Display for SearchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SearchError::InvariantViolation(invariant_violation) => {
+                writeln!(f, "{}", invariant_violation)
+            }
+            SearchError::LivenessViolation(liveness_violation) => {
+                writeln!(f, "{}", liveness_violation)
+            }
+        }
+    }
 }

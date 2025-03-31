@@ -1,25 +1,38 @@
-////////////////////////////////////////////////////////////////////////////////
+use std::{
+    cell::RefCell,
+    collections::BTreeSet,
+    hash::{DefaultHasher, Hash, Hasher},
+    rc::Rc,
+    time::Duration,
+};
 
-use std::{cell::RefCell, rc::Rc, time::Duration};
+////////////////////////////////////////////////////////////////////////////////
 
 struct Ping {
     other: mc::Address,
     state: Rc<RefCell<PingState>>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Default)]
+struct PingState {
+    waiting: BTreeSet<String>,
+}
 
-pub enum PingState {
-    Init,
-    Send,
-    Recv,
+impl PingState {
+    fn hash(&self) -> mc::HashType {
+        let mut hasher = DefaultHasher::new();
+        for w in self.waiting.iter() {
+            w.hash(&mut hasher);
+        }
+        hasher.finish()
+    }
 }
 
 impl Ping {
     pub fn new(other: mc::Address) -> Self {
         Self {
             other,
-            state: Rc::new(RefCell::new(PingState::Init)),
+            state: Rc::new(RefCell::new(Default::default())),
         }
     }
 }
@@ -27,56 +40,42 @@ impl Ping {
 impl mc::Process for Ping {
     fn on_message(&mut self, from: mc::Address, content: String) {
         assert_eq!(from, self.other);
-        *self.state.borrow_mut() = PingState::Recv;
+        self.state.borrow_mut().waiting.remove(&content);
         mc::send_local(content);
     }
 
     fn on_local_message(&mut self, content: String) {
-        *self.state.borrow_mut() = PingState::Send;
+        self.state.borrow_mut().waiting.insert(content.clone());
         mc::spawn({
             let state = self.state.clone();
             let receiver = self.other.clone();
             async move {
-                while *state.borrow() != PingState::Recv {
+                while state.borrow().waiting.contains(&content) {
                     mc::send_message(&receiver, content.clone());
-                    mc::sleep(Duration::from_secs_f64(3.)).await;
+                    mc::sleep(Duration::from_secs(1)).await;
                 }
             }
         });
     }
 
     fn hash(&self) -> mc::HashType {
-        match *self.state.borrow() {
-            PingState::Init => 0,
-            PingState::Send => 1,
-            PingState::Recv => 2,
-        }
+        self.state.borrow().hash()
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct Pong {
-    state: PongState,
-}
-
-pub enum PongState {
-    Init,
-    Recv,
-}
+struct Pong {}
 
 impl Pong {
     fn new() -> Self {
-        Self {
-            state: PongState::Init,
-        }
+        Self {}
     }
 }
 
 impl mc::Process for Pong {
     fn on_message(&mut self, from: mc::Address, content: String) {
-        self.state = PongState::Recv;
-        mc::send_message(&from, "ack");
+        mc::send_message(&from, content.clone());
         mc::send_local(content);
     }
 
@@ -85,10 +84,7 @@ impl mc::Process for Pong {
     }
 
     fn hash(&self) -> mc::HashType {
-        match self.state {
-            PongState::Init => 0,
-            PongState::Recv => 1,
-        }
+        0
     }
 }
 
@@ -143,7 +139,7 @@ fn one_local() {
     let cfg = mc::SearchConfigBuilder::no_faults()
         .max_msg_drops(100)
         .build();
-    let searcher = mc::DfsSearcher::new(cfg);
+    let searcher = mc::BfsSearcher::new(cfg);
 
     let checker = mc::ModelChecker::new(|| {
         build(
@@ -158,29 +154,74 @@ fn one_local() {
     println!("checked={checked}");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 #[test]
-fn two_locals() {
-    let invariant = |_| Ok(());
+fn two_locals_bfs() {
+    let invariant = |s: mc::StateHandle| {
+        let ping_locals = s.read_locals(&mc::Address::new("n1", "ping")).unwrap();
+        let pong_locals = s.read_locals(&mc::Address::new("n2", "pong")).unwrap();
+        if ping_locals.len() > 2 || pong_locals.len() > 2 {
+            Err("too many locals".to_string())
+        } else {
+            Ok(())
+        }
+    };
 
     let prune = |_| false;
 
     let goal = |s: mc::StateHandle| {
-        !s.read_locals(&mc::Address::new("n1", "ping"))
-            .unwrap()
-            .is_empty()
-            && !s
-                .read_locals(&mc::Address::new("n2", "pong"))
-                .unwrap()
-                .is_empty()
+        let ping_locals = s.read_locals(&mc::Address::new("n1", "ping")).unwrap();
+        let pong_locals = s.read_locals(&mc::Address::new("n2", "pong")).unwrap();
+        ping_locals.len() == 2 && pong_locals.len() == 2
     };
 
     let cfg = mc::SearchConfigBuilder::no_faults()
-        .max_msg_drops(2)
+        .max_msg_drops(1)
+        .build();
+    let searcher = mc::BfsSearcher::new(cfg);
+
+    let checker =
+        mc::ModelChecker::new(|| build(Duration::from_millis(100), Duration::from_millis(600), 2));
+    let result = checker.check(invariant, prune, goal, searcher);
+    assert!(result.is_err());
+
+    let err = result.err().unwrap();
+    println!("{}", err);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn two_locals_dfs() {
+    let invariant = |s: mc::StateHandle| {
+        let ping_locals = s.read_locals(&mc::Address::new("n1", "ping")).unwrap();
+        let pong_locals = s.read_locals(&mc::Address::new("n2", "pong")).unwrap();
+        if ping_locals.len() > 2 || pong_locals.len() > 2 {
+            Err("too many locals".to_string())
+        } else {
+            Ok(())
+        }
+    };
+
+    let prune = |_| false;
+
+    let goal = |s: mc::StateHandle| {
+        let ping_locals = s.read_locals(&mc::Address::new("n1", "ping")).unwrap();
+        let pong_locals = s.read_locals(&mc::Address::new("n2", "pong")).unwrap();
+        ping_locals.len() == 2 && pong_locals.len() == 2
+    };
+
+    let cfg = mc::SearchConfigBuilder::no_faults()
+        .max_msg_drops(1)
         .build();
     let searcher = mc::DfsSearcher::new(cfg);
 
     let checker =
-        mc::ModelChecker::new(|| build(Duration::from_millis(100), Duration::from_millis(200), 2));
+        mc::ModelChecker::new(|| build(Duration::from_millis(100), Duration::from_millis(600), 2));
     let result = checker.check(invariant, prune, goal, searcher);
     assert!(result.is_err());
+
+    let err = result.err().unwrap();
+    println!("{}", err);
 }

@@ -1,4 +1,4 @@
-use std::{future::Future, time::Duration};
+use std::{fmt::Display, future::Future, time::Duration};
 
 use crate::runtime::JoinHandle;
 
@@ -18,6 +18,12 @@ impl Address {
             node: node.into(),
             process: process.into(),
         }
+    }
+}
+
+impl Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.node, self.process)
     }
 }
 

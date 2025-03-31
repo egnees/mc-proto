@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    log::{LogEntry, ProcessFellAsleep, ProcessSentLocalMessage, UdpMessageSent},
+    log::{FutureFellAsleep, LogEntry, ProcessSentLocalMessage, UdpMessageSent},
     proc::Address,
     sys::State,
 };
@@ -87,16 +87,6 @@ impl Context {
         let state = self.state();
         let mut state = state.borrow_mut();
 
-        // add log entry
-        {
-            let log_entry = ProcessFellAsleep {
-                proc: self.cur_proc.clone(),
-                duration,
-            };
-            let log_entry = LogEntry::ProcessFellAsleep(log_entry);
-            state.log.add_entry(log_entry);
-        }
-
         // register timer
         let time_from = state.time_from + duration;
         let time_to = state.time_to + duration;
@@ -108,9 +98,19 @@ impl Context {
         } else {
             unreachable!()
         };
-
         let (rx, tx) = oneshot::channel();
         state.timers.insert(timer_id, rx);
+
+        // add log entry
+        {
+            let log_entry = FutureFellAsleep {
+                tag: timer_id,
+                proc: self.cur_proc.clone(),
+                duration,
+            };
+            let log_entry = LogEntry::FutureFellAsleep(log_entry);
+            state.log.add_entry(log_entry);
+        }
 
         tx
     }
