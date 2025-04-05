@@ -1,22 +1,22 @@
 use std::time::Duration;
 
-use crate::{system::proc::Address, track::tracker::Tracker};
+use crate::{event::tracker::Tracker, system::proc::Address};
 
 use super::info::{Event, EventInfo, TimerInfo, UdpMessageInfo};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Manager {
-    tracker: Box<dyn Tracker<Duration>>,
+    tracker: Tracker<Duration>,
     events: Vec<Event>,
     udp_msg_cnt: usize,
     timers_cnt: usize,
 }
 
 impl Manager {
-    pub fn new(tracker: impl Tracker<Duration> + 'static) -> Self {
+    pub fn new() -> Self {
         Self {
-            tracker: Box::new(tracker),
+            tracker: Tracker::<Duration>::new(),
             events: Vec::new(),
             udp_msg_cnt: 0,
             timers_cnt: 0,
@@ -85,18 +85,20 @@ impl Manager {
         self.tracker.ready_count()
     }
 
-    pub fn get_ready(&self, i: usize) -> Option<&Event> {
-        self.tracker.ready(i).and_then(|s| self.get(s.tag))
+    pub fn get_ready(&self, i: usize) -> Option<Event> {
+        let seg = self.tracker.get_ready(i)?;
+        let mut e = self.get(seg.tag)?.clone();
+        e.time_from = seg.from;
+        e.time_to = seg.to;
+        Some(e)
     }
 
-    pub fn remove_ready(&mut self, i: usize) -> Option<&Event> {
-        self.tracker.remove_ready(i).and_then(|s| self.get(s.tag))
-    }
-
-    pub fn remove_with_id(&mut self, id: usize) -> Option<&Event> {
-        self.tracker
-            .remove_with_tag(id)
-            .and_then(|s| self.get(s.tag))
+    pub fn remove_ready(&mut self, i: usize) -> Option<Event> {
+        let seg = self.tracker.remove_ready(i)?;
+        let mut e = self.get(seg.tag)?.clone();
+        e.time_from = seg.from;
+        e.time_to = seg.to;
+        Some(e)
     }
 
     fn next_event_id(&self) -> usize {
@@ -110,7 +112,7 @@ impl std::hash::Hash for Manager {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let pending = self.tracker.ready_count();
         (0..pending)
-            .map(|i| self.tracker.ready(i).unwrap().tag)
+            .map(|i| self.tracker.get_ready(i).unwrap().tag)
             .for_each(|i| self.events[i].hash(state));
     }
 }

@@ -16,7 +16,6 @@ use crate::{
         step::{Timer, UdpMessage},
         SearchConfig, SearchStep,
     },
-    track::simple::SimpleTracker,
     util::oneshot,
 };
 
@@ -88,7 +87,7 @@ pub struct System {
 
 impl System {
     pub fn new(net: &net::Config) -> Self {
-        let events = EventManager::new(SimpleTracker::new());
+        let events = EventManager::new();
         let rt = Runtime::default();
         let handle = rt.handle();
         let state = State {
