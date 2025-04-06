@@ -9,6 +9,7 @@ use std::{
 use crate::{
     event::{
         info::{Event, EventInfo},
+        time::TimeSegment,
         EventManager,
     },
     runtime::{Runtime, RuntimeHandle},
@@ -43,8 +44,7 @@ pub struct State {
     pub net: Network,
     pub events: EventManager,
     pub log: Log,
-    pub time_from: Duration,
-    pub time_to: Duration,
+    pub time: TimeSegment,
     pub timers: HashMap<usize, oneshot::Sender<bool>>,
     pub async_proc: HashMap<usize, Address>,
     pub stat: Stat,
@@ -95,8 +95,7 @@ impl System {
             net: Network::new(net),
             events,
             log: Log::new(),
-            time_from: Default::default(),
-            time_to: Default::default(),
+            time: TimeSegment::new(Duration::from_secs(0), Duration::from_secs(0)),
             timers: Default::default(),
             async_proc: Default::default(),
             stat: Stat::default(),
@@ -144,12 +143,16 @@ impl System {
     pub fn send_local(&mut self, to: &Address, content: impl Into<String>) -> Result<(), Error> {
         let content = content.into();
 
-        let log_entry = ProcessReceivedLocalMessage {
-            process: to.clone(),
-            content: content.clone(),
-        };
-        let log_entry = LogEntry::ProcessReceivedLocalMessage(log_entry);
-        self.state.borrow_mut().log.add_entry(log_entry);
+        {
+            let mut state = self.state.borrow_mut();
+            let log_entry = ProcessReceivedLocalMessage {
+                process: to.clone(),
+                content: content.clone(),
+                time: state.time.clone(),
+            };
+            let log_entry = LogEntry::ProcessReceivedLocalMessage(log_entry);
+            state.log.add_entry(log_entry);
+        }
 
         {
             let proc = self
@@ -246,8 +249,7 @@ impl System {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn fire_timer(&mut self, event: Event) {
-        let time_from = event.time_from;
-        let time_to = event.time_to;
+        let time = event.time;
 
         let timer = if let EventInfo::TimerInfo(timer) = event.info {
             timer
@@ -260,6 +262,7 @@ impl System {
             let wokeup = FutureWokeUp {
                 tag: timer.timer_id,
                 proc: timer.proc.clone(),
+                time: time.clone(),
             };
             LogEntry::FutureWokeUp(wokeup)
         } else {
@@ -270,8 +273,7 @@ impl System {
         {
             let mut state = self.state.borrow_mut();
             state.log.add_entry(log_entry);
-            state.time_from = time_from;
-            state.time_to = time_to;
+            state.time = time;
         }
 
         // wake up future associated with timer
@@ -308,10 +310,6 @@ impl System {
     ////////////////////////////////////////////////////////////////////////////////
 
     fn deliver_udp_message(&mut self, event: Event) {
-        // get upd message info
-        let time_from = event.time_from;
-        let time_to = event.time_to;
-
         let msg_info = if let EventInfo::UdpMessageInfo(msg_info) = event.info.clone() {
             msg_info
         } else {
@@ -320,7 +318,10 @@ impl System {
 
         if !self.message_can_be_delivered(&msg_info.from, &msg_info.to) {
             self.drop_udp_message(event);
+            return;
         }
+
+        let time = event.time;
 
         // get receiver process
         let proc = self
@@ -332,15 +333,17 @@ impl System {
             .proc(&msg_info.to.process)
             .unwrap();
 
-        let log_entry = UdpMessageReceived {
-            from: msg_info.from.clone(),
-            to: msg_info.to.clone(),
-            content: msg_info.content.clone(),
-        };
-        let log_entry = LogEntry::UdpMessageReceived(log_entry);
-
         {
+            // update log
             let mut state = self.state.borrow_mut();
+
+            let log_entry = UdpMessageReceived {
+                from: msg_info.from.clone(),
+                to: msg_info.to.clone(),
+                content: msg_info.content.clone(),
+                time: time.clone(),
+            };
+            let log_entry = LogEntry::UdpMessageReceived(log_entry);
 
             // add entry to log
             state.log.add_entry(log_entry);
@@ -349,8 +352,7 @@ impl System {
             state.stat.udp_msg_delivered += 1;
 
             // update time
-            state.time_from = time_from;
-            state.time_to = time_to;
+            state.time = time;
         }
 
         {
@@ -369,8 +371,7 @@ impl System {
     ////////////////////////////////////////////////////////////////////////////////
 
     fn drop_udp_message(&mut self, event: Event) {
-        let time_from = event.time_from;
-        let time_to = event.time_to;
+        let time = event.time;
 
         let msg_info = if let EventInfo::UdpMessageInfo(msg_info) = event.info {
             msg_info
@@ -379,26 +380,24 @@ impl System {
         };
 
         // add entry to log
+        let mut state = self.state.borrow_mut();
+
         let log_entry = UdpMessageDropped {
             from: msg_info.from.clone(),
             to: msg_info.to,
             content: msg_info.content.clone(),
+            time: time.clone(),
         };
         let log_entry = LogEntry::UdpMessageDropped(log_entry);
 
-        {
-            let mut state = self.state.borrow_mut();
+        // update log
+        state.log.add_entry(log_entry);
 
-            // update log
-            state.log.add_entry(log_entry);
+        // update stat
+        state.stat.udp_msg_dropped += 1;
 
-            // update stat
-            state.stat.udp_msg_dropped += 1;
-
-            // update time
-            state.time_from = time_from;
-            state.time_to = time_to;
-        }
+        // update time
+        state.time = time;
     }
 
     ////////////////////////////////////////////////////////////////////////////////

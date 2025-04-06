@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use crate::{event::tracker::Tracker, system::proc::Address};
 
-use super::info::{Event, EventInfo, TimerInfo, UdpMessageInfo};
+use super::{
+    info::{Event, EventInfo, TimerInfo, UdpMessageInfo},
+    time::TimeSegment,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -28,11 +31,10 @@ impl Manager {
         from: Address,
         to: Address,
         content: String,
-        time_from: Duration,
-        time_to: Duration,
+        time: TimeSegment,
     ) -> &Event {
         let id = self.next_event_id();
-        self.tracker.add(time_from, time_to, id);
+        self.tracker.add(time.from, time.to, id);
         let info = UdpMessageInfo {
             udp_msg_id: self.udp_msg_cnt,
             from,
@@ -40,38 +42,22 @@ impl Manager {
             content,
         };
         let info = EventInfo::UdpMessageInfo(info);
-        let event = Event {
-            id,
-            time_from,
-            time_to,
-            info,
-        };
+        let event = Event::new(id, time, info);
         self.udp_msg_cnt += 1;
         self.events.push(event);
         self.events.last().unwrap()
     }
 
-    pub fn register_timer(
-        &mut self,
-        proc: Address,
-        with_sleep: bool,
-        time_from: Duration,
-        time_to: Duration,
-    ) -> &Event {
+    pub fn register_timer(&mut self, proc: Address, with_sleep: bool, time: TimeSegment) -> &Event {
         let id = self.next_event_id();
-        self.tracker.add(time_from, time_to, id);
+        self.tracker.add(time.from, time.to, id);
         let info = TimerInfo {
             timer_id: self.timers_cnt,
             with_sleep,
             proc,
         };
         let info = EventInfo::TimerInfo(info);
-        let event = Event {
-            id,
-            time_from,
-            time_to,
-            info,
-        };
+        let event = Event::new(id, time, info);
         self.timers_cnt += 1;
         self.events.push(event);
         self.events.last().unwrap()
@@ -88,16 +74,16 @@ impl Manager {
     pub fn get_ready(&self, i: usize) -> Option<Event> {
         let seg = self.tracker.get_ready(i)?;
         let mut e = self.get(seg.tag)?.clone();
-        e.time_from = seg.from;
-        e.time_to = seg.to;
+        e.time.from = seg.from;
+        e.time.to = seg.to;
         Some(e)
     }
 
     pub fn remove_ready(&mut self, i: usize) -> Option<Event> {
         let seg = self.tracker.remove_ready(i)?;
         let mut e = self.get(seg.tag)?.clone();
-        e.time_from = seg.from;
-        e.time_to = seg.to;
+        e.time.from = seg.from;
+        e.time.to = seg.to;
         Some(e)
     }
 

@@ -1,6 +1,8 @@
-use std::{hash::Hash, time::Duration};
+use std::hash::Hash;
 
 use crate::system::proc::Address;
+
+use super::time::TimeSegment;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -48,15 +50,19 @@ pub enum EventInfo {
 #[derive(Clone)]
 pub struct Event {
     pub id: usize,
-    pub time_from: Duration,
-    pub time_to: Duration,
+    pub time: TimeSegment,
     pub info: EventInfo,
+}
+
+impl Event {
+    pub fn new(id: usize, time: TimeSegment, info: EventInfo) -> Self {
+        Self { id, time, info }
+    }
 }
 
 impl Hash for Event {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.time_from.hash(state);
-        self.time_to.hash(state);
+        self.time.hash(state);
         self.info.hash(state);
     }
 }

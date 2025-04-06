@@ -64,21 +64,19 @@ impl Context {
                 from: self.cur_proc.clone(),
                 to: to.clone(),
                 content: content.to_string(),
+                time: state.time.clone(),
             };
             let log_entry = LogEntry::UdpMessageSent(log_entry);
             state.log.add_entry(log_entry);
         }
 
         // register udp message
-        let time_from = state.time_from + state.net.min_packet_delay;
-        let time_to = state.time_to + state.net.max_packet_delay;
-        state.events.register_udp_message(
-            self.cur_proc.clone(),
-            to.clone(),
-            content,
-            time_from,
-            time_to,
-        );
+        let time = state
+            .time
+            .shift_range(state.net.min_packet_delay, state.net.max_packet_delay);
+        state
+            .events
+            .register_udp_message(self.cur_proc.clone(), to.clone(), content, time);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -88,11 +86,10 @@ impl Context {
         let mut state = state.borrow_mut();
 
         // register timer
-        let time_from = state.time_from + duration;
-        let time_to = state.time_to + duration;
+        let time = state.time.shift(duration);
         let event = state
             .events
-            .register_timer(self.cur_proc.clone(), true, time_from, time_to);
+            .register_timer(self.cur_proc.clone(), true, time);
         let timer_id = if let EventInfo::TimerInfo(timer_info) = &event.info {
             timer_info.timer_id
         } else {
@@ -107,6 +104,7 @@ impl Context {
                 tag: timer_id,
                 proc: self.cur_proc.clone(),
                 duration,
+                time: state.time.clone(),
             };
             let log_entry = LogEntry::FutureFellAsleep(log_entry);
             state.log.add_entry(log_entry);
@@ -126,6 +124,7 @@ impl Context {
             let log_entry = ProcessSentLocalMessage {
                 process: self.cur_proc.clone(),
                 content: content.clone(),
+                time: state.time.clone(),
             };
             let log_entry = LogEntry::ProcessSentLocalMessage(log_entry);
             state.log.add_entry(log_entry);

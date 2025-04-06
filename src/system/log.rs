@@ -2,6 +2,8 @@ use std::{fmt::Display, time::Duration};
 
 use colored::Colorize;
 
+use crate::event::time::TimeSegment;
+
 use super::proc::Address;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -11,11 +13,16 @@ pub struct UdpMessageSent {
     pub from: Address,
     pub to: Address,
     pub content: String,
+    pub time: TimeSegment,
 }
 
 impl Display for UdpMessageSent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:10} --> {:10} {:?}", self.from, self.to, self.content)
+        write!(
+            f,
+            "{} {:>10} --> {:>10} {:>10?}",
+            self.time, self.from, self.to, self.content
+        )
     }
 }
 
@@ -26,11 +33,16 @@ pub struct UdpMessageReceived {
     pub from: Address,
     pub to: Address,
     pub content: String,
+    pub time: TimeSegment,
 }
 
 impl Display for UdpMessageReceived {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:10} <-- {:10} {:?}", self.to, self.from, self.content)
+        write!(
+            f,
+            "{} {:10} <-- {:10} {:?}",
+            self.time, self.to, self.from, self.content
+        )
     }
 }
 
@@ -41,6 +53,7 @@ pub struct UdpMessageDropped {
     pub from: Address,
     pub to: Address,
     pub content: String,
+    pub time: TimeSegment,
 }
 
 impl Display for UdpMessageDropped {
@@ -49,8 +62,8 @@ impl Display for UdpMessageDropped {
             f,
             "{}",
             format!(
-                "{:>10} --x {:<10} {:?} <-- message dropped",
-                self.from, self.to, self.content
+                "{} {:>10} --x {:<10} {:?} <-- message dropped",
+                self.time, self.from, self.to, self.content
             )
             .red()
         )
@@ -64,11 +77,16 @@ pub struct FutureFellAsleep {
     pub tag: usize,
     pub proc: Address,
     pub duration: Duration,
+    pub time: TimeSegment,
 }
 
 impl Display for FutureFellAsleep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", format!("{:<10} 😴{}", self.proc, self.tag).blue())
+        write!(
+            f,
+            "{}",
+            format!("{} {:<10} 😴{}", self.time, self.proc, self.tag).blue()
+        )
     }
 }
 
@@ -78,11 +96,12 @@ impl Display for FutureFellAsleep {
 pub struct FutureWokeUp {
     pub tag: usize,
     pub proc: Address,
+    pub time: TimeSegment,
 }
 
 impl Display for FutureWokeUp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ⏰{}", self.proc, self.tag)
+        write!(f, "{} {} ⏰{}", self.time, self.proc, self.tag)
     }
 }
 
@@ -92,6 +111,7 @@ impl Display for FutureWokeUp {
 pub struct ProcessSentLocalMessage {
     pub process: Address,
     pub content: String,
+    pub time: TimeSegment,
 }
 
 impl Display for ProcessSentLocalMessage {
@@ -100,8 +120,8 @@ impl Display for ProcessSentLocalMessage {
             f,
             "{}",
             format!(
-                "{:>10} >>> {:<10} {:?}",
-                self.process, "local", self.content
+                "{} {:>10} >>> {:<10} {:?}",
+                self.time, self.process, "local", self.content
             )
             .green()
         )
@@ -114,6 +134,7 @@ impl Display for ProcessSentLocalMessage {
 pub struct ProcessReceivedLocalMessage {
     pub process: Address,
     pub content: String,
+    pub time: TimeSegment,
 }
 
 impl Display for ProcessReceivedLocalMessage {
@@ -122,8 +143,8 @@ impl Display for ProcessReceivedLocalMessage {
             f,
             "{}",
             format!(
-                "{:>10} <<< {:<10} {:?}",
-                self.process, "local", self.content
+                "{} {:>10} <<< {:<10} {:?}",
+                self.time, self.process, "local", self.content
             )
             .cyan()
         )
