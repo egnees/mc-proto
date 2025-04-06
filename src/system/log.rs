@@ -20,8 +20,11 @@ impl Display for UdpMessageSent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>10} --> {:>10} {:>10?}",
-            self.time, self.from, self.to, self.content
+            "{} {:>12} ---> {:<12} {:?}",
+            self.time.to_string(),
+            self.from.to_string(),
+            self.to.to_string(),
+            self.content
         )
     }
 }
@@ -40,8 +43,11 @@ impl Display for UdpMessageReceived {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:10} <-- {:10} {:?}",
-            self.time, self.to, self.from, self.content
+            "{} {:>12} <--- {:<12} {:?}",
+            self.time.to_string(),
+            self.to.to_string(),
+            self.from.to_string(),
+            self.content
         )
     }
 }
@@ -62,8 +68,11 @@ impl Display for UdpMessageDropped {
             f,
             "{}",
             format!(
-                "{} {:>10} --x {:<10} {:?} <-- message dropped",
-                self.time, self.from, self.to, self.content
+                "{} {:>12} ---x {:<12} {:?} <-- message dropped",
+                self.time.to_string(),
+                self.from.to_string(),
+                self.to.to_string(),
+                self.content
             )
             .red()
         )
@@ -85,7 +94,14 @@ impl Display for FutureFellAsleep {
         write!(
             f,
             "{}",
-            format!("{} {:<10} 😴{}", self.time, self.proc, self.tag).blue()
+            format!(
+                "{} {:>12}  😴  {:<12} {}",
+                self.time.to_string(),
+                self.proc.to_string(),
+                self.tag.to_string(),
+                format!("{:.3}", self.duration.as_secs_f64())
+            )
+            .bright_blue()
         )
     }
 }
@@ -101,7 +117,17 @@ pub struct FutureWokeUp {
 
 impl Display for FutureWokeUp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {} ⏰{}", self.time, self.proc, self.tag)
+        write!(
+            f,
+            "{}",
+            format!(
+                "{} {:>12}  ⏰  {:<12}",
+                self.time.to_string(),
+                self.proc.to_string(),
+                self.tag.to_string()
+            )
+            .bright_blue()
+        )
     }
 }
 
@@ -120,8 +146,11 @@ impl Display for ProcessSentLocalMessage {
             f,
             "{}",
             format!(
-                "{} {:>10} >>> {:<10} {:?}",
-                self.time, self.process, "local", self.content
+                "{} {:>12} >>>> {:<12} {:?}",
+                self.time.to_string(),
+                self.process.to_string(),
+                "local",
+                self.content
             )
             .green()
         )
@@ -143,10 +172,13 @@ impl Display for ProcessReceivedLocalMessage {
             f,
             "{}",
             format!(
-                "{} {:>10} <<< {:<10} {:?}",
-                self.time, self.process, "local", self.content
+                "{} {:>12} <<<< {:<12} {:?}",
+                self.time.to_string(),
+                self.process.to_string(),
+                "local",
+                self.content
             )
-            .cyan()
+            .green()
         )
     }
 }
