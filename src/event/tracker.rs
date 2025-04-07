@@ -95,7 +95,7 @@ impl<T: Endpoint> Tracker<T> {
     ////////////////////////////////////////////////////////////////////////////////
 
     fn min_right(&self) -> Option<T> {
-        let mut r = self.segments.get(0)?.to;
+        let mut r = self.segments.first()?.to;
         for s in self.segments.iter() {
             r = r.min(s.to);
         }

@@ -22,6 +22,10 @@ pub struct Checker {
 }
 
 impl Checker {
+    pub fn visited(&self) -> &HashSet<HashType> {
+        &self.visited
+    }
+
     pub fn new(build: impl BuildFn) -> Self {
         let build = Box::new(BuildFnWrapper::new(build));
         let start = Trace::new(build);
@@ -41,7 +45,13 @@ impl Checker {
         let invariant = InvariantFnWrapper::new(invariant);
         let prune = PruneFnWrapper::new(prune);
         let goal = GoalFnWrapper::new(goal);
-        searcher.check(self.states, &mut self.visited, invariant, prune, goal)
+        searcher.check(
+            self.states.clone(),
+            &mut self.visited,
+            invariant,
+            prune,
+            goal,
+        )
     }
 
     pub fn collect(

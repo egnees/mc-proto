@@ -9,6 +9,7 @@ use super::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Default)]
 pub struct Manager {
     tracker: Tracker<Duration>,
     events: Vec<Event>,
@@ -18,12 +19,7 @@ pub struct Manager {
 
 impl Manager {
     pub fn new() -> Self {
-        Self {
-            tracker: Tracker::<Duration>::new(),
-            events: Vec::new(),
-            udp_msg_cnt: 0,
-            timers_cnt: 0,
-        }
+        Default::default()
     }
 
     pub fn register_udp_message(

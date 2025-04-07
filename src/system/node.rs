@@ -19,19 +19,26 @@ impl Node {
         Default::default()
     }
 
-    pub fn add_proc(
+    pub fn add_proc_by_ref(
         &mut self,
         name: impl Into<String>,
-        proc: impl Process + 'static,
+        proc: Rc<RefCell<dyn Process>>,
     ) -> Result<(), Error> {
         let name = name.into();
-        let proc = Rc::new(RefCell::new(proc));
         if self.proc.contains_key(&name) {
             return Err(Error::AlreadyExists);
         }
         self.proc.insert(name.clone(), proc);
         self.local_msg.insert(name, Default::default());
         Ok(())
+    }
+
+    pub fn add_proc(
+        &mut self,
+        name: impl Into<String>,
+        proc: impl Process + 'static,
+    ) -> Result<(), Error> {
+        self.add_proc_by_ref(name, Rc::new(RefCell::new(proc)))
     }
 
     pub fn proc(&self, name: &str) -> Option<Rc<RefCell<dyn Process>>> {

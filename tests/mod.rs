@@ -1,2 +1,1 @@
-mod basic;
-mod basic_async;
+mod pingpong;
