@@ -14,14 +14,14 @@ use crate::{
 use super::{
     log::{FutureFellAsleep, LogEntry, ProcessSentLocalMessage, UdpMessageSent},
     proc::Address,
-    sys::State,
+    sys::SystemState,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub struct Context {
-    pub state: Weak<RefCell<State>>,
+    pub state: Weak<RefCell<SystemState>>,
     pub cur_proc: Address,
     pub rt: RuntimeHandle,
 }
@@ -46,7 +46,7 @@ impl Context {
         CONTEXT.with(|c| *c.borrow_mut() = None);
     }
 
-    fn state(&self) -> Rc<RefCell<State>> {
+    fn state(&self) -> Rc<RefCell<SystemState>> {
         self.state
             .upgrade()
             .expect("can not upgrade weak ptr on state")

@@ -5,7 +5,7 @@ use crate::system::sys::HashType;
 use super::{
     control::{GoalChecker, InvariantChecker, Pruner},
     error::SearchError,
-    trace::Trace,
+    trace::StateTrace,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -13,7 +13,7 @@ use super::{
 pub trait Searcher {
     fn check(
         &mut self,
-        start: Vec<Trace>,
+        start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
@@ -22,10 +22,10 @@ pub trait Searcher {
 
     fn collect(
         &mut self,
-        start: Vec<Trace>,
+        start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
         goal: impl GoalChecker,
-    ) -> Result<Vec<Trace>, SearchError>;
+    ) -> Result<Vec<StateTrace>, SearchError>;
 }

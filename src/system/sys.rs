@@ -39,7 +39,7 @@ pub type HashType = u64;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct State {
+pub struct SystemState {
     pub nodes: BTreeMap<String, Node>,
     pub net: Network,
     pub events: EventManager,
@@ -53,14 +53,14 @@ pub struct State {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct StateHandle(Weak<RefCell<State>>);
+pub struct StateHandle(Weak<RefCell<SystemState>>);
 
 impl StateHandle {
-    pub fn new(state: Rc<RefCell<State>>) -> Self {
+    pub fn new(state: Rc<RefCell<SystemState>>) -> Self {
         Self(Rc::downgrade(&state))
     }
 
-    fn state(&self) -> Rc<RefCell<State>> {
+    fn state(&self) -> Rc<RefCell<SystemState>> {
         self.0.upgrade().unwrap()
     }
 
@@ -82,7 +82,7 @@ impl StateHandle {
 
 pub struct System {
     rt: Runtime,
-    state: Rc<RefCell<State>>,
+    state: Rc<RefCell<SystemState>>,
 }
 
 impl System {
@@ -90,7 +90,7 @@ impl System {
         let events = EventManager::new();
         let rt = Runtime::default();
         let handle = rt.handle();
-        let state = State {
+        let state = SystemState {
             nodes: Default::default(),
             net: Network::new(net),
             events,

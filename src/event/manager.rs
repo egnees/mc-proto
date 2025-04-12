@@ -69,7 +69,7 @@ impl Manager {
 
     pub fn get_ready(&self, i: usize) -> Option<Event> {
         let seg = self.tracker.get_ready(i)?;
-        let mut e = self.get(seg.tag)?.clone();
+        let mut e = self.get(seg.event_id)?.clone();
         e.time.from = seg.from;
         e.time.to = seg.to;
         Some(e)
@@ -77,7 +77,7 @@ impl Manager {
 
     pub fn remove_ready(&mut self, i: usize) -> Option<Event> {
         let seg = self.tracker.remove_ready(i)?;
-        let mut e = self.get(seg.tag)?.clone();
+        let mut e = self.get(seg.event_id)?.clone();
         e.time.from = seg.from;
         e.time.to = seg.to;
         Some(e)
@@ -94,7 +94,7 @@ impl std::hash::Hash for Manager {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let pending = self.tracker.ready_count();
         (0..pending)
-            .map(|i| self.tracker.get_ready(i).unwrap().tag)
+            .map(|i| self.tracker.get_ready(i).unwrap().event_id)
             .for_each(|i| self.events[i].hash(state));
     }
 }

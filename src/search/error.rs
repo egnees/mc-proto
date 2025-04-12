@@ -2,13 +2,13 @@ use std::fmt::{Debug, Display};
 
 use crate::system::log::Log;
 
-use super::trace::Trace;
+use super::trace::StateTrace;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub struct InvariantViolation {
-    pub trace: Trace,
+    pub trace: StateTrace,
     pub log: Log,
     pub report: String,
 }
@@ -37,7 +37,7 @@ impl Display for InvariantViolation {
 
 #[derive(Clone)]
 pub struct LivenessViolation {
-    pub trace: Option<Trace>,
+    pub trace: Option<StateTrace>,
     pub log: Option<Log>,
 }
 
@@ -49,7 +49,7 @@ impl LivenessViolation {
         }
     }
 
-    pub fn this_one(trace: Trace, log: Log) -> Self {
+    pub fn this_one(trace: StateTrace, log: Log) -> Self {
         Self {
             trace: Some(trace),
             log: Some(log),
@@ -69,13 +69,13 @@ impl Display for LivenessViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Liveness violation: ")?;
         if self.trace.is_some() {
-            writeln!(f, "found terminal state not achieving goal.")?;
+            writeln!(f, "found terminal state which not achieves goal.")?;
             writeln!(f, "========= TRACE =========")?;
             write!(f, "{}", self.trace.as_ref().unwrap())?;
             writeln!(f, "========= LOG =========")?;
             write!(f, "{}", self.log.as_ref().unwrap())?;
         } else {
-            writeln!(f, "not found states achieving goal.")?;
+            writeln!(f, "not found states which achieve goal.")?;
         }
         Ok(())
     }

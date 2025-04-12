@@ -9,28 +9,32 @@ impl<T> Endpoint for T where T: Ord + Copy + Default {}
 /// Represents segment with custom type of endpoints.
 /// Segments can be customized with [tags](Segment::tag).
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub struct Segment<T>
+pub struct EventTimespan<T>
 where
     T: Endpoint,
 {
-    /// Start of the segment.
+    /// Min possible time for event.
     pub from: T,
 
-    /// End of the segment.
+    /// Max possible time for event.
     pub to: T,
 
     /// Custom tag.
-    pub tag: usize,
+    pub event_id: usize,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<T> Segment<T>
+impl<T> EventTimespan<T>
 where
     T: Endpoint,
 {
     pub fn new(from: T, to: T, tag: usize) -> Self {
-        Self { from, to, tag }
+        Self {
+            from,
+            to,
+            event_id: tag,
+        }
     }
 }
 
@@ -38,16 +42,12 @@ where
 
 #[derive(Default)]
 pub struct Tracker<T: Endpoint> {
-    segments: Vec<Segment<T>>,
+    segments: Vec<EventTimespan<T>>,
 }
 
 impl<T: Endpoint> Tracker<T> {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     pub fn add(&mut self, from: T, to: T, tag: usize) {
-        let segment = Segment::new(from, to, tag);
+        let segment = EventTimespan::new(from, to, tag);
         self.segments.push(segment);
         self.segments.sort();
     }
@@ -63,17 +63,17 @@ impl<T: Endpoint> Tracker<T> {
         cnt
     }
 
-    pub fn get_ready(&self, i: usize) -> Option<Segment<T>> {
+    pub fn get_ready(&self, i: usize) -> Option<EventTimespan<T>> {
         assert!(i < self.ready_count());
         let to = self.min_right()?;
-        self.segments.get(i).cloned().map(|s| Segment {
+        self.segments.get(i).cloned().map(|s| EventTimespan {
             from: s.from,
             to: s.to.min(to),
-            tag: s.tag,
+            event_id: s.event_id,
         })
     }
 
-    pub fn remove_ready(&mut self, i: usize) -> Option<Segment<T>> {
+    pub fn remove_ready(&mut self, i: usize) -> Option<EventTimespan<T>> {
         assert!(i < self.ready_count());
         let to = self.min_right()?;
 
@@ -111,10 +111,10 @@ mod tests {
 
     #[test]
     fn ord_segments() {
-        let a = Segment::new(1, 2, 0);
-        let b = Segment::new(1, 2, 1);
-        let c = Segment::new(1, 3, 0);
-        let d = Segment::new(2, 2, 0);
+        let a = EventTimespan::new(1, 2, 0);
+        let b = EventTimespan::new(1, 2, 1);
+        let c = EventTimespan::new(1, 3, 0);
+        let d = EventTimespan::new(2, 2, 0);
         let segments = [a, b, c, d];
         for i in 0..4 {
             for j in (i + 1)..4 {
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        let mut t = Tracker::<i32>::new();
+        let mut t = Tracker::<i32>::default();
         t.add(1, 2, 0);
         t.add(1, 3, 1);
         t.add(3, 5, 2);

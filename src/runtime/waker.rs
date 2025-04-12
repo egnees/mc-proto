@@ -1,16 +1,16 @@
-use super::{rt::Handle, task::TaskId};
+use super::{rt::RuntimeHandle, task::TaskId};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Waker {
-    handle: Handle,
+    handle: RuntimeHandle,
     task_id: TaskId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Waker {
-    pub fn new(handle: Handle, task_id: TaskId) -> Self {
+    pub fn new(handle: RuntimeHandle, task_id: TaskId) -> Self {
         Self { handle, task_id }
     }
 }

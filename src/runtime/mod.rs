@@ -5,7 +5,7 @@ mod waker;
 ////////////////////////////////////////////////////////////////////////////////
 
 #[allow(unused)]
-pub use rt::{spawn, Handle as RuntimeHandle, Runtime};
+pub use rt::{spawn, Runtime, RuntimeHandle};
 
 #[allow(unused)]
 pub use task::{JoinError, JoinHandle, TaskId};

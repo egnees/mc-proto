@@ -10,4 +10,4 @@ pub mod trace;
 ////////////////////////////////////////////////////////////////////////////////
 
 pub use config::{Config as SearchConfig, ConfigBuilder as SearchConfigBuilder};
-pub use step::Step as SearchStep;
+pub use step::StateTraceStep as SearchStep;

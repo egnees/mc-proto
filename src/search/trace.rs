@@ -2,17 +2,17 @@ use std::fmt::{Debug, Display};
 
 use crate::system::sys::System;
 
-use super::{control::Builder, step::Step};
+use super::{control::Builder, step::StateTraceStep};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub struct Trace {
+pub struct StateTrace {
     build: Box<dyn Builder>,
-    steps: Vec<Step>,
+    steps: Vec<StateTraceStep>,
 }
 
-impl Trace {
+impl StateTrace {
     pub fn new(build: Box<dyn Builder>) -> Self {
         Self {
             build,
@@ -20,7 +20,7 @@ impl Trace {
         }
     }
 
-    pub fn add_step(&mut self, step: Step) {
+    pub fn add_step(&mut self, step: StateTraceStep) {
         self.steps.push(step);
     }
 
@@ -34,18 +34,18 @@ impl Trace {
         self.steps.len()
     }
 
-    pub fn step(&self, i: usize) -> &Step {
+    pub fn step(&self, i: usize) -> &StateTraceStep {
         self.steps.get(i).unwrap()
     }
 }
 
-impl Debug for Trace {
+impl Debug for StateTrace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Trace").field("steps", &self.steps).finish()
     }
 }
 
-impl Display for Trace {
+impl Display for StateTrace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for e in self.steps.iter() {
             writeln!(f, "{}", e)?;

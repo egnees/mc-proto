@@ -16,7 +16,7 @@ use super::{
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-pub struct State {
+pub struct RuntimeState {
     pending: VecDeque<TaskId>,
     tasks: HashMap<TaskId, Task>,
     next_task_id: TaskId,
@@ -25,22 +25,22 @@ pub struct State {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub struct Handle(Weak<RefCell<State>>);
+pub struct RuntimeHandle(Weak<RefCell<RuntimeState>>);
 
 ////////////////////////////////////////////////////////////////////////////////
 
 thread_local! {
-    static HANDLE: RefCell<Option<Handle>> = const { RefCell::new(None) };
+    static HANDLE: RefCell<Option<RuntimeHandle>> = const { RefCell::new(None) };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl Handle {
+impl RuntimeHandle {
     fn is_runtime_destroyed(&self) -> bool {
         self.0.strong_count() == 0
     }
 
-    fn state(&self) -> Rc<RefCell<State>> {
+    fn state(&self) -> Rc<RefCell<RuntimeState>> {
         self.0.upgrade().unwrap()
     }
 
@@ -84,13 +84,13 @@ impl Handle {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-pub struct Runtime(Rc<RefCell<State>>);
+pub struct Runtime(Rc<RefCell<RuntimeState>>);
 
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Runtime {
-    pub fn handle(&self) -> Handle {
-        Handle(Rc::downgrade(&self.0))
+    pub fn handle(&self) -> RuntimeHandle {
+        RuntimeHandle(Rc::downgrade(&self.0))
     }
 
     pub fn process_next_task(&self) -> bool {
@@ -162,5 +162,5 @@ pub fn spawn<F>(task: F) -> JoinHandle<F::Output>
 where
     F: Future + 'static,
 {
-    Handle::current().spawn(task)
+    RuntimeHandle::current().spawn(task)
 }

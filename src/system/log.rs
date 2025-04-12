@@ -21,7 +21,7 @@ impl Display for UdpMessageSent {
         write!(
             f,
             "{} {:>12} ---> {:<12} {:?}",
-            self.time.to_string(),
+            self.time,
             self.from.to_string(),
             self.to.to_string(),
             self.content
@@ -44,7 +44,7 @@ impl Display for UdpMessageReceived {
         write!(
             f,
             "{} {:>12} <--- {:<12} {:?}",
-            self.time.to_string(),
+            self.time,
             self.to.to_string(),
             self.from.to_string(),
             self.content
@@ -69,7 +69,7 @@ impl Display for UdpMessageDropped {
             "{}",
             format!(
                 "{} {:>12} ---x {:<12} {:?} <-- message dropped",
-                self.time.to_string(),
+                self.time,
                 self.from.to_string(),
                 self.to.to_string(),
                 self.content
@@ -95,11 +95,11 @@ impl Display for FutureFellAsleep {
             f,
             "{}",
             format!(
-                "{} {:>12}  😴  {:<12} {}",
-                self.time.to_string(),
+                "{} {:>12}  😴  {:<12} {:.3}",
+                self.time,
                 self.proc.to_string(),
                 self.tag.to_string(),
-                format!("{:.3}", self.duration.as_secs_f64())
+                self.duration.as_secs_f64()
             )
             .bright_blue()
         )
@@ -122,7 +122,7 @@ impl Display for FutureWokeUp {
             "{}",
             format!(
                 "{} {:>12}  ⏰  {:<12}",
-                self.time.to_string(),
+                self.time,
                 self.proc.to_string(),
                 self.tag.to_string()
             )
@@ -147,7 +147,7 @@ impl Display for ProcessSentLocalMessage {
             "{}",
             format!(
                 "{} {:>12} >>>> {:<12} {:?}",
-                self.time.to_string(),
+                self.time,
                 self.process.to_string(),
                 "local",
                 self.content
@@ -173,7 +173,7 @@ impl Display for ProcessReceivedLocalMessage {
             "{}",
             format!(
                 "{} {:>12} <<<< {:<12} {:?}",
-                self.time.to_string(),
+                self.time,
                 self.process.to_string(),
                 "local",
                 self.content

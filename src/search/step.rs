@@ -20,13 +20,13 @@ pub struct Timer {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub enum Step {
+pub enum StateTraceStep {
     SelectUdp(usize, UdpMessage),
     SelectTimer(usize, Timer),
     Apply(Box<dyn ApplyFunctor>),
 }
 
-impl Debug for Step {
+impl Debug for StateTraceStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::SelectUdp(arg0, arg1) => {
@@ -42,10 +42,10 @@ impl Debug for Step {
     }
 }
 
-impl Display for Step {
+impl Display for StateTraceStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Step::SelectUdp(i, udp_message) => {
+            StateTraceStep::SelectUdp(i, udp_message) => {
                 if udp_message.drop {
                     write!(
                         f,
@@ -60,10 +60,10 @@ impl Display for Step {
                     )
                 }
             }
-            Step::SelectTimer(i, timer) => {
+            StateTraceStep::SelectTimer(i, timer) => {
                 write!(f, "Select {}: Timer {} fired", i, timer.timer_id)
             }
-            Step::Apply(_) => write!(f, "Apply"),
+            StateTraceStep::Apply(_) => write!(f, "Apply"),
         }
     }
 }

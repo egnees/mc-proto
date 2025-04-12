@@ -4,7 +4,7 @@ use super::{
     control::{GoalChecker, InvariantChecker, Pruner},
     error::{InvariantViolation, LivenessViolation, SearchError},
     searcher::Searcher,
-    trace::Trace,
+    trace::StateTrace,
     SearchConfig,
 };
 
@@ -25,7 +25,7 @@ impl DfsSearcher {
 impl Searcher for DfsSearcher {
     fn check(
         &mut self,
-        mut start: Vec<Trace>,
+        mut start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
@@ -97,12 +97,12 @@ impl Searcher for DfsSearcher {
 
     fn collect(
         &mut self,
-        mut start: Vec<Trace>,
+        mut start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
         goal: impl GoalChecker,
-    ) -> Result<Vec<Trace>, SearchError> {
+    ) -> Result<Vec<StateTrace>, SearchError> {
         let mut collected = Vec::new();
 
         while let Some(v) = start.pop() {

@@ -4,7 +4,7 @@ use super::{
     control::{GoalChecker, InvariantChecker, Pruner},
     error::{InvariantViolation, LivenessViolation, SearchError},
     searcher::Searcher,
-    trace::Trace,
+    trace::StateTrace,
     SearchConfig,
 };
 
@@ -25,13 +25,13 @@ impl BfsSearcher {
 impl Searcher for BfsSearcher {
     fn check(
         &mut self,
-        start: Vec<Trace>,
+        start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
         goal: impl GoalChecker,
     ) -> Result<usize, SearchError> {
-        let mut queue: VecDeque<Trace> = start.into_iter().collect();
+        let mut queue: VecDeque<StateTrace> = start.into_iter().collect();
 
         let mut cnt = 0;
         let mut goal_achieved = false;
@@ -98,15 +98,15 @@ impl Searcher for BfsSearcher {
 
     fn collect(
         &mut self,
-        start: Vec<Trace>,
+        start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
         goal: impl GoalChecker,
-    ) -> Result<Vec<Trace>, SearchError> {
+    ) -> Result<Vec<StateTrace>, SearchError> {
         let mut collected = Vec::new();
 
-        let mut queue: VecDeque<Trace> = start.into_iter().collect();
+        let mut queue: VecDeque<StateTrace> = start.into_iter().collect();
 
         while let Some(v) = queue.pop_front() {
             let sys = v.system();

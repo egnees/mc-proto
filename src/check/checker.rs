@@ -4,8 +4,8 @@ use crate::search::{
     control::{ApplyFn, ApplyFunctor, BuildFn, GoalFn, InvariantFn, PruneFn},
     error::SearchError,
     searcher::Searcher,
-    step::Step,
-    trace::Trace,
+    step::StateTraceStep,
+    trace::StateTrace,
 };
 
 use crate::system::sys::HashType;
@@ -17,7 +17,7 @@ use super::search::{
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Checker {
-    states: Vec<Trace>,
+    states: Vec<StateTrace>,
     visited: HashSet<HashType>,
 }
 
@@ -28,7 +28,7 @@ impl Checker {
 
     pub fn new(build: impl BuildFn) -> Self {
         let build = Box::new(BuildFnWrapper::new(build));
-        let start = Trace::new(build);
+        let start = StateTrace::new(build);
         Self {
             states: vec![start],
             visited: HashSet::default(),
@@ -76,6 +76,6 @@ impl Checker {
         let f = Box::new(ApplyFnWrapper::new(f));
         self.states
             .iter_mut()
-            .for_each(|s| s.add_step(Step::Apply(f.clone())));
+            .for_each(|s| s.add_step(StateTraceStep::Apply(f.clone())));
     }
 }
