@@ -22,5 +22,6 @@ pub use search::{
     control::{ApplyFn, BuildFn, GoalFn, InvariantFn, PruneFn},
     dfs::DfsSearcher,
     error::SearchError,
+    graph::Graph,
     SearchConfig, SearchConfigBuilder,
 };

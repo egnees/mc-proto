@@ -83,7 +83,9 @@ mod tests {
             .build();
         let searcher = mc::BfsSearcher::new(cfg);
         let checker = mc::ModelChecker::new(build);
-        let checked = checker.check(invariant, prune, goal, searcher).unwrap();
+        let checked = checker
+            .check(invariant, prune, goal, searcher, &mut mc::Graph::new())
+            .unwrap();
 
         assert!(checked > 0);
         println!("checked={checked}");
@@ -112,7 +114,7 @@ mod tests {
             .build();
         let searcher = mc::BfsSearcher::new(cfg);
         let checker = mc::ModelChecker::new(build);
-        let check_result = checker.check(invariant, prune, goal, searcher);
+        let check_result = checker.check(invariant, prune, goal, searcher, &mut mc::Graph::new());
         assert!(check_result.is_err());
         println!("{}", check_result.unwrap_err());
     }

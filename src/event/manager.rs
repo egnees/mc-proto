@@ -92,9 +92,9 @@ impl Manager {
 
 impl std::hash::Hash for Manager {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let pending = self.tracker.ready_count();
+        let pending = self.tracker.all_count();
         (0..pending)
-            .map(|i| self.tracker.get_ready(i).unwrap().tag)
+            .map(|i| self.tracker.get_tag(i).unwrap())
             .for_each(|i| self.events[i].hash(state));
     }
 }

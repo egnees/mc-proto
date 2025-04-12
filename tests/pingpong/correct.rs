@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn correct_is_correct() {
         let locals = 2;
-        let max_drops = 0;
+        let max_drops = 1;
 
         let invariant = make_invariant(locals);
         let prune = |_| false;
@@ -123,21 +123,41 @@ mod tests {
             .max_msg_drops(max_drops)
             .build();
 
+        let mut bfs_graph = mc::Graph::new();
         let checked_bfs = {
             let searcher = mc::BfsSearcher::new(cfg.clone());
             let checker = mc::ModelChecker::new(build.clone());
             let checked = checker
-                .check(invariant.clone(), prune.clone(), goal.clone(), searcher)
+                .check(
+                    invariant.clone(),
+                    prune.clone(),
+                    goal.clone(),
+                    searcher,
+                    &mut bfs_graph,
+                )
                 .unwrap();
             checked
         };
+        bfs_graph.sort();
 
+        let mut dfs_graph = mc::Graph::new();
         let checked_dfs = {
             let searcher = mc::DfsSearcher::new(cfg);
             let checker = mc::ModelChecker::new(build);
-            let checked = checker.check(invariant, prune, goal, searcher).unwrap();
+            let checked = checker
+                .check(invariant, prune, goal, searcher, &mut dfs_graph)
+                .unwrap();
             checked
         };
+        dfs_graph.sort();
+
+        for (h, neib) in dfs_graph.adj.iter() {
+            if let Some(neib_bfs) = bfs_graph.adj.get(h) {
+                if neib_bfs != neib {
+                    println!("{h}: dfs={:?}, bfs={:?}", neib, neib_bfs);
+                }
+            }
+        }
 
         assert_eq!(checked_bfs, checked_dfs);
         assert!(checked_bfs > 0);
@@ -172,7 +192,9 @@ mod tests {
             .build();
         let searcher = mc::BfsSearcher::new(cfg);
         let checker = mc::ModelChecker::new(build);
-        let checked = checker.check(invariant, prune, goal, searcher).unwrap();
+        let checked = checker
+            .check(invariant, prune, goal, searcher, &mut mc::Graph::new())
+            .unwrap();
 
         assert!(checked > 0);
         println!("checked={checked}");

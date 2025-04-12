@@ -3,6 +3,7 @@ pub mod config;
 pub mod control;
 pub mod dfs;
 pub mod error;
+pub mod graph;
 pub mod searcher;
 pub mod step;
 pub mod trace;

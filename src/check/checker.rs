@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::search::{
     control::{ApplyFn, ApplyFunctor, BuildFn, GoalFn, InvariantFn, PruneFn},
     error::SearchError,
+    graph::Graph,
     searcher::Searcher,
     step::Step,
     trace::Trace,
@@ -41,6 +42,7 @@ impl Checker {
         prune: impl PruneFn,
         goal: impl GoalFn,
         mut searcher: impl Searcher,
+        graph: &mut Graph,
     ) -> Result<usize, SearchError> {
         let invariant = InvariantFnWrapper::new(invariant);
         let prune = PruneFnWrapper::new(prune);
@@ -51,6 +53,7 @@ impl Checker {
             invariant,
             prune,
             goal,
+            graph,
         )
     }
 

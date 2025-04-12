@@ -27,6 +27,7 @@ mod tests {
         let cfg = mc::SearchConfigBuilder::no_faults()
             .max_msg_drops(max_drops)
             .build();
+
         let checked_correct = {
             let build = make_build(
                 Duration::from_millis(100),
@@ -44,7 +45,13 @@ mod tests {
             let searcher = mc::BfsSearcher::new(cfg.clone());
             let checker = mc::ModelChecker::new(build);
             let checked = checker
-                .check(invariant.clone(), prune.clone(), goal.clone(), searcher)
+                .check(
+                    invariant.clone(),
+                    prune.clone(),
+                    goal.clone(),
+                    searcher,
+                    &mut mc::Graph::new(),
+                )
                 .unwrap();
             checked
         };
@@ -65,7 +72,13 @@ mod tests {
             let searcher = mc::BfsSearcher::new(cfg.clone());
             let checker = mc::ModelChecker::new(build);
             let checked = checker
-                .check(invariant.clone(), prune.clone(), goal.clone(), searcher)
+                .check(
+                    invariant.clone(),
+                    prune.clone(),
+                    goal.clone(),
+                    searcher,
+                    &mut mc::Graph::new(),
+                )
                 .unwrap();
             checked
         };

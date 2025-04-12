@@ -5,6 +5,7 @@ use crate::system::sys::HashType;
 use super::{
     control::{GoalChecker, InvariantChecker, Pruner},
     error::SearchError,
+    graph::Graph,
     trace::Trace,
 };
 
@@ -18,6 +19,7 @@ pub trait Searcher {
         invariant: impl InvariantChecker,
         prune: impl Pruner,
         goal: impl GoalChecker,
+        graph: &mut Graph,
     ) -> Result<usize, SearchError>;
 
     fn collect(

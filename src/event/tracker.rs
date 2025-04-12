@@ -63,6 +63,10 @@ impl<T: Endpoint> Tracker<T> {
         cnt
     }
 
+    pub fn all_count(&self) -> usize {
+        self.segments.len()
+    }
+
     pub fn get_ready(&self, i: usize) -> Option<Segment<T>> {
         assert!(i < self.ready_count());
         let to = self.min_right()?;
@@ -71,6 +75,11 @@ impl<T: Endpoint> Tracker<T> {
             to: s.to.min(to),
             tag: s.tag,
         })
+    }
+
+    pub fn get_tag(&self, i: usize) -> Option<usize> {
+        assert!(i < self.all_count());
+        self.segments.get(i).map(|s| s.tag)
     }
 
     pub fn remove_ready(&mut self, i: usize) -> Option<Segment<T>> {

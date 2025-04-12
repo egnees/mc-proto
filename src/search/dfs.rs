@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use super::{
     control::{GoalChecker, InvariantChecker, Pruner},
     error::{InvariantViolation, LivenessViolation, SearchError},
+    graph::Graph,
     searcher::Searcher,
     trace::Trace,
     SearchConfig,
@@ -25,19 +26,30 @@ impl DfsSearcher {
 impl Searcher for DfsSearcher {
     fn check(
         &mut self,
-        mut start: Vec<Trace>,
+        start: Vec<Trace>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantChecker,
         prune: impl Pruner,
         goal: impl GoalChecker,
+        graph: &mut Graph,
     ) -> Result<usize, SearchError> {
         let mut cnt = 0;
         let mut goal_achieved = false;
-        while let Some(v) = start.pop() {
+        let mut vert = start.into_iter().map(|t| (t, 0)).collect::<Vec<_>>();
+        while let Some((v, parent)) = vert.pop() {
             cnt += 1;
 
             let sys = v.system();
             let h = sys.hash();
+
+            if h == 15846643475718858978 {
+                println!("dfs for 15846643475718858978, log:\n{}", sys.log());
+            }
+
+            if parent != 0 {
+                graph.add(parent, h);
+            }
+
             if !visited.insert(h) {
                 continue;
             }
@@ -84,7 +96,7 @@ impl Searcher for DfsSearcher {
                     u.add_step(s.clone());
                     u
                 })
-                .for_each(|u| start.push(u));
+                .for_each(|u| vert.push((u, h)));
         }
 
         if goal_achieved {
