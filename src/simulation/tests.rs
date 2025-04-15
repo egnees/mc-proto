@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use crate::{
-    event1::{
+    event::{
         driver::EventDriver,
         outcome::{EventOutcome, EventOutcomeKind},
         time::TimeSegment,

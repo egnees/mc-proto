@@ -1,6 +1,6 @@
 use std::{cell::RefCell, future::Future, time::Duration};
 
-use crate::{event1::manager::EventManagerHandle, runtime::JoinHandle, util::oneshot};
+use crate::{event::manager::EventManagerHandle, runtime::JoinHandle, util::oneshot};
 
 use super::proc::{Address, ProcessHandle};
 

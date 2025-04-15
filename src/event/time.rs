@@ -2,7 +2,7 @@ use std::{fmt::Display, time::Duration};
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Hash, Default)]
+#[derive(Debug, Clone, Hash, Default, PartialEq, Eq, Copy)]
 pub struct TimeSegment {
     pub from: Duration,
     pub to: Duration,

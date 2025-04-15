@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use crate::event1::outcome::{EventOutcome, EventOutcomeKind};
+use crate::event::outcome::{EventOutcome, EventOutcomeKind};
 
 use super::{control::ApplyFunctor, state::SearchState};
 

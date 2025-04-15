@@ -1,7 +1,7 @@
 use std::{collections::HashMap, time::Duration, usize};
 
 use crate::{
-    event1::{driver::EventDriver, info::EventInfo, Event},
+    event::{driver::EventDriver, info::EventInfo, Event},
     SystemHandle,
 };
 

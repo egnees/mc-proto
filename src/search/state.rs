@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{event1::driver::EventDriver, System};
+use crate::{event::driver::EventDriver, System};
 
 use super::{gen::Generator, step::StateTraceStep};
 

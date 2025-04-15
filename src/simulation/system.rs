@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    event1::{
+    event::{
         driver::EventDriver, manager::EventManager, outcome::EventOutcome, stat::EventStat,
         time::TimeSegment,
     },
