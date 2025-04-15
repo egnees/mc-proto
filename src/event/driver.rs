@@ -1,0 +1,7 @@
+use super::info::Event;
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub trait EventDriver {
+    fn register_event(&mut self, event: &Event);
+}

@@ -1,7 +1,5 @@
 use tokio::sync::{mpsc, oneshot};
 
-use crate::runtime::spawn;
-
 use super::{Runtime, RuntimeHandle};
 
 ////////////////////////////////////////////////////////////////////////////////

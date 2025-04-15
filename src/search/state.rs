@@ -1,21 +1,41 @@
-use std::fmt::{Debug, Display};
+use std::{
+    cell::RefCell,
+    fmt::{Debug, Display},
+    rc::Rc,
+};
 
-use crate::system::sys::System;
+use crate::{event1::driver::EventDriver, System};
 
-use super::{control::Builder, step::StateTraceStep};
+use super::{gen::Generator, step::StateTraceStep};
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct SearchState {
+    pub(crate) system: System,
+    pub(crate) gen: Rc<RefCell<Generator>>,
+}
+
+impl SearchState {
+    pub fn from_trace(trace: &StateTrace) -> Self {
+        let gen = Rc::new(RefCell::new(Generator::new()));
+        let driver = gen.clone() as Rc<RefCell<dyn EventDriver>>;
+        let system = System::new_default_net(&driver);
+        let mut state = Self { system, gen };
+        trace.apply_steps(&mut state);
+        state
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub struct StateTrace {
-    build: Box<dyn Builder>,
     steps: Vec<StateTraceStep>,
 }
 
 impl StateTrace {
-    pub fn new(build: Box<dyn Builder>) -> Self {
+    pub fn new() -> Self {
         Self {
-            build,
             steps: Vec::default(),
         }
     }
@@ -24,18 +44,16 @@ impl StateTrace {
         self.steps.push(step);
     }
 
-    pub fn system(&self) -> System {
-        let mut sys = self.build.build();
-        self.steps.iter().for_each(|s| sys.apply_search_step(s));
-        sys
-    }
-
     pub fn depth(&self) -> usize {
         self.steps.len()
     }
 
     pub fn step(&self, i: usize) -> &StateTraceStep {
         self.steps.get(i).unwrap()
+    }
+
+    fn apply_steps(&self, state: &mut SearchState) {
+        self.steps.iter().for_each(|step| step.apply(state));
     }
 }
 

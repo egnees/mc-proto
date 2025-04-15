@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{event::tracker::Tracker, system::proc::Address};
+use crate::{event::tracker::Tracker, simulation::proc::Address};
 
 use super::{
     info::{Event, EventInfo, TimerInfo, UdpMessageInfo},

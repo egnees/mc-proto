@@ -1,11 +1,14 @@
 use std::fmt::{Debug, Display};
 
-use super::control::ApplyFunctor;
+use crate::event1::outcome::{EventOutcome, EventOutcomeKind};
+
+use super::{control::ApplyFunctor, state::SearchState};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug)]
 pub struct UdpMessage {
+    pub event_id: usize,
     pub udp_msg_id: usize,
     pub drop: bool,
 }
@@ -14,6 +17,7 @@ pub struct UdpMessage {
 
 #[derive(Clone, Debug)]
 pub struct Timer {
+    pub event_id: usize,
     pub timer_id: usize,
 }
 
@@ -25,6 +29,42 @@ pub enum StateTraceStep {
     SelectTimer(usize, Timer),
     Apply(Box<dyn ApplyFunctor>),
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+impl StateTraceStep {
+    pub fn apply(&self, state: &mut SearchState) {
+        match self {
+            StateTraceStep::SelectUdp(i, msg) => {
+                state.gen.borrow_mut().select_ready_event(*i);
+                let kind = if msg.drop {
+                    EventOutcomeKind::UdpMessageDropped()
+                } else {
+                    EventOutcomeKind::UdpMessageDelivered()
+                };
+                let outcome = EventOutcome {
+                    event_id: msg.event_id,
+                    kind,
+                };
+                state.system.handle().handle_event_outcome(outcome);
+            }
+            StateTraceStep::SelectTimer(i, timer) => {
+                state.gen.borrow_mut().select_ready_event(*i);
+                let kind = EventOutcomeKind::TimerFired();
+                let outcome = EventOutcome {
+                    event_id: timer.event_id,
+                    kind,
+                };
+                state.system.handle().handle_event_outcome(outcome);
+            }
+            StateTraceStep::Apply(f) => {
+                f.apply(state.system.handle());
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 impl Debug for StateTraceStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

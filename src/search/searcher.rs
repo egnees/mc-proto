@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use crate::system::sys::HashType;
+use crate::simulation::system::HashType;
 
 use super::{
-    control::{GoalChecker, InvariantChecker, Pruner},
+    control::{GoalFn, InvariantFn, PruneFn},
     error::SearchError,
-    trace::StateTrace,
+    state::StateTrace,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -15,17 +15,17 @@ pub trait Searcher {
         &mut self,
         start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
-        invariant: impl InvariantChecker,
-        prune: impl Pruner,
-        goal: impl GoalChecker,
+        invariant: impl InvariantFn,
+        prune: impl PruneFn,
+        goal: impl GoalFn,
     ) -> Result<usize, SearchError>;
 
     fn collect(
         &mut self,
         start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
-        invariant: impl InvariantChecker,
-        prune: impl Pruner,
-        goal: impl GoalChecker,
+        invariant: impl InvariantFn,
+        prune: impl PruneFn,
+        goal: impl GoalFn,
     ) -> Result<Vec<StateTrace>, SearchError>;
 }

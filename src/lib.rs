@@ -1,26 +1,27 @@
 mod check;
-mod event;
+// mod event;
+mod event1;
 mod runtime;
 mod search;
-mod system;
+mod simulation;
 mod util;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub use system::{
+pub use simulation::{
     net::{send_message, Config as NetConfig},
     node::Node,
     proc::{send_local, Address, Process},
     proc::{sleep, spawn},
-    sys::{HashType, StateHandle, System},
+    system::{HashType, System, SystemHandle},
 };
 
-pub use check::checker::Checker as ModelChecker;
+pub use check::checker::ModelChecker;
 
 pub use search::{
     bfs::BfsSearcher,
-    control::{ApplyFn, BuildFn, GoalFn, InvariantFn, PruneFn},
+    config::{SearchConfig, SearchConfigBuilder},
+    control::{ApplyFn, GoalFn, InvariantFn, PruneFn},
     dfs::DfsSearcher,
     error::SearchError,
-    SearchConfig, SearchConfigBuilder,
 };

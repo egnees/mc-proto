@@ -1,34 +1,34 @@
 use std::collections::HashSet;
 
 use crate::search::{
-    control::{ApplyFn, ApplyFunctor, BuildFn, GoalFn, InvariantFn, PruneFn},
+    control::{ApplyFn, ApplyFunctor, GoalFn, InvariantFn, PruneFn},
     error::SearchError,
     searcher::Searcher,
+    state::StateTrace,
     step::StateTraceStep,
-    trace::StateTrace,
 };
 
-use crate::system::sys::HashType;
+use crate::simulation::system::HashType;
 
-use super::search::{
-    ApplyFnWrapper, BuildFnWrapper, GoalFnWrapper, InvariantFnWrapper, PruneFnWrapper,
-};
+use super::search::ApplyFnWrapper;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct Checker {
+pub struct ModelChecker {
     states: Vec<StateTrace>,
     visited: HashSet<HashType>,
 }
 
-impl Checker {
+impl ModelChecker {
     pub fn visited(&self) -> &HashSet<HashType> {
         &self.visited
     }
 
-    pub fn new(build: impl BuildFn) -> Self {
-        let build = Box::new(BuildFnWrapper::new(build));
-        let start = StateTrace::new(build);
+    pub fn new_with_build(build: impl ApplyFn) -> Self {
+        let mut start = StateTrace::new();
+        let apply_fn = ApplyFnWrapper::new(build);
+        let step = StateTraceStep::Apply(Box::new(apply_fn));
+        start.add_step(step);
         Self {
             states: vec![start],
             visited: HashSet::default(),
@@ -42,9 +42,6 @@ impl Checker {
         goal: impl GoalFn,
         mut searcher: impl Searcher,
     ) -> Result<usize, SearchError> {
-        let invariant = InvariantFnWrapper::new(invariant);
-        let prune = PruneFnWrapper::new(prune);
-        let goal = GoalFnWrapper::new(goal);
         searcher.check(
             self.states.clone(),
             &mut self.visited,
@@ -61,10 +58,6 @@ impl Checker {
         goal: impl GoalFn,
         mut searcher: impl Searcher,
     ) -> Result<usize, SearchError> {
-        let invariant = InvariantFnWrapper::new(invariant);
-        let prune = PruneFnWrapper::new(prune);
-        let goal = GoalFnWrapper::new(goal);
-
         let mut states = Vec::default();
         std::mem::swap(&mut states, &mut self.states);
         self.states = searcher.collect(states, &mut self.visited, invariant, prune, goal)?;

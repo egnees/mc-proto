@@ -3,11 +3,8 @@ pub mod config;
 pub mod control;
 pub mod dfs;
 pub mod error;
+mod gen;
 pub mod searcher;
+pub mod state;
 pub mod step;
-pub mod trace;
-
-////////////////////////////////////////////////////////////////////////////////
-
-pub use config::{Config as SearchConfig, ConfigBuilder as SearchConfigBuilder};
-pub use step::StateTraceStep as SearchStep;
+mod tracker;

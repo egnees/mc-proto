@@ -1,18 +1,18 @@
 #[derive(Clone)]
-pub struct Config {
+pub struct SearchConfig {
     pub max_node_faults: Option<usize>,
     pub max_disk_faults: Option<usize>,
     pub max_msg_drops: Option<usize>,
     pub max_depth: Option<usize>,
 }
 
-impl Config {
+impl SearchConfig {
     pub fn no_faults_with_drops() -> Self {
-        ConfigBuilder::no_faults().build()
+        SearchConfigBuilder::no_faults().build()
     }
 
     pub fn no_faults_no_drops() -> Self {
-        ConfigBuilder::no_faults().max_msg_drops(0).build()
+        SearchConfigBuilder::no_faults().max_msg_drops(0).build()
     }
 
     pub fn unlimited() -> Self {
@@ -28,14 +28,14 @@ impl Config {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-pub struct ConfigBuilder {
+pub struct SearchConfigBuilder {
     max_node_faults: Option<usize>,
     max_disk_faults: Option<usize>,
     max_msg_drops: Option<usize>,
     max_depth: Option<usize>,
 }
 
-impl ConfigBuilder {
+impl SearchConfigBuilder {
     pub fn new() -> Self {
         Self::default()
     }
@@ -68,8 +68,8 @@ impl ConfigBuilder {
         Self::new().max_msg_drops(0)
     }
 
-    pub fn build(self) -> Config {
-        Config {
+    pub fn build(self) -> SearchConfig {
+        SearchConfig {
             max_node_faults: self.max_node_faults,
             max_disk_faults: self.max_disk_faults,
             max_msg_drops: self.max_msg_drops,

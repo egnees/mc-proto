@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use crate::system::proc::Address;
+use crate::simulation::proc::{Address, ProcessHandle};
 
 use super::time::TimeSegment;
 
@@ -9,15 +9,16 @@ use super::time::TimeSegment;
 #[derive(Clone)]
 pub struct UdpMessageInfo {
     pub udp_msg_id: usize,
-    pub from: Address,
-    pub to: Address,
+    pub from: ProcessHandle,
+    pub to: ProcessHandle,
     pub content: String,
+    pub can_be_dropped: bool,
 }
 
 impl Hash for UdpMessageInfo {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.from.hash(state);
-        self.to.hash(state);
+        self.from.address().hash(state);
+        self.to.address().hash(state);
         self.content.hash(state);
     }
 }
@@ -28,12 +29,12 @@ impl Hash for UdpMessageInfo {
 pub struct TimerInfo {
     pub timer_id: usize,
     pub with_sleep: bool,
-    pub proc: Address,
+    pub proc: ProcessHandle,
 }
 
 impl Hash for TimerInfo {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.proc.hash(state);
+        self.proc.address().hash(state);
     }
 }
 

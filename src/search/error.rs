@@ -1,8 +1,8 @@
 use std::fmt::{Debug, Display};
 
-use crate::system::log::Log;
+use crate::simulation::log::Log;
 
-use super::trace::StateTrace;
+use super::state::StateTrace;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -15,10 +15,7 @@ pub struct InvariantViolation {
 
 impl Debug for InvariantViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("InvariantViolation")
-            .field("log", &self.log)
-            .field("report", &self.report)
-            .finish()
+        writeln!(f, "{}", self)
     }
 }
 
@@ -59,9 +56,7 @@ impl LivenessViolation {
 
 impl Debug for LivenessViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LivenessViolation")
-            .field("log", &self.log)
-            .finish()
+        writeln!(f, "{}", self)
     }
 }
 
@@ -83,7 +78,7 @@ impl Display for LivenessViolation {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum SearchError {
     InvariantViolation(InvariantViolation),
     LivenessViolation(LivenessViolation),
@@ -99,5 +94,11 @@ impl Display for SearchError {
                 writeln!(f, "{}", liveness_violation)
             }
         }
+    }
+}
+
+impl Debug for SearchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self)
     }
 }

@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use super::{
-    control::{GoalChecker, InvariantChecker, Pruner},
+    config::SearchConfig,
+    control::{GoalFn, InvariantFn, PruneFn},
     error::{InvariantViolation, LivenessViolation, SearchError},
     searcher::Searcher,
-    trace::StateTrace,
-    SearchConfig,
+    state::{SearchState, StateTrace},
 };
 
-use crate::system::sys::HashType;
+use crate::simulation::system::HashType;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -27,46 +27,47 @@ impl Searcher for DfsSearcher {
         &mut self,
         mut start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
-        invariant: impl InvariantChecker,
-        prune: impl Pruner,
-        goal: impl GoalChecker,
+        invariant: impl InvariantFn,
+        prune: impl PruneFn,
+        goal: impl GoalFn,
     ) -> Result<usize, SearchError> {
         let mut cnt = 0;
         let mut goal_achieved = false;
         while let Some(v) = start.pop() {
             cnt += 1;
 
-            let sys = v.system();
-            let h = sys.hash();
+            let state = SearchState::from_trace(&v);
+            let system = state.system.handle();
+            let h = system.hash();
             if !visited.insert(h) {
                 continue;
             }
 
             // check invariant
-            invariant.check(sys.handle()).map_err(|report| {
+            invariant(system.clone()).map_err(|report| {
                 let err = InvariantViolation {
                     trace: v.clone(),
-                    log: sys.log(),
+                    log: system.log(),
                     report,
                 };
                 SearchError::InvariantViolation(err)
             })?;
 
             // check goal achieved
-            if goal.check(sys.handle()) {
+            if goal(system.clone()) {
                 goal_achieved = true;
                 continue;
             }
 
             // check prune
-            if prune.check(sys.handle()) {
+            if prune(system.clone()) {
                 continue;
             }
 
             // error if no transitions available
-            let steps = sys.search_steps(&self.cfg);
+            let steps = state.gen.borrow().steps(system.clone(), &self.cfg);
             if steps.is_empty() {
-                let err = LivenessViolation::this_one(v, sys.log());
+                let err = LivenessViolation::this_one(v, system.log());
                 let err = SearchError::LivenessViolation(err);
                 return Err(err);
             }
@@ -99,41 +100,44 @@ impl Searcher for DfsSearcher {
         &mut self,
         mut start: Vec<StateTrace>,
         visited: &mut HashSet<HashType>,
-        invariant: impl InvariantChecker,
-        prune: impl Pruner,
-        goal: impl GoalChecker,
+        invariant: impl InvariantFn,
+        prune: impl PruneFn,
+        goal: impl GoalFn,
     ) -> Result<Vec<StateTrace>, SearchError> {
         let mut collected = Vec::new();
 
         while let Some(v) = start.pop() {
-            let sys = v.system();
-            let h = sys.hash();
+            let state = SearchState::from_trace(&v);
+            let system = state.system.handle();
+            let h = system.hash();
             if !visited.insert(h) {
                 continue;
             }
 
             // check invariant
-            invariant.check(sys.handle()).map_err(|report| {
+            invariant(system.clone()).map_err(|report| {
                 SearchError::InvariantViolation(InvariantViolation {
                     trace: v.clone(),
-                    log: sys.log(),
+                    log: system.log(),
                     report,
                 })
             })?;
 
             // check goal achieved
-            if goal.check(sys.handle()) {
+            if goal(system.clone()) {
                 collected.push(v);
                 continue;
             }
 
             // check prune
-            if prune.check(sys.handle()) {
+            if prune(system.clone()) {
                 continue;
             }
 
             // branch
-            sys.search_steps(&self.cfg)
+            let steps = state.gen.borrow().steps(system.clone(), &self.cfg);
+
+            steps
                 .iter()
                 .map(|s| {
                     let mut u = v.clone();

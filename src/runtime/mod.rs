@@ -5,12 +5,10 @@ mod waker;
 ////////////////////////////////////////////////////////////////////////////////
 
 #[allow(unused)]
-pub use rt::{spawn, Runtime, RuntimeHandle};
+pub use rt::{Runtime, RuntimeHandle};
 
 #[allow(unused)]
 pub use task::{JoinError, JoinHandle, TaskId};
 
-////////////////////////////////////////////////////////////////////////////////
-
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;

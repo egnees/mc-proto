@@ -2,7 +2,7 @@ use std::{fmt::Display, time::Duration};
 
 use colored::Colorize;
 
-use crate::event::time::TimeSegment;
+use crate::event1::time::TimeSegment;
 
 use super::proc::Address;
 

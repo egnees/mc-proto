@@ -1,11 +1,15 @@
 use std::{future::Future, pin::Pin};
 
-use crate::util;
+use crate::{simulation::proc::ProcessHandle, util};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub type TaskId = usize;
-pub type Task = Pin<Box<dyn Future<Output = ()>>>;
+
+pub struct Task {
+    pub future: Pin<Box<dyn Future<Output = ()>>>,
+    pub owner: ProcessHandle,
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -4,6 +4,7 @@ use super::{context::Context, error::Error, proc::Address};
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone)]
 pub struct Network {
     pub min_packet_delay: Duration,
     pub max_packet_delay: Duration,
@@ -37,6 +38,12 @@ impl Config {
                 max_packet_delay,
             })
         }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::new(Duration::from_millis(100), Duration::from_millis(200)).unwrap()
     }
 }
 

@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::util;
+use crate::{simulation::proc::ProcessHandle, util};
 
 use super::{
     task::{JoinHandle, Task, TaskId},
@@ -22,16 +22,20 @@ pub struct RuntimeState {
     next_task_id: TaskId,
 }
 
+impl RuntimeState {
+    fn next_task_owner(&self) -> Option<ProcessHandle> {
+        self.pending
+            .front()
+            .map(|t| self.tasks.get(t))
+            .flatten()
+            .map(|t| t.owner.clone())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub struct RuntimeHandle(Weak<RefCell<RuntimeState>>);
-
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local! {
-    static HANDLE: RefCell<Option<RuntimeHandle>> = const { RefCell::new(None) };
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +54,7 @@ impl RuntimeHandle {
         }
     }
 
-    pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output>
+    pub fn spawn<F>(&self, task: F, owner: ProcessHandle) -> JoinHandle<F::Output>
     where
         F: Future + 'static,
     {
@@ -65,19 +69,16 @@ impl RuntimeHandle {
             let result = task.await;
             let _ = sender.send(result); // receiver can be dropped which is ok
         };
-        state.tasks.insert(task_id, Box::pin(task));
+        state.tasks.insert(
+            task_id,
+            Task {
+                future: Box::pin(task),
+                owner,
+            },
+        );
         state.pending.push_back(task_id);
 
         JoinHandle::new(task_id, receiver)
-    }
-
-    pub fn current() -> Self {
-        HANDLE.with(|h| {
-            h.borrow()
-                .as_ref()
-                .expect("must be called in runtime")
-                .clone()
-        })
     }
 }
 
@@ -105,14 +106,12 @@ impl Runtime {
             (task_id, task)
         };
 
-        self.set_current_handle();
         let poll_result = {
             let waker = futures::task::waker(Arc::new(Waker::new(self.handle(), task_id)));
             let mut ctx = futures::task::Context::from_waker(&waker);
-            let poll_result = task.as_mut().poll(&mut ctx);
+            let poll_result = task.future.as_mut().poll(&mut ctx);
             poll_result
         };
-        self.remove_current_handle();
 
         if poll_result.is_pending() {
             self.0.borrow_mut().tasks.insert(task_id, task);
@@ -130,37 +129,7 @@ impl Runtime {
         processed
     }
 
-    fn set_current_handle(&self) {
-        HANDLE.with(|h| {
-            *h.borrow_mut() = Some(self.handle());
-        });
+    pub fn next_task_owner(&self) -> Option<ProcessHandle> {
+        self.0.borrow().next_task_owner()
     }
-
-    fn remove_current_handle(&self) {
-        HANDLE.with(|h| {
-            *h.borrow_mut() = None;
-        });
-    }
-
-    pub fn next_task_id(&self) -> Option<TaskId> {
-        self.0.borrow().pending.front().copied()
-    }
-
-    #[allow(unused)]
-    pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output>
-    where
-        F: Future + 'static,
-    {
-        self.handle().spawn(task)
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[allow(unused)]
-pub fn spawn<F>(task: F) -> JoinHandle<F::Output>
-where
-    F: Future + 'static,
-{
-    RuntimeHandle::current().spawn(task)
 }

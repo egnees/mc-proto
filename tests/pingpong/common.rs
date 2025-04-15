@@ -8,43 +8,38 @@ pub fn make_build(
     ping: impl Fn() -> Rc<RefCell<dyn mc::Process>> + Clone + Sync + Send + 'static,
     pong: impl Fn() -> Rc<RefCell<dyn mc::Process>> + Clone + Sync + Send + 'static,
     locals: usize,
-) -> impl mc::BuildFn {
-    move || {
+) -> impl mc::ApplyFn {
+    move |sys| {
         // configure network
-        let net_cfg = mc::NetConfig::new(min_packet_delay, max_packet_delay).unwrap();
-
-        // build sys with network
-        let mut sys = mc::System::new(&net_cfg);
+        sys.set_network_delays(min_packet_delay, max_packet_delay)
+            .unwrap();
 
         // configure first node
-        let mut n1 = mc::Node::new();
+        let mut n1 = mc::Node::new("n1");
         n1.add_proc_by_ref("ping", ping()).unwrap();
-        sys.add_node("n1", n1).unwrap();
+        sys.add_node(n1).unwrap();
 
         // configure second node
-        let mut n2 = mc::Node::new();
+        let mut n2 = mc::Node::new("n2");
         n2.add_proc_by_ref("pong", pong()).unwrap();
-        sys.add_node("n2", n2).unwrap();
+        sys.add_node(n2).unwrap();
 
         // send local messages to initiate requests
         for i in 0..locals {
             sys.send_local(&mc::Address::new("n1", "ping"), i.to_string())
                 .unwrap();
         }
-
-        // builded sys
-        sys
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn make_goal(locals: usize) -> impl mc::GoalFn {
-    move |s: mc::StateHandle| {
-        let mut ping_locals = s.read_locals(&mc::Address::new("n1", "ping")).unwrap();
+    move |s: mc::SystemHandle| {
+        let mut ping_locals = s.read_locals("n1", "ping").unwrap();
         ping_locals.sort();
 
-        let mut pong_locals = s.read_locals(&mc::Address::new("n2", "pong")).unwrap();
+        let mut pong_locals = s.read_locals("n2", "pong").unwrap();
         pong_locals.sort();
 
         let ref_locals = (0..locals).map(|n| n.to_string()).collect::<Vec<_>>();
@@ -56,15 +51,9 @@ pub fn make_goal(locals: usize) -> impl mc::GoalFn {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn make_invariant(locals: usize) -> impl mc::InvariantFn {
-    move |s: mc::StateHandle| {
-        if s.read_locals(&mc::Address::new("n1", "ping"))
-            .unwrap()
-            .len()
-            <= locals
-            && s.read_locals(&mc::Address::new("n2", "pong"))
-                .unwrap()
-                .len()
-                <= locals
+    move |s: mc::SystemHandle| {
+        if s.read_locals("n1", "ping").unwrap().len() <= locals
+            && s.read_locals("n2", "pong").unwrap().len() <= locals
         {
             Ok(())
         } else {

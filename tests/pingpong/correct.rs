@@ -125,7 +125,7 @@ mod tests {
 
         let checked_bfs = {
             let searcher = mc::BfsSearcher::new(cfg.clone());
-            let checker = mc::ModelChecker::new(build.clone());
+            let checker = mc::ModelChecker::new_with_build(build.clone());
             let checked = checker
                 .check(invariant.clone(), prune.clone(), goal.clone(), searcher)
                 .unwrap();
@@ -134,7 +134,7 @@ mod tests {
 
         let checked_dfs = {
             let searcher = mc::DfsSearcher::new(cfg);
-            let checker = mc::ModelChecker::new(build);
+            let checker = mc::ModelChecker::new_with_build(build);
             let checked = checker.check(invariant, prune, goal, searcher).unwrap();
             checked
         };
@@ -172,7 +172,7 @@ mod tests {
             .max_msg_drops(max_drops)
             .build();
         let searcher = mc::BfsSearcher::new(cfg);
-        let checker = mc::ModelChecker::new(build);
+        let checker = mc::ModelChecker::new_with_build(build);
         let checked = checker.check(invariant, prune, goal, searcher).unwrap();
 
         assert!(checked > 0);

@@ -82,7 +82,7 @@ mod tests {
             .max_msg_drops(max_drops)
             .build();
         let searcher = mc::BfsSearcher::new(cfg);
-        let checker = mc::ModelChecker::new(build);
+        let checker = mc::ModelChecker::new_with_build(build);
         let checked = checker.check(invariant, prune, goal, searcher).unwrap();
 
         assert!(checked > 0);
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn unreliable_net() {
         let locals = 2;
-        let max_drops = 1;
+        let max_drops = 2;
 
         let invariant = make_invariant(locals);
         let prune = |_| false;
@@ -111,7 +111,7 @@ mod tests {
             .max_msg_drops(max_drops)
             .build();
         let searcher = mc::BfsSearcher::new(cfg);
-        let checker = mc::ModelChecker::new(build);
+        let checker = mc::ModelChecker::new_with_build(build);
         let check_result = checker.check(invariant, prune, goal, searcher);
         assert!(check_result.is_err());
         println!("{}", check_result.unwrap_err());

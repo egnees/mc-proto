@@ -42,7 +42,7 @@ mod tests {
             );
 
             let searcher = mc::BfsSearcher::new(cfg.clone());
-            let checker = mc::ModelChecker::new(build);
+            let checker = mc::ModelChecker::new_with_build(build);
             let checked = checker
                 .check(invariant.clone(), prune.clone(), goal.clone(), searcher)
                 .unwrap();
@@ -63,10 +63,8 @@ mod tests {
             );
 
             let searcher = mc::BfsSearcher::new(cfg.clone());
-            let checker = mc::ModelChecker::new(build);
-            let checked = checker
-                .check(invariant.clone(), prune.clone(), goal.clone(), searcher)
-                .unwrap();
+            let checker = mc::ModelChecker::new_with_build(build);
+            let checked = checker.check(invariant, prune, goal, searcher).unwrap();
             checked
         };
 
