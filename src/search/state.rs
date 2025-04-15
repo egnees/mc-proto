@@ -28,16 +28,14 @@ impl SearchState {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct StateTrace {
     steps: Vec<StateTraceStep>,
 }
 
 impl StateTrace {
     pub fn new() -> Self {
-        Self {
-            steps: Vec::default(),
-        }
+        Default::default()
     }
 
     pub fn add_step(&mut self, step: StateTraceStep) {

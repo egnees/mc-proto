@@ -26,8 +26,7 @@ impl RuntimeState {
     fn next_task_owner(&self) -> Option<ProcessHandle> {
         self.pending
             .front()
-            .map(|t| self.tasks.get(t))
-            .flatten()
+            .and_then(|t| self.tasks.get(t))
             .map(|t| t.owner.clone())
     }
 }

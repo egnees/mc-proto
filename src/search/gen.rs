@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration, usize};
+use std::{collections::HashMap, time::Duration};
 
 use crate::{
     event::{driver::EventDriver, info::EventInfo, Event},

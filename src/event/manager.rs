@@ -150,7 +150,7 @@ impl EventManagerHandle {
                 from: from.address(),
                 to: to.clone(),
                 content: content.clone(),
-                time: state.time.clone(),
+                time: state.time,
             };
             let log_entry = LogEntry::UdpMessageSent(sent_entry);
             state.event_log.add_entry(log_entry);
@@ -164,7 +164,7 @@ impl EventManagerHandle {
                 from: from.address(),
                 to: to.clone(),
                 content,
-                time: state.time.clone(),
+                time: state.time,
             };
             let log_entry = LogEntry::UdpMessageDropped(dropped_entry);
             state.event_log.add_entry(log_entry);
@@ -243,7 +243,7 @@ impl EventManagerHandle {
             let log_entry = ProcessSentLocalMessage {
                 process: proc.address(),
                 content: content.clone(),
-                time: state.time.clone(),
+                time: state.time,
             };
             let log_entry = LogEntry::ProcessSentLocalMessage(log_entry);
             state.event_log.add_entry(log_entry);
@@ -309,7 +309,7 @@ impl EventManagerHandle {
             from: msg.from.address(),
             to: msg.to.address(),
             content: msg.content.clone(),
-            time: event.time.clone(),
+            time: event.time,
         };
         let log_entry = LogEntry::UdpMessageDropped(dropped_entry);
         state.event_log.add_entry(log_entry);
@@ -330,7 +330,7 @@ impl EventManagerHandle {
                 from: msg.from.address(),
                 to: msg.to.address(),
                 content: msg.content.clone(),
-                time: event.time.clone(),
+                time: event.time,
             };
             let log_entry = LogEntry::UdpMessageReceived(received_entry);
             state.event_log.add_entry(log_entry);
@@ -362,7 +362,7 @@ impl EventManagerHandle {
             let wakeup_entry = FutureWokeUp {
                 tag: timer.timer_id,
                 proc: timer.proc.address(),
-                time: event.time.clone(),
+                time: event.time,
             };
             let log_entry = LogEntry::FutureWokeUp(wakeup_entry);
             state.event_log.add_entry(log_entry);
@@ -389,7 +389,7 @@ impl EventManagerHandle {
             let log_entry = ProcessReceivedLocalMessage {
                 process: proc.address(),
                 content: content.clone(),
-                time: state.time.clone(),
+                time: state.time,
             };
             let log_entry = LogEntry::ProcessReceivedLocalMessage(log_entry);
             state.event_log.add_entry(log_entry);
