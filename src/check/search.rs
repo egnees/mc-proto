@@ -1,4 +1,4 @@
-use crate::{search, simulation::system::SystemHandle};
+use crate::{search, sim::system::SystemHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 

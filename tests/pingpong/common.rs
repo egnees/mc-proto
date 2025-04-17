@@ -11,7 +11,8 @@ pub fn make_build(
 ) -> impl mc::ApplyFn {
     move |sys| {
         // configure network
-        sys.set_network_delays(min_packet_delay, max_packet_delay)
+        sys.network()
+            .set_delays(min_packet_delay, max_packet_delay)
             .unwrap();
 
         // configure first node

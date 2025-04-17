@@ -19,6 +19,7 @@ impl TimeSegment {
     }
 
     pub fn shift_range(&self, from: Duration, to: Duration) -> TimeSegment {
+        assert!(from <= to);
         TimeSegment::new(self.from + from, self.to + to)
     }
 }

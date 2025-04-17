@@ -1,21 +1,67 @@
-use std::time::Duration;
+use std::{
+    cell::RefCell,
+    rc::{Rc, Weak},
+    time::Duration,
+};
 
 use super::{context::Context, error::Error, proc::Address};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub struct Network {
+pub struct NetworkState {
     pub min_packet_delay: Duration,
     pub max_packet_delay: Duration,
 }
 
-impl Network {
+impl NetworkState {
     pub fn new(cfg: &Config) -> Self {
         Self {
             min_packet_delay: cfg.min_packet_delay,
             max_packet_delay: cfg.max_packet_delay,
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct Network(Rc<RefCell<NetworkState>>);
+
+impl Network {
+    pub fn new(cfg: &Config) -> Self {
+        Self(Rc::new(RefCell::new(NetworkState::new(cfg))))
+    }
+
+    pub fn handle(&self) -> NetworkHandle {
+        NetworkHandle(Rc::downgrade(&self.0))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct NetworkHandle(Weak<RefCell<NetworkState>>);
+
+impl NetworkHandle {
+    fn state(&self) -> Rc<RefCell<NetworkState>> {
+        self.0.upgrade().unwrap()
+    }
+
+    pub fn set_delays(&self, min: Duration, max: Duration) -> Result<(), Error> {
+        if min > max {
+            Err(Error::IncorrectRange)
+        } else {
+            let state = self.state();
+            let mut state = state.borrow_mut();
+            state.min_packet_delay = min;
+            state.max_packet_delay = max;
+            Ok(())
+        }
+    }
+
+    pub fn delays_range(&self) -> (Duration, Duration) {
+        let state = self.state();
+        let state = state.borrow();
+        (state.min_packet_delay, state.max_packet_delay)
     }
 }
 

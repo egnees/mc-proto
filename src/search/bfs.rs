@@ -8,7 +8,7 @@ use super::{
     state::{SearchState, StateTrace},
 };
 
-use crate::simulation::system::HashType;
+use crate::sim::system::HashType;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -38,7 +38,7 @@ impl Searcher for BfsSearcher {
         while let Some(v) = queue.pop_front() {
             cnt += 1;
 
-            let state = SearchState::from_trace(&v);
+            let state = SearchState::from_trace(&v)?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {
@@ -110,7 +110,7 @@ impl Searcher for BfsSearcher {
         let mut queue: VecDeque<StateTrace> = start.into_iter().collect();
 
         while let Some(v) = queue.pop_front() {
-            let state = SearchState::from_trace(&v);
+            let state = SearchState::from_trace(&v)?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {

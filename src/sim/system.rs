@@ -3,7 +3,6 @@ use std::{
     collections::{btree_map::Entry, BTreeMap},
     hash::{Hash, Hasher},
     rc::{Rc, Weak},
-    time::Duration,
 };
 
 use crate::{
@@ -19,7 +18,7 @@ use super::{
     context::{Context, Guard},
     error::Error,
     log::Log,
-    net::Network,
+    net::{Network, NetworkHandle},
     node::Node,
     proc::{Address, ProcessHandle},
 };
@@ -93,6 +92,10 @@ impl Hash for SystemHandle {
 }
 
 impl SystemHandle {
+    pub(crate) fn system_dropped(&self) -> bool {
+        self.0.strong_count() == 0
+    }
+
     fn state(&self) -> Rc<RefCell<SystemState>> {
         self.0.upgrade().unwrap()
     }
@@ -105,10 +108,6 @@ impl SystemHandle {
             .nodes
             .get(&addr.node)?
             .proc(&addr.process)
-    }
-
-    pub(crate) fn network(&self) -> Network {
-        self.state().borrow().net.clone()
     }
 
     pub(crate) fn hash(&self) -> HashType {
@@ -136,15 +135,8 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub fn set_network_delays(&self, min: Duration, max: Duration) -> Result<(), Error> {
-        if min > max {
-            return Err(Error::IncorrectRange);
-        }
-        let state = self.state();
-        let net = &mut state.borrow_mut().net;
-        net.min_packet_delay = min;
-        net.max_packet_delay = max;
-        Ok(())
+    pub fn network(&self) -> NetworkHandle {
+        self.state().borrow().net.handle()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -213,76 +205,14 @@ impl SystemHandle {
         event_manager.handle_event_outcome(&outcome);
         self.run_async_tasks();
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn pending_events(&self) -> usize {
+        self.state()
+            .borrow()
+            .event_manager
+            .handle()
+            .pending_events()
+    }
 }
-
-// pub(crate) fn apply_search_step(&mut self, step: &SearchStep) {
-//     match step {
-//         SearchStep::SelectUdp(id, udp_message) => {
-//             let event = self
-//                 .system
-//                 .borrow_mut()
-//                 .events
-//                 .remove_ready(*id)
-//                 .unwrap()
-//                 .clone();
-//             if udp_message.drop {
-//                 self.drop_udp_message(event);
-//             } else {
-//                 self.deliver_udp_message(event);
-//             }
-//         }
-//         SearchStep::SelectTimer(id, _) => {
-//             let event = self
-//                 .system
-//                 .borrow_mut()
-//                 .events
-//                 .remove_ready(*id)
-//                 .unwrap()
-//                 .clone();
-//             self.fire_timer(event);
-//         }
-//         SearchStep::Apply(apply_functor) => apply_functor.apply(self),
-//     }
-// }
-
-// ////////////////////////////////////////////////////////////////////////////////
-
-// pub(crate) fn search_steps(&self, cfg: &SearchConfig) -> Vec<SearchStep> {
-//     let state = self.system.borrow();
-//     let ready = state.events.ready_events_cnt();
-//     let mut res = Vec::new();
-//     for i in 0..ready {
-//         let e = state.events.get_ready(i).unwrap();
-//         match &e.info {
-//             EventInfo::UdpMessageInfo(udp) => {
-//                 let can_be_delivered = self.message_can_be_delivered(&udp.from, &udp.to);
-//                 if !can_be_delivered
-//                     || state.stat.udp_msg_dropped < cfg.max_msg_drops.unwrap_or(usize::MAX)
-//                 {
-//                     let udp_msg = UdpMessage {
-//                         udp_msg_id: udp.udp_msg_id,
-//                         drop: true,
-//                     };
-//                     let step = SearchStep::SelectUdp(i, udp_msg);
-//                     res.push(step);
-//                 }
-//                 if can_be_delivered {
-//                     let udp_msg = UdpMessage {
-//                         udp_msg_id: udp.udp_msg_id,
-//                         drop: false,
-//                     };
-//                     let step = SearchStep::SelectUdp(i, udp_msg);
-//                     res.push(step);
-//                 }
-//             }
-//             EventInfo::TimerInfo(timer) => {
-//                 let timer = Timer {
-//                     timer_id: timer.timer_id,
-//                 };
-//                 let step = SearchStep::SelectTimer(i, timer);
-//                 res.push(step);
-//             }
-//         }
-//     }
-//     res
-// }

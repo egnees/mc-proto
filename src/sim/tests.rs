@@ -86,7 +86,12 @@ struct EventCollector {
 
 impl EventDriver for EventCollector {
     fn register_event(&mut self, event: &Event) {
-        self.events.push(event.clone())
+        self.events.push(Event {
+            id: event.id,
+            time: event.time,
+            info: event.info.clone(),
+            on_happen: None,
+        })
     }
 }
 
@@ -140,6 +145,7 @@ fn basic_net() {
     // deliver udp message
     handle.handle_event_outcome(EventOutcome {
         event_id: id,
+        time: net_delays,
         kind: EventOutcomeKind::UdpMessageDelivered(),
     });
 
@@ -158,6 +164,7 @@ fn basic_net() {
     let id = collector.borrow().events[1].id;
     handle.handle_event_outcome(EventOutcome {
         event_id: id,
+        time: double_net_delays,
         kind: EventOutcomeKind::UdpMessageDelivered(),
     });
 
@@ -219,6 +226,7 @@ fn basic_sleep() {
     // first wakeup
     handle.handle_event_outcome(EventOutcome {
         event_id: first_sleep_id,
+        time: TimeSegment::new(ms100, ms100),
         kind: EventOutcomeKind::TimerFired(),
     });
 
@@ -227,6 +235,7 @@ fn basic_sleep() {
     // second wakeup
     handle.handle_event_outcome(EventOutcome {
         event_id: second_sleep_id,
+        time: TimeSegment::new(ms200, ms200),
         kind: EventOutcomeKind::TimerFired(),
     });
     assert_eq!(handle.time(), TimeSegment::new(ms200, ms200));
@@ -239,6 +248,7 @@ fn basic_sleep() {
     let thrid_sleep_id = collector.borrow().events[2].id;
     handle.handle_event_outcome(EventOutcome {
         event_id: thrid_sleep_id,
+        time: TimeSegment::new(ms500, ms500),
         kind: EventOutcomeKind::TimerFired(),
     });
     assert_eq!(handle.time(), TimeSegment::new(ms500, ms500));

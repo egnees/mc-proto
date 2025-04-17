@@ -1,6 +1,6 @@
 use std::{future::Future, pin::Pin};
 
-use crate::{simulation::proc::ProcessHandle, util};
+use crate::{sim::proc::ProcessHandle, util};
 
 ////////////////////////////////////////////////////////////////////////////////
 

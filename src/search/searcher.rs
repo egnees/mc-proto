@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::simulation::system::HashType;
+use crate::sim::system::HashType;
 
 use super::{
     control::{GoalFn, InvariantFn, PruneFn},

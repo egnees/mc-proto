@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{simulation::proc::ProcessHandle, util};
+use crate::{sim::proc::ProcessHandle, util};
 
 use super::{
     task::{JoinHandle, Task, TaskId},
@@ -100,7 +100,8 @@ impl Runtime {
                 return false;
             };
             let Some(task) = state.tasks.remove(&task_id) else {
-                panic!("missing task: {task_id}");
+                // future already resolved
+                return true;
             };
             (task_id, task)
         };

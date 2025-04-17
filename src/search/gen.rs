@@ -1,13 +1,13 @@
 use std::{collections::HashMap, time::Duration};
 
 use crate::{
-    event::{driver::EventDriver, info::EventInfo, Event},
+    event::{driver::EventDriver, info::EventInfo, time::TimeSegment, Event},
     SystemHandle,
 };
 
 use super::{
     config::SearchConfig,
-    step::{StateTraceStep, Timer, UdpMessage},
+    step::{StateTraceStep, TcpPacket, Timer, UdpMessage},
     tracker::Tracker,
 };
 
@@ -16,6 +16,7 @@ use super::{
 enum EventKind {
     UdpMessage(usize),
     Timer(usize),
+    TcpPacket(usize),
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +32,7 @@ impl EventDriver for Generator {
         let kind = match &event.info {
             EventInfo::UdpMessage(msg) => EventKind::UdpMessage(msg.udp_msg_id),
             EventInfo::Timer(timer) => EventKind::Timer(timer.timer_id),
+            EventInfo::TcpMessage(msg) => EventKind::TcpPacket(msg.tcp_msg_id),
         };
         let prev_value = self.event_info.insert(event.id, kind);
         assert!(prev_value.is_none());
@@ -52,6 +54,7 @@ impl Generator {
         let mut res = Vec::new();
         for i in 0..pending {
             let e = self.tracker.get_ready(i).unwrap();
+            let time = TimeSegment::new(e.from, e.to);
             let event_id = e.event_id;
             let kind = self.event_info.get(&e.event_id).unwrap();
             match *kind {
@@ -61,7 +64,7 @@ impl Generator {
                         udp_msg_id,
                         drop: false,
                     };
-                    let no_drop_step = StateTraceStep::SelectUdp(i, udp_no_drop);
+                    let no_drop_step = StateTraceStep::SelectUdp(i, time, udp_no_drop);
                     res.push(no_drop_step);
 
                     // inject msg drop
@@ -71,12 +74,23 @@ impl Generator {
                             udp_msg_id,
                             drop: true,
                         };
-                        let drop_step = StateTraceStep::SelectUdp(i, udp_drop);
+                        let drop_step = StateTraceStep::SelectUdp(i, time, udp_drop);
                         res.push(drop_step);
                     }
                 }
                 EventKind::Timer(timer_id) => {
-                    let step = StateTraceStep::SelectTimer(i, Timer { event_id, timer_id });
+                    let step = StateTraceStep::SelectTimer(i, time, Timer { event_id, timer_id });
+                    res.push(step);
+                }
+                EventKind::TcpPacket(tcp_msg_id) => {
+                    let step = StateTraceStep::SelectTcp(
+                        i,
+                        time,
+                        TcpPacket {
+                            event_id,
+                            tcp_msg_id,
+                        },
+                    );
                     res.push(step);
                 }
             }

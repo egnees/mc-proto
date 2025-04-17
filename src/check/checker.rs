@@ -4,11 +4,11 @@ use crate::search::{
     control::{ApplyFn, ApplyFunctor, GoalFn, InvariantFn, PruneFn},
     error::SearchError,
     searcher::Searcher,
-    state::StateTrace,
+    state::{SearchState, StateTrace},
     step::StateTraceStep,
 };
 
-use crate::simulation::system::HashType;
+use crate::sim::system::HashType;
 
 use super::search::ApplyFnWrapper;
 
@@ -70,5 +70,12 @@ impl ModelChecker {
         self.states
             .iter_mut()
             .for_each(|s| s.add_step(StateTraceStep::Apply(f.clone())));
+    }
+
+    pub fn for_each(&self, f: impl ApplyFn) {
+        self.states.iter().for_each(|s| {
+            let state = SearchState::from_trace(s).unwrap();
+            f(state.system.handle());
+        });
     }
 }

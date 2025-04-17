@@ -39,6 +39,10 @@ impl<T> Sender<T> {
             waker.wake();
         }
     }
+
+    pub fn has_receiver(&self) -> bool {
+        !matches!(*self.shared.borrow(), SharedState::<T>::ReceiverDropped)
+    }
 }
 
 impl<T> Drop for Sender<T> {
@@ -95,54 +99,52 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::runtime;
+#[cfg(test)]
+mod tests {
+    use tokio::task::LocalSet;
 
-//     use super::*;
+    use super::*;
 
-//     ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
-//     #[test]
-//     fn basic() {
-//         let (tx, rx) = channel::<i32>();
-//         let rt = runtime::Runtime::default();
-//         rt.spawn(async move {
-//             let x = rx.await.unwrap();
-//             assert_eq!(x, 2);
-//         });
-//         rt.spawn(async move {
-//             let result = tx.send(2);
-//             assert!(result.is_ok());
-//         });
-//         let proc = rt.process_tasks();
-//         assert!(proc > 2);
-//     }
+    #[tokio::test]
+    async fn basic() {
+        let (tx, rx) = channel::<i32>();
+        let rt = LocalSet::new();
+        rt.spawn_local(async move {
+            let x = rx.await.unwrap();
+            assert_eq!(x, 2);
+        });
+        rt.spawn_local(async move {
+            let result = tx.send(2);
+            assert!(result.is_ok());
+        });
+        rt.await;
+    }
 
-//     ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
-//     #[test]
-//     fn drop_sender() {
-//         let (tx, rx) = channel::<i32>();
-//         let rt = runtime::Runtime::default();
-//         rt.spawn(async move {
-//             let result = rx.await;
-//             assert_eq!(result, Err(RecvError::SenderDropped));
-//         });
-//         rt.spawn(async move {
-//             drop(tx);
-//         });
-//         let proc = rt.process_tasks();
-//         assert!(proc > 2);
-//     }
+    #[tokio::test]
+    async fn drop_sender() {
+        let (tx, rx) = channel::<i32>();
+        let rt = LocalSet::new();
+        rt.spawn_local(async move {
+            let result = rx.await;
+            assert_eq!(result, Err(RecvError::SenderDropped));
+        });
+        rt.spawn_local(async move {
+            drop(tx);
+        });
+        rt.await;
+    }
 
-//     ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
-//     #[test]
-//     fn drop_receiver() {
-//         let (tx, rx) = channel::<i32>();
-//         drop(rx);
-//         let result = tx.send(2);
-//         assert_eq!(result, Err(2));
-//     }
-// }
+    #[test]
+    fn drop_receiver() {
+        let (tx, rx) = channel::<i32>();
+        drop(rx);
+        let result = tx.send(2);
+        assert_eq!(result, Err(2));
+    }
+}

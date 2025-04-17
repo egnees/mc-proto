@@ -8,18 +8,27 @@ use std::{
 };
 
 use crate::{
-    event::driver::EventDriver,
+    event::{driver::EventDriver, info::TcpMessage},
     runtime::{JoinHandle, RuntimeHandle},
-    simulation::{
+    sim::{
         context::{Context, Guard},
         log::{
-            FutureFellAsleep, FutureWokeUp, Log, LogEntry, ProcessReceivedLocalMessage,
-            ProcessSentLocalMessage, UdpMessageDropped, UdpMessageReceived, UdpMessageSent,
+            FutureFellAsleep, FutureWokeUp, Log, LogEntry, ProcessInfo,
+            ProcessReceivedLocalMessage, ProcessSentLocalMessage, TcpMessageDropped,
+            TcpMessageReceived, TcpMessageSent, UdpMessageDropped, UdpMessageReceived,
+            UdpMessageSent,
         },
-        proc::ProcessHandle,
+        proc::{ProcessHandle, ProcessState},
     },
-    util::oneshot::Sender,
-    Address, SystemHandle,
+    tcp::{
+        error::TcpError, manager::TcpConnectionManager, packet::TcpPacket, registry::TcpRegistry,
+        stream::TcpStream,
+    },
+    util::{
+        oneshot::Sender,
+        trigger::{make_trigger, Trigger},
+    },
+    Address, HashType, Process, SystemHandle,
 };
 
 use super::{
@@ -42,8 +51,10 @@ pub struct EventManagerState {
     timers: HashMap<usize, Sender<bool>>,
     next_udp_msg_id: usize,
     next_timer_id: usize,
+    next_tcp_msg_id: usize,
     stat: EventStat,
     unhandled_events: BTreeSet<usize>,
+    tcp: TcpConnectionManager,
 }
 
 impl EventManagerState {
@@ -58,6 +69,14 @@ impl EventManagerState {
         self.next_timer_id += 1;
         res
     }
+
+    fn inc_tcp_msg_id(&mut self) -> usize {
+        let res = self.next_tcp_msg_id;
+        self.next_tcp_msg_id += 1;
+        res
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
 
     fn register_in_driver(&mut self, event: &Event) {
         self.driver
@@ -89,8 +108,10 @@ impl EventManager {
             timers: Default::default(),
             next_udp_msg_id: 0,
             next_timer_id: 0,
+            next_tcp_msg_id: 0,
             stat: Default::default(),
             unhandled_events: Default::default(),
+            tcp: Default::default(),
         };
         Self(Rc::new(RefCell::new(state)))
     }
@@ -114,6 +135,10 @@ impl EventManagerHandle {
         self.0.upgrade().expect("can not upgrade manager handle")
     }
 
+    pub(crate) fn tcp_registry(&self) -> Rc<RefCell<dyn TcpRegistry>> {
+        self.state()
+    }
+
     fn guard(&self, proc: ProcessHandle) -> Guard {
         let ctx = Context {
             event_manager: self.clone(),
@@ -121,6 +146,8 @@ impl EventManagerHandle {
         };
         Guard::new(ctx)
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
 
     pub fn time(&self) -> TimeSegment {
         self.state().borrow().time
@@ -132,8 +159,25 @@ impl EventManagerHandle {
         self.state().borrow().event_log.clone()
     }
 
+    pub fn add_log(&self, process: ProcessHandle, content: String) {
+        let state = self.state();
+        let mut state = state.borrow_mut();
+        let time = state.time;
+        let info = ProcessInfo {
+            process: process.address(),
+            time,
+            content,
+        };
+        let entry = LogEntry::ProcessInfo(info);
+        state.event_log.add_entry(entry);
+    }
+
     pub fn stat(&self) -> EventStat {
         self.state().borrow().stat.clone()
+    }
+
+    pub fn pending_events(&self) -> usize {
+        self.state().borrow().unhandled_events.len()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -180,12 +224,12 @@ impl EventManagerHandle {
         };
         let info = EventInfo::UdpMessage(info);
         let net = system_handle.network();
+        let (shift_min, shift_max) = net.delays_range();
         let event = Event {
             id: state.events.len(),
-            time: state
-                .time
-                .shift_range(net.min_packet_delay, net.max_packet_delay),
+            time: state.time.shift_range(shift_min, shift_max),
             info,
+            on_happen: None,
         };
 
         // register event
@@ -227,6 +271,7 @@ impl EventManagerHandle {
             id: state.events.len(),
             time: state.time.shift(on),
             info,
+            on_happen: None,
         };
         state.register_in_driver(&event);
         state.events.push(event);
@@ -279,10 +324,10 @@ impl EventManagerHandle {
 
             // get event
             let event_id = outcome.event_id;
-            let event = state.events[event_id].clone();
+            let event = state.events[event_id].cloned();
 
             // update time
-            state.time = event.time;
+            state.time = outcome.time;
 
             // return event
             event
@@ -291,6 +336,12 @@ impl EventManagerHandle {
             EventOutcomeKind::UdpMessageDropped() => self.handle_udp_message_dropped(&event),
             EventOutcomeKind::UdpMessageDelivered() => self.handle_udp_message_delivered(&event),
             EventOutcomeKind::TimerFired() => self.handle_timer_fired(&event),
+            EventOutcomeKind::TcpPacketDelivered() => {
+                let _ = event
+                    .on_happen
+                    .unwrap()
+                    .invoke::<Result<(), TcpError>>(Ok(()));
+            }
         }
     }
 
@@ -411,5 +462,149 @@ impl Hash for EventManager {
             .iter()
             .map(|e| &manager_state.events[*e])
             .for_each(|e| e.hash(state));
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// TCP
+
+////////////////////////////////////////////////////////////////////////////////
+
+impl TcpRegistry for EventManagerState {
+    fn emit_packet(
+        &mut self,
+        from: &Address,
+        to: &Address,
+        packet: &TcpPacket,
+        on_delivery: Trigger,
+    ) -> Result<(), TcpError> {
+        // add log entry
+        {
+            let log_entry = TcpMessageSent {
+                from: from.clone(),
+                to: to.clone(),
+                packet: packet.clone(),
+                time: self.time,
+            };
+            let log_entry = LogEntry::TcpMessageSent(log_entry);
+            self.event_log.add_entry(log_entry);
+        }
+
+        let from_proc = self.system().proc_by_addr(from).unwrap();
+        let to_proc = self.system().proc_by_addr(to);
+        let to_proc = if let Some(to_proc) = to_proc {
+            to_proc
+        } else {
+            // add dropped entry
+            let log_entry = TcpMessageDropped {
+                from: from_proc.address(),
+                to: to.clone(),
+                packet: packet.clone(),
+                time: self.time,
+            };
+            let log_entry = LogEntry::TcpMessageDropped(log_entry);
+            self.event_log.add_entry(log_entry);
+            return Err(TcpError::ConnectionRefused);
+        };
+        let msg = TcpMessage {
+            tcp_msg_id: self.inc_tcp_msg_id(),
+            from: from_proc,
+            to: to_proc,
+            packet: packet.clone(),
+        };
+        let (min_shift, max_shift) = self.system().network().delays_range();
+        let event = Event {
+            id: self.events.len(),
+            time: self.time.shift_range(min_shift, max_shift),
+            info: EventInfo::TcpMessage(msg),
+            on_happen: Some(on_delivery),
+        };
+        self.register_in_driver(&event);
+        self.events.push(event);
+        Ok(())
+    }
+
+    fn emit_listen_request(&mut self, from: &Address, on_listen: Trigger) -> Result<(), TcpError> {
+        self.tcp.listen(from, on_listen)
+    }
+
+    fn emit_listen_to_request(
+        &mut self,
+        from: &Address,
+        to: &Address,
+        on_listen: Trigger,
+    ) -> Result<(), TcpError> {
+        self.tcp.listen_to(from, to, on_listen)
+    }
+
+    fn emit_disconnect(&mut self, sender: &mut TcpStream) {
+        if self.system().system_dropped() {
+            return;
+        }
+
+        let (waiter, trigger) = make_trigger();
+        self.emit_packet(
+            &sender.from.clone(),
+            &sender.to.clone(),
+            &TcpPacket::Disconnect(),
+            trigger,
+        )
+        .unwrap();
+
+        let sender = sender.sender.clone();
+
+        struct DummyProc {}
+        impl Process for DummyProc {
+            fn on_message(&mut self, _from: Address, _content: String) {
+                unreachable!()
+            }
+
+            fn on_local_message(&mut self, _content: String) {
+                unreachable!()
+            }
+
+            fn hash(&self) -> HashType {
+                unreachable!()
+            }
+        }
+
+        let proc = Rc::new(RefCell::new(DummyProc {}));
+        let dummy_proc = Rc::new(RefCell::new(ProcessState::new(proc, "0:0".into())));
+        let proc_handle = ProcessHandle::new(&dummy_proc);
+
+        self.rt.spawn(
+            async move {
+                let _ = waiter.wait::<Result<(), TcpError>>().await;
+                drop(sender);
+            },
+            proc_handle,
+        );
+    }
+
+    fn register_packet_delivery(
+        &mut self,
+        from: &Address,
+        to: &Address,
+        packet: &TcpPacket,
+    ) -> Result<(), TcpError> {
+        let log_entry = TcpMessageReceived {
+            from: from.clone(),
+            to: to.clone(),
+            packet: packet.clone(),
+            time: self.time,
+        };
+        let log_entry = LogEntry::TcpMessageReceived(log_entry);
+        self.event_log.add_entry(log_entry);
+        Ok(())
+    }
+
+    fn try_connect(
+        &mut self,
+        from: &Address,
+        to: &Address,
+        registry_ref: Rc<RefCell<dyn TcpRegistry>>,
+    ) -> Result<TcpStream, TcpError> {
+        self.tcp.connect(from, to, registry_ref)
     }
 }

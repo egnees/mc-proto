@@ -7,13 +7,13 @@ use std::{
     time::Duration,
 };
 
-use crate::runtime::JoinHandle;
+use crate::{event::time::TimeSegment, runtime::JoinHandle};
 
 use super::{context::Context, system::HashType};
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Address {
     pub node: String,
     pub process: String,
@@ -31,6 +31,18 @@ impl Address {
 impl Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:{}", self.node, self.process)
+    }
+}
+
+impl<T> From<T> for Address
+where
+    T: Into<String>,
+{
+    fn from(value: T) -> Self {
+        let s: String = value.into();
+        let pos = s.find(":").expect("can not find division symbol ':'");
+        let (node, proc) = s.split_at(pos);
+        Address::new(node, &proc[1..])
     }
 }
 
@@ -138,4 +150,32 @@ where
     F: Future + 'static,
 {
     Context::current().spawn(task)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn time() -> TimeSegment {
+    Context::current().event_manager.time()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn log(content: impl Into<String>) {
+    let context = Context::current();
+    let proc = context.proc;
+    context.event_manager.add_log(proc, content.into());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Address;
+
+    #[test]
+    fn string_to_addr() {
+        let a: Address = "node:proc".into();
+        assert_eq!(a.node, "node");
+        assert_eq!(a.process, "proc");
+    }
 }

@@ -2,16 +2,18 @@ mod check;
 mod event;
 mod runtime;
 mod search;
-mod simulation;
+mod sim;
+mod tcp;
 mod util;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub use simulation::{
+pub use sim::{
+    log::{Log, LogEntry},
     net::{send_message, Config as NetConfig},
     node::Node,
+    proc::{log, sleep, spawn, time},
     proc::{send_local, Address, Process},
-    proc::{sleep, spawn},
     system::{HashType, System, SystemHandle},
 };
 
@@ -24,3 +26,5 @@ pub use search::{
     dfs::DfsSearcher,
     error::SearchError,
 };
+
+pub use tcp::{TcpError, TcpListener, TcpStream};

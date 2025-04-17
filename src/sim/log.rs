@@ -2,9 +2,82 @@ use std::{fmt::Display, time::Duration};
 
 use colored::Colorize;
 
-use crate::event::time::TimeSegment;
+use crate::{event::time::TimeSegment, tcp::packet::TcpPacket};
 
 use super::proc::Address;
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct TcpMessageSent {
+    pub from: Address,
+    pub to: Address,
+    pub packet: TcpPacket,
+    pub time: TimeSegment,
+}
+
+impl Display for TcpMessageSent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} ---> {:<12} {:?}",
+            self.time,
+            self.from.to_string(),
+            self.to.to_string(),
+            self.packet.to_string()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct TcpMessageReceived {
+    pub from: Address,
+    pub to: Address,
+    pub packet: TcpPacket,
+    pub time: TimeSegment,
+}
+
+impl Display for TcpMessageReceived {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} <--- {:<12} {:?}",
+            self.time,
+            self.to.to_string(),
+            self.from.to_string(),
+            self.packet.to_string()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct TcpMessageDropped {
+    pub from: Address,
+    pub to: Address,
+    pub packet: TcpPacket,
+    pub time: TimeSegment,
+}
+
+impl Display for TcpMessageDropped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            format!(
+                "{} {:>12} ---x {:<12} {:?} <-- message dropped",
+                self.time,
+                self.from.to_string(),
+                self.to.to_string(),
+                self.packet.to_string()
+            )
+            .red()
+        )
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -186,7 +259,31 @@ impl Display for ProcessReceivedLocalMessage {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
+pub struct ProcessInfo {
+    pub process: Address,
+    pub time: TimeSegment,
+    pub content: String,
+}
+
+impl Display for ProcessInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} ==== {:<12?}",
+            self.time,
+            self.process.to_string(),
+            self.content
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
 pub enum LogEntry {
+    TcpMessageSent(TcpMessageSent),
+    TcpMessageReceived(TcpMessageReceived),
+    TcpMessageDropped(TcpMessageDropped),
     UdpMessageSent(UdpMessageSent),
     UdpMessageReceived(UdpMessageReceived),
     UdpMessageDropped(UdpMessageDropped),
@@ -194,11 +291,15 @@ pub enum LogEntry {
     ProcessReceivedLocalMessage(ProcessReceivedLocalMessage),
     FutureFellAsleep(FutureFellAsleep),
     FutureWokeUp(FutureWokeUp),
+    ProcessInfo(ProcessInfo),
 }
 
 impl Display for LogEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            LogEntry::TcpMessageSent(e) => write!(f, "{}", e),
+            LogEntry::TcpMessageReceived(e) => write!(f, "{}", e),
+            LogEntry::TcpMessageDropped(e) => write!(f, "{}", e),
             LogEntry::UdpMessageSent(e) => write!(f, "{}", e),
             LogEntry::UdpMessageReceived(e) => write!(f, "{}", e),
             LogEntry::UdpMessageDropped(e) => write!(f, "{}", e),
@@ -206,6 +307,7 @@ impl Display for LogEntry {
             LogEntry::ProcessReceivedLocalMessage(e) => write!(f, "{}", e),
             LogEntry::FutureFellAsleep(e) => write!(f, "{}", e),
             LogEntry::FutureWokeUp(e) => write!(f, "{}", e),
+            LogEntry::ProcessInfo(e) => write!(f, "{}", e),
         }
     }
 }
@@ -224,6 +326,10 @@ impl Log {
 
     pub fn add_entry(&mut self, log_entry: LogEntry) {
         self.data.push(log_entry);
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &LogEntry> {
+        self.data.iter()
     }
 }
 

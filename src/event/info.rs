@@ -1,13 +1,32 @@
 use std::{hash::Hash, time::Duration};
 
-use crate::simulation::proc::ProcessHandle;
+use crate::{sim::proc::ProcessHandle, tcp::packet::TcpPacket};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Hash)]
 pub enum EventInfo {
     UdpMessage(UdpMessage),
+    TcpMessage(TcpMessage),
     Timer(Timer),
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct TcpMessage {
+    pub tcp_msg_id: usize,
+    pub from: ProcessHandle,
+    pub to: ProcessHandle,
+    pub packet: TcpPacket,
+}
+
+impl Hash for TcpMessage {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.from.address().hash(state);
+        self.to.address().hash(state);
+        self.packet.hash(state);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,17 @@
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    panic::AssertUnwindSafe,
+};
 
-use crate::event::outcome::{EventOutcome, EventOutcomeKind};
+use crate::{
+    event::{
+        outcome::{EventOutcome, EventOutcomeKind},
+        time::TimeSegment,
+    },
+    SearchError,
+};
 
-use super::{control::ApplyFunctor, state::SearchState};
+use super::{control::ApplyFunctor, error::ProcessPanic, state::SearchState};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -23,20 +32,48 @@ pub struct Timer {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone, Debug)]
+pub struct TcpPacket {
+    pub event_id: usize,
+    pub tcp_msg_id: usize,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Clone)]
 pub enum StateTraceStep {
-    SelectUdp(usize, UdpMessage),
-    SelectTimer(usize, Timer),
+    SelectUdp(usize, TimeSegment, UdpMessage),
+    SelectTimer(usize, TimeSegment, Timer),
+    SelectTcp(usize, TimeSegment, TcpPacket),
     Apply(Box<dyn ApplyFunctor>),
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 impl StateTraceStep {
-    pub fn apply(&self, state: &mut SearchState) {
+    fn apply_event_outcome(
+        &self,
+        state: &mut SearchState,
+        i: usize,
+        outcome: EventOutcome,
+    ) -> Result<(), SearchError> {
+        state.gen.borrow_mut().select_ready_event(i);
+        let handle = state.system.handle();
+        std::panic::catch_unwind(AssertUnwindSafe(move || {
+            handle.handle_event_outcome(outcome);
+        }))
+        .map_err(|_| {
+            let p = ProcessPanic {
+                trace: None,
+                log: state.system.handle().log(),
+            };
+            SearchError::ProcessPanic(p)
+        })
+    }
+
+    pub fn apply(&self, state: &mut SearchState) -> Result<(), SearchError> {
         match self {
-            StateTraceStep::SelectUdp(i, msg) => {
-                state.gen.borrow_mut().select_ready_event(*i);
+            StateTraceStep::SelectUdp(i, time, msg) => {
                 let kind = if msg.drop {
                     EventOutcomeKind::UdpMessageDropped()
                 } else {
@@ -45,20 +82,29 @@ impl StateTraceStep {
                 let outcome = EventOutcome {
                     event_id: msg.event_id,
                     kind,
+                    time: *time,
                 };
-                state.system.handle().handle_event_outcome(outcome);
+                self.apply_event_outcome(state, *i, outcome)
             }
-            StateTraceStep::SelectTimer(i, timer) => {
-                state.gen.borrow_mut().select_ready_event(*i);
-                let kind = EventOutcomeKind::TimerFired();
+            StateTraceStep::SelectTimer(i, time, timer) => {
                 let outcome = EventOutcome {
                     event_id: timer.event_id,
-                    kind,
+                    kind: EventOutcomeKind::TimerFired(),
+                    time: *time,
                 };
-                state.system.handle().handle_event_outcome(outcome);
+                self.apply_event_outcome(state, *i, outcome)
+            }
+            StateTraceStep::SelectTcp(i, time, tcp) => {
+                let outcome = EventOutcome {
+                    event_id: tcp.event_id,
+                    kind: EventOutcomeKind::TcpPacketDelivered(),
+                    time: *time,
+                };
+                self.apply_event_outcome(state, *i, outcome)
             }
             StateTraceStep::Apply(f) => {
                 f.apply(state.system.handle());
+                Ok(())
             }
         }
     }
@@ -69,13 +115,23 @@ impl StateTraceStep {
 impl Debug for StateTraceStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SelectUdp(arg0, arg1) => {
-                f.debug_tuple("SelectUdp").field(arg0).field(arg1).finish()
-            }
-            Self::SelectTimer(arg0, arg1) => f
+            Self::SelectUdp(arg0, arg1, arg2) => f
+                .debug_tuple("SelectUdp")
+                .field(arg0)
+                .field(arg1)
+                .field(arg2)
+                .finish(),
+            Self::SelectTimer(arg0, arg1, arg2) => f
                 .debug_tuple("SelectTimer")
                 .field(arg0)
                 .field(arg1)
+                .field(arg2)
+                .finish(),
+            Self::SelectTcp(arg0, arg1, arg2) => f
+                .debug_tuple("SelectTcp")
+                .field(arg0)
+                .field(arg1)
+                .field(arg2)
                 .finish(),
             Self::Apply(_) => f.debug_tuple("Apply").finish(),
         }
@@ -85,7 +141,7 @@ impl Debug for StateTraceStep {
 impl Display for StateTraceStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            StateTraceStep::SelectUdp(i, udp_message) => {
+            StateTraceStep::SelectUdp(i, _, udp_message) => {
                 if udp_message.drop {
                     write!(
                         f,
@@ -100,10 +156,17 @@ impl Display for StateTraceStep {
                     )
                 }
             }
-            StateTraceStep::SelectTimer(i, timer) => {
+            StateTraceStep::SelectTimer(i, _, timer) => {
                 write!(f, "Select {}: Timer {} fired", i, timer.timer_id)
             }
             StateTraceStep::Apply(_) => write!(f, "Apply"),
+            StateTraceStep::SelectTcp(i, _, tcp_packet) => {
+                write!(
+                    f,
+                    "Select {}: Tcp packet {} delivered",
+                    i, tcp_packet.event_id
+                )
+            }
         }
     }
 }

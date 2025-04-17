@@ -1,0 +1,17 @@
+pub mod error;
+pub mod listen;
+pub mod manager;
+pub mod packet;
+pub mod registry;
+pub mod stream;
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub use error::TcpError;
+pub use listen::TcpListener;
+pub use stream::TcpStream;
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests;

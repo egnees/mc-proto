@@ -8,7 +8,7 @@ use super::{
     state::{SearchState, StateTrace},
 };
 
-use crate::simulation::system::HashType;
+use crate::sim::system::HashType;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,7 +36,7 @@ impl Searcher for DfsSearcher {
         while let Some(v) = start.pop() {
             cnt += 1;
 
-            let state = SearchState::from_trace(&v);
+            let state = SearchState::from_trace(&v)?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {
@@ -107,7 +107,7 @@ impl Searcher for DfsSearcher {
         let mut collected = Vec::new();
 
         while let Some(v) = start.pop() {
-            let state = SearchState::from_trace(&v);
+            let state = SearchState::from_trace(&v)?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {

@@ -1,8 +1,29 @@
 use std::fmt::{Debug, Display};
 
-use crate::simulation::log::Log;
+use crate::sim::log::Log;
 
 use super::state::StateTrace;
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct ProcessPanic {
+    pub trace: Option<StateTrace>,
+    pub log: Log,
+}
+
+impl Display for ProcessPanic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Process panic.")?;
+        if let Some(trace) = self.trace.as_ref() {
+            writeln!(f, "========= TRACE =========")?;
+            write!(f, "{}", trace)?;
+        }
+        writeln!(f, "========= LOG =========")?;
+        write!(f, "{}", self.log)?;
+        Ok(())
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -82,6 +103,7 @@ impl Display for LivenessViolation {
 pub enum SearchError {
     InvariantViolation(InvariantViolation),
     LivenessViolation(LivenessViolation),
+    ProcessPanic(ProcessPanic),
 }
 
 impl Display for SearchError {
@@ -93,6 +115,7 @@ impl Display for SearchError {
             SearchError::LivenessViolation(liveness_violation) => {
                 writeln!(f, "{}", liveness_violation)
             }
+            SearchError::ProcessPanic(p) => writeln!(f, "{}", p),
         }
     }
 }
