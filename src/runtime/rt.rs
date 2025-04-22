@@ -79,6 +79,32 @@ impl RuntimeHandle {
 
         JoinHandle::new(task_id, receiver)
     }
+
+    pub fn cancel_tasks(&self, pred: impl Fn(&ProcessHandle) -> bool) {
+        let to_cancel = {
+            let state = self.state();
+            let state = state.borrow_mut();
+            state
+                .pending
+                .iter()
+                .cloned()
+                .filter(|task| {
+                    state
+                        .tasks
+                        .get(task)
+                        .map(|task| pred(&task.owner))
+                        .unwrap_or(false)
+                })
+                .collect::<Vec<_>>()
+        };
+
+        to_cancel.iter().for_each(|task| {
+            // task will be dropped after state borrow is released
+            // which is important, because task drop can lead
+            // to scheduling of another tasks (in the current runtime)
+            let _ = self.state().borrow_mut().tasks.remove(task);
+        });
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

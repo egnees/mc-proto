@@ -280,6 +280,20 @@ impl Display for ProcessInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
+pub struct NodeCrashed {
+    pub node: String,
+    pub time: TimeSegment,
+}
+
+impl Display for NodeCrashed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {:>12}  💀", self.time, self.node)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
 pub enum LogEntry {
     TcpMessageSent(TcpMessageSent),
     TcpMessageReceived(TcpMessageReceived),
@@ -292,6 +306,7 @@ pub enum LogEntry {
     FutureFellAsleep(FutureFellAsleep),
     FutureWokeUp(FutureWokeUp),
     ProcessInfo(ProcessInfo),
+    NodeCrashed(NodeCrashed),
 }
 
 impl Display for LogEntry {
@@ -308,6 +323,7 @@ impl Display for LogEntry {
             LogEntry::FutureFellAsleep(e) => write!(f, "{}", e),
             LogEntry::FutureWokeUp(e) => write!(f, "{}", e),
             LogEntry::ProcessInfo(e) => write!(f, "{}", e),
+            LogEntry::NodeCrashed(e) => write!(f, "{}", e),
         }
     }
 }

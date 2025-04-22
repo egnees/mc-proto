@@ -121,6 +121,7 @@ mod tests {
 
         let cfg = mc::SearchConfigBuilder::no_faults()
             .max_msg_drops(max_drops)
+            .max_node_faults(0)
             .build();
 
         let checked_bfs = {
@@ -170,6 +171,7 @@ mod tests {
 
         let cfg = mc::SearchConfigBuilder::no_faults()
             .max_msg_drops(max_drops)
+            .max_node_faults(0)
             .build();
         let searcher = mc::BfsSearcher::new(cfg);
         let checker = mc::ModelChecker::new_with_build(build);
@@ -177,5 +179,77 @@ mod tests {
 
         assert!(checked > 0);
         println!("checked={checked}");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    fn on_node_crash() {
+        let locals = 2;
+        let invariant = make_invariant(locals);
+        let prune = |_| false;
+        let goal = make_goal(locals);
+        let build = make_build(
+            Duration::from_millis(100),
+            Duration::from_millis(600),
+            || {
+                Rc::new(RefCell::new(Ping::new(
+                    mc::Address::new("n2", "pong"),
+                    Duration::from_secs(1),
+                )))
+            },
+            || Rc::new(RefCell::new(Pong::new())),
+            locals,
+        );
+        let cfg = mc::SearchConfigBuilder::new()
+            .max_node_faults(1)
+            .max_disk_faults(0)
+            .max_msg_drops(0)
+            .max_depth(20)
+            .build();
+        let searcher = mc::DfsSearcher::new(cfg);
+        let checker = mc::ModelChecker::new_with_build(build);
+        let check_result = checker.check(invariant, prune, goal, searcher);
+        assert!(check_result.is_err());
+        println!("{}", check_result.err().unwrap());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    fn on_node_crash_manually() {
+        let locals = 2;
+        let invariant = make_invariant(locals);
+        let prune = |_| false;
+        let goal = |s: mc::SystemHandle| !s.read_locals("n2", "pong").unwrap().is_empty();
+        let build = make_build(
+            Duration::from_millis(100),
+            Duration::from_millis(600),
+            || {
+                Rc::new(RefCell::new(Ping::new(
+                    mc::Address::new("n2", "pong"),
+                    Duration::from_secs(1),
+                )))
+            },
+            || Rc::new(RefCell::new(Pong::new())),
+            locals,
+        );
+        let cfg = mc::SearchConfigBuilder::no_faults()
+            .max_msg_drops(0)
+            .max_depth(20)
+            .build();
+        let searcher = mc::BfsSearcher::new(cfg.clone());
+        let mut checker = mc::ModelChecker::new_with_build(build);
+        let collected = checker
+            .collect(invariant.clone(), prune.clone(), goal, searcher)
+            .unwrap();
+        assert!(collected > 0);
+        println!("collected={collected}");
+        checker.apply(|s| s.crash_node("n2").unwrap());
+        let searcher = mc::BfsSearcher::new(cfg);
+        let goal = make_goal(locals);
+        let result = checker.check(invariant, prune, goal, searcher);
+        assert!(result.is_err());
+        println!("{}", result.err().unwrap());
     }
 }

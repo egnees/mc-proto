@@ -92,6 +92,16 @@ impl<T: Endpoint> Tracker<T> {
         Some(seg)
     }
 
+    pub fn remove_by_event_id(&mut self, id: usize) -> Option<EventTimespan<T>> {
+        for i in 0..self.segments.len() {
+            if self.segments[i].event_id == id {
+                let removed = self.segments.remove(i);
+                return Some(removed);
+            }
+        }
+        None
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
 
     fn min_right(&self) -> Option<T> {

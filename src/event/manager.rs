@@ -13,7 +13,7 @@ use crate::{
     sim::{
         context::{Context, Guard},
         log::{
-            FutureFellAsleep, FutureWokeUp, Log, LogEntry, ProcessInfo,
+            FutureFellAsleep, FutureWokeUp, Log, LogEntry, NodeCrashed, ProcessInfo,
             ProcessReceivedLocalMessage, ProcessSentLocalMessage, TcpMessageDropped,
             TcpMessageReceived, TcpMessageSent, UdpMessageDropped, UdpMessageReceived,
             UdpMessageSent,
@@ -78,7 +78,7 @@ impl EventManagerState {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    fn register_in_driver(&mut self, event: &Event) {
+    fn register_event(&mut self, event: &Event) {
         self.driver
             .upgrade()
             .expect("can not upgrade driver")
@@ -89,6 +89,46 @@ impl EventManagerState {
 
     fn system(&self) -> SystemHandle {
         self.system.as_ref().unwrap().clone()
+    }
+
+    fn cancel_events(&mut self, pred: impl Fn(&Event) -> bool) {
+        let to_cancel = self
+            .unhandled_events
+            .iter()
+            .cloned()
+            .filter(|id| pred(&self.events[*id]))
+            .collect::<Vec<_>>();
+        for event in to_cancel {
+            let event = &self.events[event];
+            self.driver
+                .upgrade()
+                .expect("can not upgrade driver")
+                .borrow_mut()
+                .cancel_event(event);
+            let remove_result = self.unhandled_events.remove(&event.id);
+            match &event.info {
+                EventInfo::UdpMessage(msg) => {
+                    let entry = UdpMessageDropped {
+                        from: msg.from.address(),
+                        to: msg.to.address(),
+                        content: msg.content.clone(),
+                        time: self.time,
+                    };
+                    self.event_log.add_entry(LogEntry::UdpMessageDropped(entry));
+                }
+                EventInfo::TcpMessage(msg) => {
+                    let entry = TcpMessageDropped {
+                        from: msg.from.address(),
+                        to: msg.to.address(),
+                        packet: msg.packet.clone(),
+                        time: self.time,
+                    };
+                    self.event_log.add_entry(LogEntry::TcpMessageDropped(entry));
+                }
+                _ => {}
+            }
+            assert!(remove_result);
+        }
     }
 }
 
@@ -157,6 +197,33 @@ impl EventManagerHandle {
 
     pub fn log(&self) -> Log {
         self.state().borrow().event_log.clone()
+    }
+
+    pub fn cancel_events(&self, pred: impl Fn(&Event) -> bool) {
+        self.state().borrow_mut().cancel_events(pred);
+    }
+
+    pub fn on_node_crash(&self, node: &str) {
+        // add log entry
+        let crashed_entry = NodeCrashed {
+            node: node.to_string(),
+            time: self.time(),
+        };
+        let crashed_entry = LogEntry::NodeCrashed(crashed_entry);
+        self.state().borrow_mut().event_log.add_entry(crashed_entry);
+
+        // cancel events with predicate
+        self.cancel_events(|e| match &e.info {
+            EventInfo::UdpMessage(msg) => {
+                msg.from.address().node == node || msg.to.address().node == node
+            }
+            EventInfo::TcpMessage(msg) => {
+                msg.from.address().node == node || msg.to.address().node == node
+            }
+            EventInfo::Timer(timer) => timer.proc.address().node == node,
+        });
+
+        self.state().borrow_mut().stat.nodes_crashed += 1;
     }
 
     pub fn add_log(&self, process: ProcessHandle, content: String) {
@@ -233,7 +300,7 @@ impl EventManagerHandle {
         };
 
         // register event
-        state.register_in_driver(&event);
+        state.register_event(&event);
         state.events.push(event);
     }
 
@@ -273,7 +340,7 @@ impl EventManagerHandle {
             info,
             on_happen: None,
         };
-        state.register_in_driver(&event);
+        state.register_event(&event);
         state.events.push(event);
     }
 
@@ -520,7 +587,7 @@ impl TcpRegistry for EventManagerState {
             info: EventInfo::TcpMessage(msg),
             on_happen: Some(on_delivery),
         };
-        self.register_in_driver(&event);
+        self.register_event(&event);
         self.events.push(event);
         Ok(())
     }

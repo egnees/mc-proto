@@ -215,4 +215,35 @@ impl SystemHandle {
             .handle()
             .pending_events()
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub(crate) fn nodes_count(&self) -> usize {
+        self.state().borrow().nodes.len()
+    }
+
+    pub(crate) fn crash_node_index(&self, i: usize) {
+        let key = self.state().borrow().nodes.keys().nth(i).cloned().unwrap();
+        self.crash_node(key).unwrap();
+    }
+
+    pub fn crash_node(&self, node: impl Into<String>) -> Result<(), Error> {
+        let node = node.into();
+
+        self.state()
+            .borrow()
+            .event_manager
+            .handle()
+            .on_node_crash(node.as_str());
+
+        let rt = self.state().borrow().rt.handle();
+        rt.cancel_tasks(|p| p.address().node == node);
+
+        self.state()
+            .borrow_mut()
+            .nodes
+            .remove(node.as_str())
+            .ok_or(Error::NotFound)?;
+        Ok(())
+    }
 }

@@ -3,7 +3,9 @@
 ### TODO
 - [x] Fix logs output
 - [x] Fix tests
+- [x] Node crash
 - [ ] TCP channel
+- [ ] Fix Time in steps
 - [ ] Research runtime change question
 - [ ] Disk
 - [ ] Make process library for tests

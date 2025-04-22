@@ -93,6 +93,10 @@ impl EventDriver for EventCollector {
             on_happen: None,
         })
     }
+
+    fn cancel_event(&mut self, _event: &Event) {
+        unreachable!()
+    }
 }
 
 impl EventCollector {

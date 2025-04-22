@@ -45,6 +45,7 @@ pub enum StateTraceStep {
     SelectUdp(usize, TimeSegment, UdpMessage),
     SelectTimer(usize, TimeSegment, Timer),
     SelectTcp(usize, TimeSegment, TcpPacket),
+    CrashNode(usize), // id of node
     Apply(Box<dyn ApplyFunctor>),
 }
 
@@ -106,6 +107,10 @@ impl StateTraceStep {
                 f.apply(state.system.handle());
                 Ok(())
             }
+            StateTraceStep::CrashNode(node) => {
+                state.system.handle().crash_node_index(*node);
+                Ok(())
+            }
         }
     }
 }
@@ -134,6 +139,7 @@ impl Debug for StateTraceStep {
                 .field(arg2)
                 .finish(),
             Self::Apply(_) => f.debug_tuple("Apply").finish(),
+            Self::CrashNode(arg0) => f.debug_tuple("CrashNode").field(arg0).finish(),
         }
     }
 }
@@ -166,6 +172,9 @@ impl Display for StateTraceStep {
                     "Select {}: Tcp packet {} delivered",
                     i, tcp_packet.event_id
                 )
+            }
+            StateTraceStep::CrashNode(node) => {
+                write!(f, "Crash node {}", node)
             }
         }
     }

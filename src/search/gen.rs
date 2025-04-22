@@ -38,6 +38,13 @@ impl EventDriver for Generator {
         assert!(prev_value.is_none());
         self.tracker.add(event.time.from, event.time.to, event.id);
     }
+
+    fn cancel_event(&mut self, event: &Event) {
+        let removed = self.tracker.remove_by_event_id(event.id);
+        assert!(removed.is_some());
+        let removed = self.event_info.remove(&event.id);
+        assert!(removed.is_some());
+    }
 }
 
 impl Generator {
@@ -93,6 +100,11 @@ impl Generator {
                     );
                     res.push(step);
                 }
+            }
+        }
+        if system.stat().nodes_crashed < cfg.max_node_faults.unwrap_or(usize::MAX) {
+            for i in 0..system.nodes_count() {
+                res.push(StateTraceStep::CrashNode(i));
             }
         }
         res

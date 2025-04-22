@@ -37,10 +37,14 @@ pub fn make_build(
 
 pub fn make_goal(locals: usize) -> impl mc::GoalFn {
     move |s: mc::SystemHandle| {
-        let mut ping_locals = s.read_locals("n1", "ping").unwrap();
+        let Some(mut ping_locals) = s.read_locals("n1", "ping") else {
+            return false;
+        };
         ping_locals.sort();
 
-        let mut pong_locals = s.read_locals("n2", "pong").unwrap();
+        let Some(mut pong_locals) = s.read_locals("n2", "pong") else {
+            return false;
+        };
         pong_locals.sort();
 
         let ref_locals = (0..locals).map(|n| n.to_string()).collect::<Vec<_>>();
@@ -53,8 +57,8 @@ pub fn make_goal(locals: usize) -> impl mc::GoalFn {
 
 pub fn make_invariant(locals: usize) -> impl mc::InvariantFn {
     move |s: mc::SystemHandle| {
-        if s.read_locals("n1", "ping").unwrap().len() <= locals
-            && s.read_locals("n2", "pong").unwrap().len() <= locals
+        if s.read_locals("n1", "ping").unwrap_or_default().len() <= locals
+            && s.read_locals("n2", "pong").unwrap_or_default().len() <= locals
         {
             Ok(())
         } else {
