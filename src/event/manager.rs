@@ -21,7 +21,10 @@ use crate::{
         proc::{ProcessHandle, ProcessState},
     },
     tcp::{
-        error::TcpError, manager::TcpConnectionManager, packet::TcpPacket, registry::TcpRegistry,
+        error::TcpError,
+        manager::TcpConnectionManager,
+        packet::{TcpPacket, TcpPacketKind},
+        registry::TcpRegistry,
         stream::TcpStream,
     },
     util::{
@@ -52,6 +55,7 @@ pub struct EventManagerState {
     next_udp_msg_id: usize,
     next_timer_id: usize,
     next_tcp_msg_id: usize,
+    next_tcp_stream_id: usize,
     stat: EventStat,
     unhandled_events: BTreeSet<usize>,
     tcp: TcpConnectionManager,
@@ -149,6 +153,7 @@ impl EventManager {
             next_udp_msg_id: 0,
             next_timer_id: 0,
             next_tcp_msg_id: 0,
+            next_tcp_stream_id: 0,
             stat: Default::default(),
             unhandled_events: Default::default(),
             tcp: Default::default(),
@@ -614,7 +619,7 @@ impl TcpRegistry for EventManagerState {
         self.emit_packet(
             &sender.from.clone(),
             &sender.to.clone(),
-            &TcpPacket::Disconnect(),
+            &TcpPacket::new(sender.id, TcpPacketKind::Disconnect()),
             trigger,
         )
         .unwrap();
@@ -670,8 +675,15 @@ impl TcpRegistry for EventManagerState {
         &mut self,
         from: &Address,
         to: &Address,
+        stream_id: usize,
         registry_ref: Rc<RefCell<dyn TcpRegistry>>,
     ) -> Result<TcpStream, TcpError> {
-        self.tcp.connect(from, to, registry_ref)
+        self.tcp.connect(from, to, stream_id, registry_ref)
+    }
+
+    fn next_tcp_stream_id(&mut self) -> usize {
+        let res = self.next_tcp_stream_id;
+        self.next_tcp_stream_id += 1;
+        res
     }
 }

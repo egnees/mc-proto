@@ -68,9 +68,10 @@ impl TcpConnectionManager {
         &mut self,
         from: &Address,
         to: &Address,
+        stream_id: usize,
         registry_ref: Rc<RefCell<dyn TcpRegistry>>,
     ) -> Result<TcpStream, TcpError> {
-        let (s1, s2) = make_connection(from.clone(), to.clone(), registry_ref);
+        let (s1, s2) = make_connection(from.clone(), to.clone(), stream_id, registry_ref);
         if let Some(e) = self.listeners_to.remove(&(to.clone(), from.clone())) {
             Self::process_streams_with_trigger(s1, s2, e)
         } else if let Some(e) = self.listeners.remove(to) {

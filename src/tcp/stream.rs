@@ -6,11 +6,16 @@ use crate::{
     Address,
 };
 
-use super::{error::TcpError, packet::TcpPacket, registry::TcpRegistry};
+use super::{
+    error::TcpError,
+    packet::{TcpPacket, TcpPacketKind},
+    registry::TcpRegistry,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpStream {
+    pub(crate) id: usize,
     registry: Rc<RefCell<dyn TcpRegistry>>,
     pub(crate) from: Address,
     pub(crate) to: Address,
@@ -43,6 +48,10 @@ async fn send_and_wait_delivery(
 ////////////////////////////////////////////////////////////////////////////////
 
 impl TcpStream {
+    fn packet(&self, kind: TcpPacketKind) -> TcpPacket {
+        TcpPacket::new(self.id, kind)
+    }
+
     pub(crate) fn mark_connected(&mut self) {
         self.connected = true;
     }
@@ -52,7 +61,8 @@ impl TcpStream {
     }
 
     /// Emit packet from this to opposite and wait for packet delivery.
-    async fn send_and_wait_delivery_dirrect(&self, packet: TcpPacket) -> Result<(), TcpError> {
+    async fn send_and_wait_delivery_dirrect(&self, kind: TcpPacketKind) -> Result<(), TcpError> {
+        let packet = self.packet(kind);
         send_and_wait_delivery(
             self.from.clone(),
             self.to.clone(),
@@ -64,7 +74,8 @@ impl TcpStream {
 
     /// Emit packet from opposite to this and wait delivery
     /// Should not return error.
-    async fn send_and_wait_delivery_opposite(&self, packet: TcpPacket) -> Result<(), TcpError> {
+    async fn send_and_wait_delivery_opposite(&self, kind: TcpPacketKind) -> Result<(), TcpError> {
+        let packet = self.packet(kind);
         send_and_wait_delivery(
             self.to.clone(),
             self.from.clone(),
@@ -77,7 +88,7 @@ impl TcpStream {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub async fn send(&mut self, bytes: &[u8]) -> Result<usize, TcpError> {
-        let packet = TcpPacket::Data(bytes.to_vec());
+        let packet = TcpPacketKind::Data(bytes.to_vec());
         let send_result = self
             .send_and_wait_delivery_dirrect(packet)
             .await
@@ -85,10 +96,10 @@ impl TcpStream {
         if send_result.is_ok() {
             let sent = self.sender.send(bytes);
             assert!(sent);
-            self.send_and_wait_delivery_opposite(TcpPacket::Ack())
+            self.send_and_wait_delivery_opposite(TcpPacketKind::Ack())
                 .await?;
         } else {
-            self.send_and_wait_delivery_opposite(TcpPacket::Nack())
+            self.send_and_wait_delivery_opposite(TcpPacketKind::Nack())
                 .await?;
         }
         send_result
@@ -110,11 +121,13 @@ impl TcpStream {
         to: Address,
         registry: Rc<RefCell<dyn TcpRegistry>>,
     ) -> Result<TcpStream, TcpError> {
+        let stream_id = registry.borrow_mut().next_tcp_stream_id();
+
         // send connect request
         send_and_wait_delivery(
             from.clone(),
             to.clone(),
-            TcpPacket::Connect(),
+            TcpPacket::new(stream_id, TcpPacketKind::Connect()),
             registry.clone(),
         )
         .await?;
@@ -122,10 +135,16 @@ impl TcpStream {
         // here `to` must listen
         let conn = registry
             .borrow_mut()
-            .try_connect(&from, &to, registry.clone())?;
+            .try_connect(&from, &to, stream_id, registry.clone())?;
 
         // send ack
-        send_and_wait_delivery(to, from, TcpPacket::Ack(), registry).await?;
+        send_and_wait_delivery(
+            to,
+            from,
+            TcpPacket::new(stream_id, TcpPacketKind::Ack()),
+            registry,
+        )
+        .await?;
 
         Ok(conn)
     }
@@ -180,6 +199,7 @@ impl Drop for TcpStream {
 pub(crate) fn make_connection(
     a: Address,
     b: Address,
+    stream_id: usize,
     registry: Rc<RefCell<dyn TcpRegistry>>,
 ) -> (TcpStream, TcpStream) {
     let (s1, r1) = util::append::mpsc_channel();
@@ -193,6 +213,7 @@ pub(crate) fn make_connection(
         sender: s1,
         receiver: r2,
         connected: false,
+        id: stream_id,
     };
     let second = TcpStream {
         registry,
@@ -201,6 +222,7 @@ pub(crate) fn make_connection(
         sender: s2,
         receiver: r1,
         connected: false,
+        id: stream_id,
     };
     (first, second)
 }

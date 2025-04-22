@@ -9,3 +9,6 @@ extract-variant = "1.0.0"
 futures = "0.3.31"
 smol = "2.0.2"
 tokio = { version = "1.44.1", features = ["sync", "macros", "rt"] }
+
+[profile.bench]
+debug = true

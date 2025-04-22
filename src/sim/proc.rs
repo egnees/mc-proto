@@ -13,7 +13,7 @@ use super::{context::Context, system::HashType};
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Address {
     pub node: String,
     pub process: String,

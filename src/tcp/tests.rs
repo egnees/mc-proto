@@ -11,7 +11,10 @@ use crate::{
 };
 
 use super::{
-    error::TcpError, manager::TcpConnectionManager, packet::TcpPacket, registry::TcpRegistry,
+    error::TcpError,
+    manager::TcpConnectionManager,
+    packet::{TcpPacket, TcpPacketKind},
+    registry::TcpRegistry,
     stream::TcpStream,
 };
 
@@ -25,8 +28,8 @@ pub enum LogEntry {
 impl Display for LogEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LogEntry::Send(tcp_packet) => write!(f, "--> {}", tcp_packet),
-            LogEntry::Deliver(tcp_packet) => write!(f, "<-- {}", tcp_packet),
+            LogEntry::Send(p) => write!(f, "--> {}", p),
+            LogEntry::Deliver(p) => write!(f, "<-- {}", p),
         }
     }
 }
@@ -37,6 +40,7 @@ impl Display for LogEntry {
 struct InstantTcpRegister {
     log: Vec<LogEntry>,
     manager: TcpConnectionManager,
+    next_stream_id: usize,
 }
 
 impl TcpRegistry for InstantTcpRegister {
@@ -67,7 +71,12 @@ impl TcpRegistry for InstantTcpRegister {
 
     fn emit_disconnect(&mut self, stream: &mut TcpStream) {
         let (_, trigger) = make_trigger();
-        let _ = self.emit_packet(&stream.from, &stream.to, &TcpPacket::Disconnect(), trigger);
+        let _ = self.emit_packet(
+            &stream.from,
+            &stream.to,
+            &TcpPacket::new(stream.id, TcpPacketKind::Disconnect()),
+            trigger,
+        );
     }
 
     fn register_packet_delivery(
@@ -84,9 +93,16 @@ impl TcpRegistry for InstantTcpRegister {
         &mut self,
         from: &Address,
         to: &Address,
+        stream_id: usize,
         registry_ref: Rc<RefCell<dyn TcpRegistry>>,
     ) -> Result<TcpStream, TcpError> {
-        self.manager.connect(from, to, registry_ref)
+        self.manager.connect(from, to, stream_id, registry_ref)
+    }
+
+    fn next_tcp_stream_id(&mut self) -> usize {
+        let res = self.next_stream_id;
+        self.next_stream_id += 1;
+        res
     }
 }
 

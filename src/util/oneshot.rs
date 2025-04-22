@@ -72,7 +72,7 @@ impl<T> Future for Receiver<T> {
         std::mem::swap(&mut state, prev);
         match state {
             SharedState::Initial => std::task::Poll::Pending,
-            SharedState::ReceiverWait(_) => unreachable!(),
+            SharedState::ReceiverWait(_) => std::task::Poll::Pending,
             SharedState::SenderSent(value) => std::task::Poll::Ready(Ok(value)),
             SharedState::SenderDropped => std::task::Poll::Ready(Err(RecvError::SenderDropped)),
             SharedState::ReceiverDropped => unreachable!(),

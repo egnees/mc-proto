@@ -4,7 +4,8 @@
 - [x] Fix logs output
 - [x] Fix tests
 - [x] Node crash
-- [ ] TCP channel
+- [ ] TCP channel (sync send recv)
+- [ ] Network split
 - [ ] Fix Time in steps
 - [ ] Research runtime change question
 - [ ] Disk
