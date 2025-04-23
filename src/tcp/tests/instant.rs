@@ -10,7 +10,7 @@ use crate::{
     Address, HashType, Process,
 };
 
-use super::{
+use crate::tcp::{
     error::TcpError,
     manager::TcpConnectionManager,
     packet::{TcpPacket, TcpPacketKind},

@@ -66,14 +66,35 @@ fn made_connections(s: mc::StateView) -> bool {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[test]
-fn establish_connections() {
+fn establish_connections_bfs() {
     let nodes = 3;
     let cfg = mc::SearchConfig::no_faults_no_drops();
     let searcher = mc::BfsSearcher::new(cfg);
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
-    let collected = checker
+    let log = checker
         .collect(|_| Ok(()), |_| false, made_connections, searcher)
         .unwrap();
-    println!("collected = '{collected}'");
+    println!("{}", log);
+    println!("collected={}", checker.states_count());
     checker.for_each(|s| println!("{}", s.log()));
+    assert_eq!(checker.states_count(), 1);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn establish_connections_dfs() {
+    let nodes = 3;
+    let cfg = mc::SearchConfig::no_faults_no_drops();
+    let searcher = mc::DfsSearcher::new(cfg);
+    let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
+    let log = checker
+        .collect(|_| Ok(()), |_| false, made_connections, searcher)
+        .unwrap();
+    println!("{}", log);
+    println!("collected={}", checker.states_count());
+    checker.for_each(|s| println!("{}", s.log()));
+    assert_eq!(checker.states_count(), 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////

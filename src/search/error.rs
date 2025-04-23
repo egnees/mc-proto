@@ -36,14 +36,14 @@ pub struct InvariantViolation {
 
 impl Debug for InvariantViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self)
+        write!(f, "{}", self)
     }
 }
 
 impl Display for InvariantViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Invariant violation: {}.", self.report)?;
-        writeln!(f, "========= TRACE =========")?;
+        writeln!(f, "======== TRACE ========")?;
         write!(f, "{}", self.trace)?;
         writeln!(f, "========= LOG =========")?;
         write!(f, "{}", self.log)?;
@@ -77,7 +77,7 @@ impl LivenessViolation {
 
 impl Debug for LivenessViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self)
+        write!(f, "{}", self)
     }
 }
 
@@ -86,12 +86,12 @@ impl Display for LivenessViolation {
         write!(f, "Liveness violation: ")?;
         if self.trace.is_some() {
             writeln!(f, "found terminal state which not achieves goal.")?;
-            writeln!(f, "========= TRACE =========")?;
+            writeln!(f, "======== TRACE ========")?;
             write!(f, "{}", self.trace.as_ref().unwrap())?;
             writeln!(f, "========= LOG =========")?;
             write!(f, "{}", self.log.as_ref().unwrap())?;
         } else {
-            writeln!(f, "not found states which achieve goal.")?;
+            write!(f, "not found states which achieve goal.")?;
         }
         Ok(())
     }
@@ -110,12 +110,12 @@ impl Display for SearchErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SearchErrorKind::InvariantViolation(invariant_violation) => {
-                writeln!(f, "{}", invariant_violation)
+                write!(f, "{}", invariant_violation)
             }
             SearchErrorKind::LivenessViolation(liveness_violation) => {
-                writeln!(f, "{}", liveness_violation)
+                write!(f, "{}", liveness_violation)
             }
-            SearchErrorKind::ProcessPanic(p) => writeln!(f, "{}", p),
+            SearchErrorKind::ProcessPanic(p) => write!(f, "{}", p),
         }
     }
 }
@@ -128,7 +128,7 @@ impl Debug for SearchErrorKind {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SearchError {
     pub kind: SearchErrorKind,
     pub log: SearchLog,
@@ -145,9 +145,15 @@ impl SearchError {
 
 impl Display for SearchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Search error:")?;
+        writeln!(f, "\nSearch error:")?;
         writeln!(f, "{}", self.kind)?;
-        writeln!(f, "Search log:")?;
-        writeln!(f, "{}", self.log)
+        writeln!(f, "\nSearch log:")?;
+        write!(f, "{}", self.log)
+    }
+}
+
+impl Debug for SearchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }

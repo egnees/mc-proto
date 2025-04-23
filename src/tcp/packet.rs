@@ -2,7 +2,7 @@ use std::{fmt::Display, hash::Hash};
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TcpPacketKind {
     Connect(),
     Disconnect(),
@@ -11,7 +11,7 @@ pub enum TcpPacketKind {
     Nack(),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TcpPacket {
     pub tcp_stream_id: usize,
     pub kind: TcpPacketKind,

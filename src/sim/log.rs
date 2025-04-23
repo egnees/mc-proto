@@ -354,6 +354,6 @@ impl Display for Log {
         for e in self.data.iter() {
             writeln!(f, "{}", e)?;
         }
-        Ok(())
+        write!(f, "=======================")
     }
 }
