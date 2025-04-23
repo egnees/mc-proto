@@ -87,8 +87,8 @@ mod tests {
         let checker = mc::ModelChecker::new_with_build(build);
         let checked = checker.check(invariant, prune, goal, searcher).unwrap();
 
-        assert!(checked > 0);
-        println!("checked={checked}");
+        assert!(checked.visited_unique > 0);
+        println!("checked = '{checked}'");
     }
 
     ////////////////////////////////////////////////////////////////////////////////

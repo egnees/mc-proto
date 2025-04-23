@@ -4,6 +4,7 @@ pub mod control;
 pub mod dfs;
 pub mod error;
 mod gen;
+pub mod log;
 pub mod searcher;
 pub mod state;
 pub mod step;

@@ -68,7 +68,11 @@ mod tests {
             checked
         };
 
-        assert_eq!(checked_correct, checked_noretry);
+        assert_eq!(checked_correct.visited_total, checked_noretry.visited_total);
+        assert_eq!(
+            checked_correct.visited_unique,
+            checked_noretry.visited_unique
+        );
     }
 
     ////////////////////////////////////////////////////////////////////////////////

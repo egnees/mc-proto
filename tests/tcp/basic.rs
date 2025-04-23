@@ -125,8 +125,8 @@ fn establish_connection() {
     let collected = checker
         .collect(invariant, |_| false, goal, searcher)
         .unwrap();
-    println!("collected={}", collected);
-    assert_eq!(collected, 1);
+    println!("collected = {}", collected);
+    assert_eq!(checker.states_count(), 1);
     checker.for_each(|s| println!("{}", s.log()));
     checker.for_each(|s| assert!(!s.read_locals("node1", "sender").unwrap().is_empty()));
 }

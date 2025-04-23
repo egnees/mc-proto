@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{event::driver::EventDriver, SearchError, System};
+use crate::{event::driver::EventDriver, SearchErrorKind, System};
 
 use super::{gen::Generator, step::StateTraceStep};
 
@@ -16,7 +16,7 @@ pub struct SearchState {
 }
 
 impl SearchState {
-    pub fn from_trace(trace: &StateTrace) -> Result<Self, SearchError> {
+    pub fn from_trace(trace: &StateTrace) -> Result<Self, SearchErrorKind> {
         let gen = Rc::new(RefCell::new(Generator::new()));
         let driver = gen.clone() as Rc<RefCell<dyn EventDriver>>;
         let system = System::new_default_net(&driver);
@@ -50,11 +50,11 @@ impl StateTrace {
         self.steps.get(i).unwrap()
     }
 
-    fn apply_steps(&self, state: &mut SearchState) -> Result<(), SearchError> {
+    fn apply_steps(&self, state: &mut SearchState) -> Result<(), SearchErrorKind> {
         for i in 0..self.steps.len() {
             let step = &self.steps[i];
             let mut apply_result = step.apply(state);
-            if let Err(SearchError::ProcessPanic(p)) = apply_result.as_mut() {
+            if let Err(SearchErrorKind::ProcessPanic(p)) = apply_result.as_mut() {
                 let steps = self.steps.as_slice()[..i + 1].to_vec();
                 let trace = StateTrace { steps };
                 p.trace = Some(trace);

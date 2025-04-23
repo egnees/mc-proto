@@ -74,6 +74,6 @@ fn establish_connections() {
     let collected = checker
         .collect(|_| Ok(()), |_| false, made_connections, searcher)
         .unwrap();
-    println!("collected={collected}");
+    println!("collected = '{collected}'");
     checker.for_each(|s| println!("{}", s.log()));
 }

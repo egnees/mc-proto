@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 
 use crate::sim::log::Log;
 
-use super::state::StateTrace;
+use super::{log::SearchLog, state::StateTrace};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -100,28 +100,54 @@ impl Display for LivenessViolation {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub enum SearchError {
+pub enum SearchErrorKind {
     InvariantViolation(InvariantViolation),
     LivenessViolation(LivenessViolation),
     ProcessPanic(ProcessPanic),
 }
 
-impl Display for SearchError {
+impl Display for SearchErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SearchError::InvariantViolation(invariant_violation) => {
+            SearchErrorKind::InvariantViolation(invariant_violation) => {
                 writeln!(f, "{}", invariant_violation)
             }
-            SearchError::LivenessViolation(liveness_violation) => {
+            SearchErrorKind::LivenessViolation(liveness_violation) => {
                 writeln!(f, "{}", liveness_violation)
             }
-            SearchError::ProcessPanic(p) => writeln!(f, "{}", p),
+            SearchErrorKind::ProcessPanic(p) => writeln!(f, "{}", p),
         }
     }
 }
 
-impl Debug for SearchError {
+impl Debug for SearchErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", self)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone, Debug)]
+pub struct SearchError {
+    pub kind: SearchErrorKind,
+    pub log: SearchLog,
+}
+
+impl SearchError {
+    pub fn new(kind: SearchErrorKind, log: &SearchLog) -> Self {
+        Self {
+            kind,
+            log: log.clone(),
+        }
+    }
+}
+
+impl Display for SearchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Search error:")?;
+        writeln!(f, "{}", self.kind)?;
+        writeln!(f, "Search log:")?;
+        writeln!(f, "{}", self.log)
     }
 }

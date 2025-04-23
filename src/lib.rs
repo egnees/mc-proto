@@ -24,7 +24,7 @@ pub use search::{
     config::{SearchConfig, SearchConfigBuilder},
     control::{ApplyFn, GoalFn, InvariantFn, PruneFn},
     dfs::DfsSearcher,
-    error::SearchError,
+    error::{SearchError, SearchErrorKind},
 };
 
 pub use tcp::{TcpError, TcpListener, TcpStream};

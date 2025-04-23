@@ -1,11 +1,14 @@
 use std::collections::HashSet;
 
-use crate::search::{
-    control::{ApplyFn, ApplyFunctor, GoalFn, InvariantFn, PruneFn},
-    error::SearchError,
-    searcher::Searcher,
-    state::{SearchState, StateTrace},
-    step::StateTraceStep,
+use crate::{
+    search::{
+        control::{ApplyFn, ApplyFunctor, GoalFn, InvariantFn, PruneFn},
+        log::SearchLog,
+        searcher::Searcher,
+        state::{SearchState, StateTrace},
+        step::StateTraceStep,
+    },
+    SearchError,
 };
 
 use crate::sim::system::HashType;
@@ -41,7 +44,7 @@ impl ModelChecker {
         prune: impl PruneFn,
         goal: impl GoalFn,
         mut searcher: impl Searcher,
-    ) -> Result<usize, SearchError> {
+    ) -> Result<SearchLog, SearchError> {
         searcher.check(
             self.states.clone(),
             &mut self.visited,
@@ -57,12 +60,12 @@ impl ModelChecker {
         prune: impl PruneFn,
         goal: impl GoalFn,
         mut searcher: impl Searcher,
-    ) -> Result<usize, SearchError> {
+    ) -> Result<SearchLog, SearchError> {
         let mut states = Vec::default();
         std::mem::swap(&mut states, &mut self.states);
-        self.states = searcher.collect(states, &mut self.visited, invariant, prune, goal)?;
-
-        Ok(self.states.len())
+        let collect_info = searcher.collect(states, &mut self.visited, invariant, prune, goal)?;
+        self.states = collect_info.states;
+        Ok(collect_info.log)
     }
 
     pub fn apply(&mut self, f: impl ApplyFn) {
@@ -77,5 +80,9 @@ impl ModelChecker {
             let state = SearchState::from_trace(s).unwrap();
             f(state.system.handle());
         });
+    }
+
+    pub fn states_count(&self) -> usize {
+        self.states.len()
     }
 }

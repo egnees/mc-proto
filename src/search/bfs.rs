@@ -3,12 +3,13 @@ use std::collections::{HashSet, VecDeque};
 use super::{
     config::SearchConfig,
     control::{GoalFn, InvariantFn, PruneFn},
-    error::{InvariantViolation, LivenessViolation, SearchError},
-    searcher::Searcher,
+    error::{InvariantViolation, LivenessViolation, SearchErrorKind},
+    log::SearchLog,
+    searcher::{CollectInfo, Searcher},
     state::{SearchState, StateTrace},
 };
 
-use crate::sim::system::HashType;
+use crate::{sim::system::HashType, SearchError};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -30,20 +31,21 @@ impl Searcher for BfsSearcher {
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
-    ) -> Result<usize, SearchError> {
+    ) -> Result<SearchLog, SearchError> {
+        let mut log = SearchLog::new();
+
         let mut queue: VecDeque<StateTrace> = start.into_iter().collect();
 
-        let mut cnt = 0;
         let mut goal_achieved = false;
         while let Some(v) = queue.pop_front() {
-            cnt += 1;
-
-            let state = SearchState::from_trace(&v)?;
+            log.visited_total += 1;
+            let state = SearchState::from_trace(&v).map_err(|k| SearchError::new(k, &log))?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {
                 continue;
             }
+            log.visited_unique += 1;
 
             // check invariant
             invariant(system.clone()).map_err(|report| {
@@ -52,7 +54,8 @@ impl Searcher for BfsSearcher {
                     log: system.log(),
                     report,
                 };
-                SearchError::InvariantViolation(err)
+                let kind = SearchErrorKind::InvariantViolation(err);
+                SearchError::new(kind, &log)
             })?;
 
             // check goal achieved
@@ -70,7 +73,8 @@ impl Searcher for BfsSearcher {
             let steps = state.gen.borrow().steps(system.clone(), &self.cfg);
             if steps.is_empty() {
                 let err = LivenessViolation::this_one(v, system.log());
-                let err = SearchError::LivenessViolation(err);
+                let err = SearchErrorKind::LivenessViolation(err);
+                let err = SearchError::new(err, &log);
                 return Err(err);
             }
 
@@ -91,9 +95,11 @@ impl Searcher for BfsSearcher {
         }
 
         if goal_achieved {
-            Ok(cnt)
+            Ok(log)
         } else {
-            Err(SearchError::LivenessViolation(LivenessViolation::no_one()))
+            let kind = SearchErrorKind::LivenessViolation(LivenessViolation::no_one());
+            let err = SearchError::new(kind, &log);
+            Err(err)
         }
     }
 
@@ -104,18 +110,20 @@ impl Searcher for BfsSearcher {
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
-    ) -> Result<Vec<StateTrace>, SearchError> {
+    ) -> Result<CollectInfo, SearchError> {
+        let mut log = SearchLog::new();
         let mut collected = Vec::new();
-
         let mut queue: VecDeque<StateTrace> = start.into_iter().collect();
 
         while let Some(v) = queue.pop_front() {
-            let state = SearchState::from_trace(&v)?;
+            log.visited_total += 1;
+            let state = SearchState::from_trace(&v).map_err(|k| SearchError::new(k, &log))?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {
                 continue;
             }
+            log.visited_unique += 1;
 
             // check invariant
             invariant(system.clone()).map_err(|report| {
@@ -124,7 +132,8 @@ impl Searcher for BfsSearcher {
                     log: system.log(),
                     report,
                 };
-                SearchError::InvariantViolation(err)
+                let kind = SearchErrorKind::InvariantViolation(err);
+                SearchError::new(kind, &log)
             })?;
 
             // check goal achieved
@@ -155,6 +164,9 @@ impl Searcher for BfsSearcher {
                 .for_each(|u| queue.push_back(u));
         }
 
-        Ok(collected)
+        Ok(CollectInfo {
+            states: collected,
+            log,
+        })
     }
 }

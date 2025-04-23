@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use super::{
     config::SearchConfig,
     control::{GoalFn, InvariantFn, PruneFn},
-    error::{InvariantViolation, LivenessViolation, SearchError},
-    searcher::Searcher,
+    error::{InvariantViolation, LivenessViolation, SearchError, SearchErrorKind},
+    log::SearchLog,
+    searcher::{CollectInfo, Searcher},
     state::{SearchState, StateTrace},
 };
 
@@ -30,18 +31,20 @@ impl Searcher for DfsSearcher {
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
-    ) -> Result<usize, SearchError> {
-        let mut cnt = 0;
-        let mut goal_achieved = false;
-        while let Some(v) = start.pop() {
-            cnt += 1;
+    ) -> Result<SearchLog, SearchError> {
+        let mut log = SearchLog::new();
 
-            let state = SearchState::from_trace(&v)?;
+        let mut goal_achieved = false;
+
+        while let Some(v) = start.pop() {
+            log.visited_total += 1;
+            let state = SearchState::from_trace(&v).map_err(|kind| SearchError::new(kind, &log))?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {
                 continue;
             }
+            log.visited_unique += 1;
 
             // check invariant
             invariant(system.clone()).map_err(|report| {
@@ -50,7 +53,8 @@ impl Searcher for DfsSearcher {
                     log: system.log(),
                     report,
                 };
-                SearchError::InvariantViolation(err)
+                let kind = SearchErrorKind::InvariantViolation(err);
+                SearchError::new(kind, &log)
             })?;
 
             // check goal achieved
@@ -68,7 +72,8 @@ impl Searcher for DfsSearcher {
             let steps = state.gen.borrow().steps(system.clone(), &self.cfg);
             if steps.is_empty() {
                 let err = LivenessViolation::this_one(v, system.log());
-                let err = SearchError::LivenessViolation(err);
+                let err = SearchErrorKind::LivenessViolation(err);
+                let err = SearchError::new(err, &log);
                 return Err(err);
             }
 
@@ -89,10 +94,12 @@ impl Searcher for DfsSearcher {
         }
 
         if goal_achieved {
-            Ok(cnt)
+            Ok(log)
         } else {
             let err = LivenessViolation::no_one();
-            Err(SearchError::LivenessViolation(err))
+            let err = SearchErrorKind::LivenessViolation(err);
+            let err = SearchError::new(err, &log);
+            Err(err)
         }
     }
 
@@ -103,24 +110,28 @@ impl Searcher for DfsSearcher {
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
-    ) -> Result<Vec<StateTrace>, SearchError> {
+    ) -> Result<CollectInfo, SearchError> {
+        let mut log = SearchLog::new();
         let mut collected = Vec::new();
 
         while let Some(v) = start.pop() {
-            let state = SearchState::from_trace(&v)?;
+            log.visited_total += 1;
+            let state = SearchState::from_trace(&v).map_err(|k| SearchError::new(k, &log))?;
             let system = state.system.handle();
             let h = system.hash();
             if !visited.insert(h) {
                 continue;
             }
+            log.visited_unique += 1;
 
             // check invariant
             invariant(system.clone()).map_err(|report| {
-                SearchError::InvariantViolation(InvariantViolation {
+                let kind = SearchErrorKind::InvariantViolation(InvariantViolation {
                     trace: v.clone(),
                     log: system.log(),
                     report,
-                })
+                });
+                SearchError::new(kind, &log)
             })?;
 
             // check goal achieved
@@ -147,6 +158,9 @@ impl Searcher for DfsSearcher {
                 .for_each(|u| start.push(u));
         }
 
-        Ok(collected)
+        Ok(CollectInfo {
+            states: collected,
+            log,
+        })
     }
 }

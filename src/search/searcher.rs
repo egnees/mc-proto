@@ -5,8 +5,16 @@ use crate::sim::system::HashType;
 use super::{
     control::{GoalFn, InvariantFn, PruneFn},
     error::SearchError,
+    log::SearchLog,
     state::StateTrace,
 };
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct CollectInfo {
+    pub states: Vec<StateTrace>,
+    pub log: SearchLog,
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -18,7 +26,7 @@ pub trait Searcher {
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
-    ) -> Result<usize, SearchError>;
+    ) -> Result<SearchLog, SearchError>;
 
     fn collect(
         &mut self,
@@ -27,5 +35,5 @@ pub trait Searcher {
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
-    ) -> Result<Vec<StateTrace>, SearchError>;
+    ) -> Result<CollectInfo, SearchError>;
 }

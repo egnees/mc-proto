@@ -140,10 +140,10 @@ mod tests {
             checked
         };
 
-        assert!(checked_bfs > 0);
-        assert!(checked_dfs > 0);
-        println!("checked_bfs = {checked_bfs}");
-        println!("checked_dfs = {checked_dfs}");
+        assert!(checked_bfs.visited_unique > 0);
+        assert!(checked_dfs.visited_unique > 0);
+        println!("checked_bfs = '{checked_bfs}'");
+        println!("checked_dfs = '{checked_dfs}'");
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -177,8 +177,8 @@ mod tests {
         let checker = mc::ModelChecker::new_with_build(build);
         let checked = checker.check(invariant, prune, goal, searcher).unwrap();
 
-        assert!(checked > 0);
-        println!("checked={checked}");
+        assert!(checked.visited_unique > 0);
+        println!("checked = '{checked}'");
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -243,8 +243,8 @@ mod tests {
         let collected = checker
             .collect(invariant.clone(), prune.clone(), goal, searcher)
             .unwrap();
-        assert!(collected > 0);
-        println!("collected={collected}");
+        assert!(collected.visited_unique > 0);
+        println!("collected = '{collected}'");
         checker.apply(|s| s.crash_node("n2").unwrap());
         let searcher = mc::BfsSearcher::new(cfg);
         let goal = make_goal(locals);

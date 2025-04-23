@@ -8,7 +8,7 @@ use crate::{
         outcome::{EventOutcome, EventOutcomeKind},
         time::TimeSegment,
     },
-    SearchError,
+    SearchErrorKind,
 };
 
 use super::{control::ApplyFunctor, error::ProcessPanic, state::SearchState};
@@ -60,7 +60,7 @@ impl StateTraceStep {
         state: &mut SearchState,
         i: usize,
         outcome: EventOutcome,
-    ) -> Result<(), SearchError> {
+    ) -> Result<(), SearchErrorKind> {
         state.gen.borrow_mut().select_ready_event(i);
         let handle = state.system.handle();
         std::panic::catch_unwind(AssertUnwindSafe(move || {
@@ -71,11 +71,11 @@ impl StateTraceStep {
                 trace: None,
                 log: state.system.handle().log(),
             };
-            SearchError::ProcessPanic(p)
+            SearchErrorKind::ProcessPanic(p)
         })
     }
 
-    pub fn apply(&self, state: &mut SearchState) -> Result<(), SearchError> {
+    pub fn apply(&self, state: &mut SearchState) -> Result<(), SearchErrorKind> {
         match self {
             StateTraceStep::SelectUdp(i, msg) => {
                 let kind = if msg.drop {
