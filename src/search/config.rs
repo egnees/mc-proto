@@ -7,12 +7,22 @@ pub struct SearchConfig {
 }
 
 impl SearchConfig {
-    pub fn no_faults_with_drops() -> Self {
-        SearchConfigBuilder::no_faults().build()
+    pub fn no_faults_with_drops(max_drops: usize) -> Self {
+        SearchConfigBuilder::no_faults()
+            .max_msg_drops(max_drops)
+            .build()
     }
 
     pub fn no_faults_no_drops() -> Self {
         SearchConfigBuilder::no_faults().max_msg_drops(0).build()
+    }
+
+    pub fn with_node_faults_only(max_node_faults: usize) -> Self {
+        SearchConfigBuilder::new()
+            .max_disk_faults(0)
+            .max_node_faults(max_node_faults)
+            .max_msg_drops(0)
+            .build()
     }
 
     pub fn unlimited() -> Self {

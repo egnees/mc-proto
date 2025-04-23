@@ -41,10 +41,10 @@ impl Searcher for DfsSearcher {
             let state = SearchState::from_trace(&v).map_err(|kind| SearchError::new(kind, &log))?;
             let system = state.system.handle();
             let h = system.hash();
-            if !visited.insert(h) {
-                continue;
+            let already_meet = !visited.insert(h);
+            if !already_meet {
+                log.visited_unique += 1;
             }
-            log.visited_unique += 1;
 
             // make state view
             let view = StateView::new(&state, v.clone());
@@ -80,8 +80,8 @@ impl Searcher for DfsSearcher {
                 return Err(err);
             }
 
-            // check depth restriction
-            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) {
+            // check depth restriction or already meet condition
+            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) || already_meet {
                 continue;
             }
 
@@ -122,10 +122,10 @@ impl Searcher for DfsSearcher {
             let state = SearchState::from_trace(&v).map_err(|k| SearchError::new(k, &log))?;
             let system = state.system.handle();
             let h = system.hash();
-            if !visited.insert(h) {
-                continue;
+            let already_meet = !visited.insert(h);
+            if !already_meet {
+                log.visited_unique += 1;
             }
-            log.visited_unique += 1;
 
             // make search state view
             let view = StateView::new(&state, v.clone());
@@ -148,6 +148,11 @@ impl Searcher for DfsSearcher {
 
             // check prune
             if prune(view) {
+                continue;
+            }
+
+            // check depth condition or already meet condition
+            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) || already_meet {
                 continue;
             }
 

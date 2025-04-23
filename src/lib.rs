@@ -25,6 +25,7 @@ pub use search::{
     control::{ApplyFn, GoalFn, InvariantFn, PruneFn},
     dfs::DfsSearcher,
     error::{SearchError, SearchErrorKind},
+    log::SearchLog,
     state::StateView,
 };
 

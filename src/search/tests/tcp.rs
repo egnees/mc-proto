@@ -107,7 +107,7 @@ fn collect() {
     let mut state = SearchState { system, gen };
 
     // apply first step (timer)
-    let cfg = SearchConfig::no_faults_with_drops();
+    let cfg = SearchConfig::no_faults_no_drops();
     let steps = state.gen.borrow().steps(state.system.handle(), &cfg);
     println!("{:?}", steps);
     assert_eq!(steps.len(), 1);
