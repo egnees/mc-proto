@@ -77,8 +77,9 @@ impl Generator {
                         event_id,
                         udp_msg_id,
                         drop: false,
+                        time,
                     };
-                    let no_drop_step = StateTraceStep::SelectUdp(i, time, udp_no_drop);
+                    let no_drop_step = StateTraceStep::SelectUdp(i, udp_no_drop);
                     res.push(no_drop_step);
 
                     // inject msg drop
@@ -86,26 +87,30 @@ impl Generator {
                         let udp_drop = UdpMessage {
                             event_id,
                             udp_msg_id,
+                            time,
                             drop: true,
                         };
-                        let drop_step = StateTraceStep::SelectUdp(i, time, udp_drop);
+                        let drop_step = StateTraceStep::SelectUdp(i, udp_drop);
                         res.push(drop_step);
                     }
                 }
                 EventKind::Timer(timer_id) => {
                     let timer_id = *timer_id;
-                    let step = StateTraceStep::SelectTimer(i, time, Timer { event_id, timer_id });
+                    let timer = Timer {
+                        event_id,
+                        time,
+                        timer_id,
+                    };
+                    let step = StateTraceStep::SelectTimer(i, timer);
                     res.push(step);
                 }
                 EventKind::TcpPacket(tcp) => {
-                    let step = StateTraceStep::SelectTcp(
-                        i,
+                    let packet = TcpPacket {
+                        event_id,
                         time,
-                        TcpPacket {
-                            event_id,
-                            tcp_msg_id: tcp.tcp_packet_id,
-                        },
-                    );
+                        tcp_msg_id: tcp.tcp_packet_id,
+                    };
+                    let step = StateTraceStep::SelectTcp(i, packet);
                     tcp_filter.add(tcp, step);
                 }
             }

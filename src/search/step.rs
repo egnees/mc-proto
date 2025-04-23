@@ -20,6 +20,7 @@ pub struct UdpMessage {
     pub event_id: usize,
     pub udp_msg_id: usize,
     pub drop: bool,
+    pub time: TimeSegment,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,6 +29,7 @@ pub struct UdpMessage {
 pub struct Timer {
     pub event_id: usize,
     pub timer_id: usize,
+    pub time: TimeSegment,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,15 +38,16 @@ pub struct Timer {
 pub struct TcpPacket {
     pub event_id: usize,
     pub tcp_msg_id: usize,
+    pub time: TimeSegment,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub enum StateTraceStep {
-    SelectUdp(usize, TimeSegment, UdpMessage),
-    SelectTimer(usize, TimeSegment, Timer),
-    SelectTcp(usize, TimeSegment, TcpPacket),
+    SelectUdp(usize, UdpMessage),
+    SelectTimer(usize, Timer),
+    SelectTcp(usize, TcpPacket),
     CrashNode(usize), // id of node
     Apply(Box<dyn ApplyFunctor>),
 }
@@ -74,7 +77,7 @@ impl StateTraceStep {
 
     pub fn apply(&self, state: &mut SearchState) -> Result<(), SearchError> {
         match self {
-            StateTraceStep::SelectUdp(i, time, msg) => {
+            StateTraceStep::SelectUdp(i, msg) => {
                 let kind = if msg.drop {
                     EventOutcomeKind::UdpMessageDropped()
                 } else {
@@ -83,23 +86,23 @@ impl StateTraceStep {
                 let outcome = EventOutcome {
                     event_id: msg.event_id,
                     kind,
-                    time: *time,
+                    time: msg.time,
                 };
                 self.apply_event_outcome(state, *i, outcome)
             }
-            StateTraceStep::SelectTimer(i, time, timer) => {
+            StateTraceStep::SelectTimer(i, timer) => {
                 let outcome = EventOutcome {
                     event_id: timer.event_id,
                     kind: EventOutcomeKind::TimerFired(),
-                    time: *time,
+                    time: timer.time,
                 };
                 self.apply_event_outcome(state, *i, outcome)
             }
-            StateTraceStep::SelectTcp(i, time, tcp) => {
+            StateTraceStep::SelectTcp(i, tcp) => {
                 let outcome = EventOutcome {
                     event_id: tcp.event_id,
                     kind: EventOutcomeKind::TcpPacketDelivered(),
-                    time: *time,
+                    time: tcp.time,
                 };
                 self.apply_event_outcome(state, *i, outcome)
             }
@@ -120,24 +123,17 @@ impl StateTraceStep {
 impl Debug for StateTraceStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SelectUdp(arg0, arg1, arg2) => f
-                .debug_tuple("SelectUdp")
-                .field(arg0)
-                .field(arg1)
-                .field(arg2)
-                .finish(),
-            Self::SelectTimer(arg0, arg1, arg2) => f
+            Self::SelectUdp(arg0, arg1) => {
+                f.debug_tuple("SelectUdp").field(arg0).field(arg1).finish()
+            }
+            Self::SelectTimer(arg0, arg1) => f
                 .debug_tuple("SelectTimer")
                 .field(arg0)
                 .field(arg1)
-                .field(arg2)
                 .finish(),
-            Self::SelectTcp(arg0, arg1, arg2) => f
-                .debug_tuple("SelectTcp")
-                .field(arg0)
-                .field(arg1)
-                .field(arg2)
-                .finish(),
+            Self::SelectTcp(arg0, arg1) => {
+                f.debug_tuple("SelectTcp").field(arg0).field(arg1).finish()
+            }
             Self::Apply(_) => f.debug_tuple("Apply").finish(),
             Self::CrashNode(arg0) => f.debug_tuple("CrashNode").field(arg0).finish(),
         }
@@ -147,7 +143,7 @@ impl Debug for StateTraceStep {
 impl Display for StateTraceStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            StateTraceStep::SelectUdp(i, _, udp_message) => {
+            StateTraceStep::SelectUdp(i, udp_message) => {
                 if udp_message.drop {
                     write!(
                         f,
@@ -162,11 +158,11 @@ impl Display for StateTraceStep {
                     )
                 }
             }
-            StateTraceStep::SelectTimer(i, _, timer) => {
+            StateTraceStep::SelectTimer(i, timer) => {
                 write!(f, "Select {}: Timer {} fired", i, timer.timer_id)
             }
             StateTraceStep::Apply(_) => write!(f, "Apply"),
-            StateTraceStep::SelectTcp(i, _, tcp_packet) => {
+            StateTraceStep::SelectTcp(i, tcp_packet) => {
                 write!(
                     f,
                     "Select {}: Tcp packet {} delivered",
