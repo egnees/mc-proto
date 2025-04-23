@@ -8,3 +8,6 @@ mod correct;
 
 #[cfg(test)]
 mod beb_udp;
+
+#[cfg(test)]
+mod beb_tcp;
