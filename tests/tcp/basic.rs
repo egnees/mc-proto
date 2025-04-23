@@ -96,13 +96,14 @@ fn build_system(sys: mc::SystemHandle) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn goal(sys: mc::SystemHandle) -> bool {
-    sys.pending_events() == 0
+fn goal(sys: mc::StateView) -> bool {
+    sys.system().pending_events() == 0
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn invariant(sys: mc::SystemHandle) -> Result<(), String> {
+fn invariant(s: mc::StateView) -> Result<(), String> {
+    let sys = s.system();
     let mut tcp_msgs = 0;
     for e in sys.log().iter() {
         if matches!(e, mc::LogEntry::TcpMessageSent(_)) {

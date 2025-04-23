@@ -9,7 +9,7 @@ use super::{
     state::{SearchState, StateTrace},
 };
 
-use crate::{sim::system::HashType, SearchError};
+use crate::{sim::system::HashType, SearchError, StateView};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,8 +47,11 @@ impl Searcher for BfsSearcher {
             }
             log.visited_unique += 1;
 
+            // make state view
+            let view = StateView::new(&state, v.clone());
+
             // check invariant
-            invariant(system.clone()).map_err(|report| {
+            invariant(view.clone()).map_err(|report| {
                 let err = InvariantViolation {
                     trace: v.clone(),
                     log: system.log(),
@@ -59,13 +62,13 @@ impl Searcher for BfsSearcher {
             })?;
 
             // check goal achieved
-            if goal(system.clone()) {
+            if goal(view.clone()) {
                 goal_achieved = true;
                 continue;
             }
 
             // check prune
-            if prune(system.clone()) {
+            if prune(view) {
                 continue;
             }
 
@@ -125,8 +128,11 @@ impl Searcher for BfsSearcher {
             }
             log.visited_unique += 1;
 
+            // make state view
+            let view = StateView::new(&state, v.clone());
+
             // check invariant
-            invariant(system.clone()).map_err(|report| {
+            invariant(view.clone()).map_err(|report| {
                 let err = InvariantViolation {
                     trace: v.clone(),
                     log: system.log(),
@@ -137,13 +143,13 @@ impl Searcher for BfsSearcher {
             })?;
 
             // check goal achieved
-            if goal(system.clone()) {
+            if goal(view.clone()) {
                 collected.push(v);
                 continue;
             }
 
             // check prune
-            if prune(system.clone()) {
+            if prune(view) {
                 continue;
             }
 

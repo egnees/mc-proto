@@ -36,7 +36,8 @@ pub fn make_build(
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn make_goal(locals: usize) -> impl mc::GoalFn {
-    move |s: mc::SystemHandle| {
+    move |s: mc::StateView| {
+        let s = s.system();
         let Some(mut ping_locals) = s.read_locals("n1", "ping") else {
             return false;
         };
@@ -56,7 +57,8 @@ pub fn make_goal(locals: usize) -> impl mc::GoalFn {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn make_invariant(locals: usize) -> impl mc::InvariantFn {
-    move |s: mc::SystemHandle| {
+    move |s: mc::StateView| {
+        let s = s.system();
         if s.read_locals("n1", "ping").unwrap_or_default().len() <= locals
             && s.read_locals("n2", "pong").unwrap_or_default().len() <= locals
         {

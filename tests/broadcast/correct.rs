@@ -59,8 +59,8 @@ fn build(s: mc::SystemHandle, nodes: usize) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn made_connections(s: mc::SystemHandle) -> bool {
-    s.pending_events() == 0
+fn made_connections(s: mc::StateView) -> bool {
+    s.system().pending_events() == 0
 }
 
 ////////////////////////////////////////////////////////////////////////////////

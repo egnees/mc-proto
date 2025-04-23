@@ -9,7 +9,7 @@ use super::{
     state::{SearchState, StateTrace},
 };
 
-use crate::sim::system::HashType;
+use crate::{sim::system::HashType, StateView};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,8 +46,11 @@ impl Searcher for DfsSearcher {
             }
             log.visited_unique += 1;
 
+            // make state view
+            let view = StateView::new(&state, v.clone());
+
             // check invariant
-            invariant(system.clone()).map_err(|report| {
+            invariant(view.clone()).map_err(|report| {
                 let err = InvariantViolation {
                     trace: v.clone(),
                     log: system.log(),
@@ -58,13 +61,13 @@ impl Searcher for DfsSearcher {
             })?;
 
             // check goal achieved
-            if goal(system.clone()) {
+            if goal(view.clone()) {
                 goal_achieved = true;
                 continue;
             }
 
             // check prune
-            if prune(system.clone()) {
+            if prune(view) {
                 continue;
             }
 
@@ -124,8 +127,11 @@ impl Searcher for DfsSearcher {
             }
             log.visited_unique += 1;
 
+            // make search state view
+            let view = StateView::new(&state, v.clone());
+
             // check invariant
-            invariant(system.clone()).map_err(|report| {
+            invariant(view.clone()).map_err(|report| {
                 let kind = SearchErrorKind::InvariantViolation(InvariantViolation {
                     trace: v.clone(),
                     log: system.log(),
@@ -135,13 +141,13 @@ impl Searcher for DfsSearcher {
             })?;
 
             // check goal achieved
-            if goal(system.clone()) {
+            if goal(view.clone()) {
                 collected.push(v);
                 continue;
             }
 
             // check prune
-            if prune(system.clone()) {
+            if prune(view) {
                 continue;
             }
 

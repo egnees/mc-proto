@@ -12,3 +12,4 @@
 - [ ] Make process library for tests
 - [x] Track events dependency
 - [x] Search log
+- [x] SystemHandle -> StateView

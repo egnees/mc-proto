@@ -25,6 +25,7 @@ pub use search::{
     control::{ApplyFn, GoalFn, InvariantFn, PruneFn},
     dfs::DfsSearcher,
     error::{SearchError, SearchErrorKind},
+    state::StateView,
 };
 
 pub use tcp::{TcpError, TcpListener, TcpStream};

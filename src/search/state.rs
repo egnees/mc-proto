@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{event::driver::EventDriver, SearchErrorKind, System};
+use crate::{event::driver::EventDriver, SearchErrorKind, System, SystemHandle};
 
 use super::{gen::Generator, step::StateTraceStep};
 
@@ -77,5 +77,30 @@ impl Display for StateTrace {
             writeln!(f, "{}", e)?;
         }
         Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct StateView {
+    system: SystemHandle,
+    trace: StateTrace,
+}
+
+impl StateView {
+    pub(crate) fn new(state: &SearchState, trace: StateTrace) -> Self {
+        Self {
+            system: state.system.handle(),
+            trace,
+        }
+    }
+
+    pub fn system(&self) -> SystemHandle {
+        self.system.clone()
+    }
+
+    pub fn depth(&self) -> usize {
+        self.trace.steps.len()
     }
 }

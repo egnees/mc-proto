@@ -221,7 +221,7 @@ mod tests {
         let locals = 2;
         let invariant = make_invariant(locals);
         let prune = |_| false;
-        let goal = |s: mc::SystemHandle| !s.read_locals("n2", "pong").unwrap().is_empty();
+        let goal = |s: mc::StateView| !s.system().read_locals("n2", "pong").unwrap().is_empty();
         let build = make_build(
             Duration::from_millis(100),
             Duration::from_millis(600),
