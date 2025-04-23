@@ -140,19 +140,19 @@ impl Searcher for DfsSearcher {
                 SearchError::new(kind, &log)
             })?;
 
+            // check prune and already meet condition
+            if prune(view.clone()) || already_meet {
+                continue;
+            }
+
             // check goal achieved
             if goal(view.clone()) {
                 collected.push(v);
                 continue;
             }
 
-            // check prune
-            if prune(view) {
-                continue;
-            }
-
             // check depth condition or already meet condition
-            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) || already_meet {
+            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) {
                 continue;
             }
 
