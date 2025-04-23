@@ -1,4 +1,8 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    rc::Rc,
+};
 
 use crate::Address;
 
@@ -54,8 +58,27 @@ impl Node {
 
 impl std::hash::Hash for Node {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.proc
-            .iter()
-            .for_each(|(_, proc)| proc.borrow().hash(state));
+        self.proc.iter().for_each(|(name, proc)| {
+            name.hash(state);
+            proc.borrow().hash(state);
+        });
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Default)]
+pub struct NodeRoleRegister {
+    roles: HashMap<String, String>,
+}
+
+impl NodeRoleRegister {
+    pub fn add(&mut self, node: impl Into<String>, role: impl Into<String>) {
+        let prev = self.roles.insert(node.into(), role.into());
+        assert!(prev.is_none());
+    }
+
+    pub fn role(&self, node: &str) -> Option<&str> {
+        self.roles.get(node).map(|s| s.as_str())
     }
 }

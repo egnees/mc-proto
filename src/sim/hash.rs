@@ -1,0 +1,79 @@
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    time::Duration,
+};
+
+use crate::{
+    event::{info::EventInfo, Event},
+    util, Address, Node,
+};
+
+use super::node::NodeRoleRegister;
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct HashContext<'a> {
+    node_register: &'a NodeRoleRegister,
+}
+
+impl<'a> HashContext<'a> {
+    pub fn new(node_register: &'a NodeRoleRegister) -> Self {
+        Self { node_register }
+    }
+
+    fn node_repr(&self, node: &'a str) -> &'a str {
+        self.node_register.role(node).unwrap_or(node)
+    }
+
+    fn hash_address(&self, a: &Address) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        let node = self.node_repr(&a.node);
+        node.hash(&mut hasher);
+        a.process.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    fn hash_node(&self, node: &Node) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        node.hash(&mut hasher);
+        self.node_repr(&node.name).hash(&mut hasher);
+        hasher.finish()
+    }
+
+    pub fn hash_nodes(&self, nodes: impl Iterator<Item = &'a Node>) -> u64 {
+        util::hash::hash_multiset(nodes.map(|n| self.hash_node(n)))
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    fn hash_event(&self, time_shift: Duration, event: &'a Event) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        event.time.shift_neg(time_shift).hash(&mut hasher);
+        match &event.info {
+            EventInfo::UdpMessage(udp) => {
+                udp.content.hash(&mut hasher);
+                self.hash_address(&udp.from.address()).hash(&mut hasher);
+                self.hash_address(&udp.to.address()).hash(&mut hasher);
+            }
+            EventInfo::TcpMessage(tcp) => {
+                tcp.packet.hash(&mut hasher);
+                self.hash_address(&tcp.from.address()).hash(&mut hasher);
+                self.hash_address(&tcp.to.address()).hash(&mut hasher);
+            }
+            EventInfo::Timer(timer) => {
+                timer.duration.hash(&mut hasher);
+                self.hash_address(&timer.proc.address());
+            }
+        }
+        hasher.finish()
+    }
+
+    pub fn hash_events(&self, events: impl Iterator<Item = &'a Event> + Clone) -> u64 {
+        let min_time = events
+            .clone()
+            .map(|e| e.time.from)
+            .min()
+            .unwrap_or(Duration::ZERO);
+        util::hash::hash_multiset(events.map(|e| self.hash_event(min_time, e)))
+    }
+}

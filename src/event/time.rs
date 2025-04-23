@@ -22,6 +22,10 @@ impl TimeSegment {
         assert!(from <= to);
         TimeSegment::new(self.from + from, self.to + to)
     }
+
+    pub fn shift_neg(&self, on: Duration) -> Self {
+        TimeSegment::new(self.from - on, self.to - on)
+    }
 }
 
 impl Display for TimeSegment {

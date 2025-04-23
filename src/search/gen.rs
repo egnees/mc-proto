@@ -128,6 +128,7 @@ impl Generator {
                 res.push(StateTraceStep::CrashNode(i));
             }
         }
+
         res
     }
 }

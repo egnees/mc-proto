@@ -1,3 +1,7 @@
+use std::collections::{HashMap, HashSet};
+
+use super::causal::CausalChecker;
+
 fn check_equals(left: &[String], right: &[String], ordered: bool) -> bool {
     if ordered {
         left == right
@@ -13,14 +17,13 @@ fn check_equals(left: &[String], right: &[String], ordered: bool) -> bool {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn check_delivery_on_correct_nodes(
-    s: mc::StateView,
+    s: mc::SystemHandle,
     nodes: usize,
     expect: &[String],
     ordered: bool,
 ) -> Result<(), String> {
     for node in 0..nodes {
-        let proc = node;
-        let Some(got) = s.system().read_locals(node.to_string(), proc.to_string()) else {
+        let Some(got) = s.read_locals(node.to_string(), "bcast") else {
             // node crashed
             continue;
         };
@@ -36,18 +39,16 @@ pub fn check_delivery_on_correct_nodes(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn check_someone_deliver(s: mc::StateView, nodes: usize) -> Option<usize> {
+pub fn check_someone_deliver(s: mc::SystemHandle, nodes: usize) -> Result<usize, String> {
     for node in 0..nodes {
-        let proc = node;
-        if s.system()
-            .read_locals(node.to_string(), proc.to_string())
+        if s.read_locals(node.to_string(), "bcast")
             .map(|v| !v.is_empty())
             .unwrap_or(false)
         {
-            return Some(node);
+            return Ok(node);
         }
     }
-    None
+    Err("no one deliver".into())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,10 +69,9 @@ pub fn check_depth(s: mc::StateView, max_depth: usize) -> Result<(), String> {
 
 pub fn check_locals_cnt(s: mc::StateView, nodes: usize, max_locals: usize) -> Result<(), String> {
     for node in 0..nodes {
-        let proc = node;
         let locals = s
             .system()
-            .read_locals(node.to_string(), proc.to_string())
+            .read_locals(node.to_string(), "bcast")
             .map(|v| v.len())
             .unwrap_or(0);
         if locals > max_locals {
@@ -82,4 +82,87 @@ pub fn check_locals_cnt(s: mc::StateView, nodes: usize, max_locals: usize) -> Re
         };
     }
     Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn check_casual_order(s: mc::SystemHandle, nodes: usize) -> Result<(), String> {
+    let mut checker = CausalChecker::new(nodes);
+    for log in s.log().iter() {
+        match log {
+            mc::LogEntry::ProcessSentLocalMessage(msg) => {
+                let node: usize = msg.process.node.parse().unwrap();
+                if msg.content != "connect" {
+                    checker.deliver(node, &msg.content)?;
+                }
+            }
+            mc::LogEntry::ProcessReceivedLocalMessage(msg) => {
+                let node: usize = msg.process.node.parse().unwrap();
+                if msg.content != "connect" {
+                    checker.send(node, &msg.content);
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn check_uniform_agreement(s: mc::SystemHandle, nodes: usize) -> Result<(), String> {
+    let mut messages = HashSet::new();
+    for log in s.log().iter() {
+        if let mc::LogEntry::ProcessSentLocalMessage(msg) = log {
+            if msg.content != "connect" {
+                messages.insert(msg.content.clone());
+            }
+        }
+    }
+    let messages = messages.into_iter().collect::<Vec<_>>();
+    check_delivery_on_correct_nodes(s, nodes, &messages, false)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn check_validity(s: mc::SystemHandle) -> Result<(), String> {
+    let mut messages: HashMap<String, HashSet<String>> = Default::default();
+    for log in s.log().iter() {
+        match log {
+            mc::LogEntry::NodeCrashed(e) => {
+                messages.remove(&e.node);
+            }
+            mc::LogEntry::ProcessReceivedLocalMessage(e) => {
+                if e.content != "connect" {
+                    let exists = !messages
+                        .entry(e.process.node.clone())
+                        .or_default()
+                        .insert(e.content.clone());
+                    assert!(!exists);
+                }
+            }
+            mc::LogEntry::ProcessSentLocalMessage(e) => {
+                messages
+                    .entry(e.process.node.clone())
+                    .or_default()
+                    .remove(&e.content);
+            }
+            _ => {}
+        }
+    }
+    for (node, e) in messages.into_iter() {
+        if !e.is_empty() {
+            return Err(format!(
+                "Validity violation: node {node} not delivered registered messages: {e:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn check_validity_and_agreement(s: mc::SystemHandle, nodes: usize) -> Result<(), String> {
+    check_uniform_agreement(s.clone(), nodes)?;
+    check_validity(s.clone())
 }

@@ -1,7 +1,6 @@
 use std::{
     cell::RefCell,
     collections::{btree_map::Entry, BTreeMap},
-    hash::{Hash, Hasher},
     rc::{Rc, Weak},
 };
 
@@ -11,15 +10,16 @@ use crate::{
         time::TimeSegment,
     },
     runtime::Runtime,
-    NetConfig,
+    util, NetConfig,
 };
 
 use super::{
     context::{Context, Guard},
     error::Error,
+    hash::HashContext,
     log::Log,
     net::{Network, NetworkHandle},
-    node::Node,
+    node::{Node, NodeRoleRegister},
     proc::{Address, ProcessHandle},
 };
 
@@ -31,16 +31,10 @@ pub type HashType = u64;
 
 struct SystemState {
     nodes: BTreeMap<String, Node>,
+    roles: NodeRoleRegister,
     net: Network,
     rt: Runtime,
     event_manager: EventManager,
-}
-
-impl Hash for SystemState {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.nodes.values().for_each(|n| n.hash(state));
-        self.event_manager.hash(state);
-    }
 }
 
 impl SystemState {
@@ -50,6 +44,7 @@ impl SystemState {
         let event_manager = EventManager::new(rt.handle(), driver);
         let sys_state = SystemState {
             nodes: Default::default(),
+            roles: Default::default(),
             net,
             rt,
             event_manager,
@@ -58,6 +53,13 @@ impl SystemState {
         let handle = SystemHandle(Rc::downgrade(&state_ref));
         state_ref.borrow().event_manager.set_system_handle(handle);
         state_ref
+    }
+
+    fn hash(&self) -> HashType {
+        let ctx = HashContext::new(&self.roles);
+        let nodes_hash = ctx.hash_nodes(self.nodes.values());
+        let events_hash = self.event_manager.hash(ctx);
+        util::hash::hash_list([nodes_hash, events_hash].into_iter())
     }
 }
 
@@ -85,12 +87,6 @@ impl System {
 #[derive(Clone)]
 pub struct SystemHandle(Weak<RefCell<SystemState>>);
 
-impl Hash for SystemHandle {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.state().borrow().hash(state);
-    }
-}
-
 impl SystemHandle {
     pub(crate) fn system_dropped(&self) -> bool {
         self.0.strong_count() == 0
@@ -110,10 +106,8 @@ impl SystemHandle {
             .proc(&addr.process)
     }
 
-    pub(crate) fn hash(&self) -> HashType {
-        let mut hasher = std::hash::DefaultHasher::new();
-        Hash::hash(&self, &mut hasher);
-        hasher.finish()
+    pub fn hash(&self) -> HashType {
+        self.state().borrow().hash()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -172,8 +166,30 @@ impl SystemHandle {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn add_node(&self, node: Node) -> Result<(), Error> {
-        if let Entry::Vacant(e) = self.state().borrow_mut().nodes.entry(node.name.clone()) {
+        let state = self.state();
+        let mut state = state.borrow_mut();
+        if let Entry::Vacant(e) = state.nodes.entry(node.name.clone()) {
             e.insert(node);
+            Ok(())
+        } else {
+            Err(Error::AlreadyExists)
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn add_node_with_role(&self, node: Node, role: impl Into<String>) -> Result<(), Error> {
+        let state = self.state();
+        let mut state = state.borrow_mut();
+        let name = node.name.clone();
+        let added = if let Entry::Vacant(e) = state.nodes.entry(node.name.clone()) {
+            e.insert(node);
+            true
+        } else {
+            false
+        };
+        if added {
+            state.roles.add(name, role);
             Ok(())
         } else {
             Err(Error::AlreadyExists)

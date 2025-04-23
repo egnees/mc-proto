@@ -30,3 +30,5 @@ pub use search::{
 };
 
 pub use tcp::{TcpError, TcpListener, TcpStream};
+
+pub use util::hash::hash_set;

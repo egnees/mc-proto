@@ -2,10 +2,7 @@ use crate::{sim::system::SystemHandle, StateView};
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub trait InvariantFn:
-    Fn(StateView) -> Result<(), String> + Send + Sync + Clone + 'static
-{
-}
+pub trait InvariantFn: Fn(StateView) -> Result<(), String> + Send + Sync + Clone + 'static {}
 
 impl<F> InvariantFn for F where
     F: Fn(StateView) -> Result<(), String> + Send + Sync + Clone + 'static
@@ -20,9 +17,9 @@ impl<F> PruneFn for F where F: Fn(StateView) -> bool + Send + Sync + Clone + 'st
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub trait GoalFn: Fn(StateView) -> bool + Send + Sync + Clone + 'static {}
+pub trait GoalFn: Fn(StateView) -> Result<(), String> + Send + Sync + Clone + 'static {}
 
-impl<F> GoalFn for F where F: Fn(StateView) -> bool + Send + Sync + Clone + 'static {}
+impl<F> GoalFn for F where F: Fn(StateView) -> Result<(), String> + Send + Sync + Clone + 'static {}
 
 ////////////////////////////////////////////////////////////////////////////////
 

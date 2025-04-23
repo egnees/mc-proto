@@ -3,13 +3,13 @@ use std::collections::{HashSet, VecDeque};
 use super::{
     config::SearchConfig,
     control::{GoalFn, InvariantFn, PruneFn},
-    error::{InvariantViolation, LivenessViolation, SearchErrorKind},
+    error::{AllPruned, InvariantViolation, LivenessViolation, SearchErrorKind},
     log::SearchLog,
     searcher::{CollectInfo, Searcher},
     state::{SearchState, StateTrace},
 };
 
-use crate::{sim::system::HashType, SearchError, StateView};
+use crate::{search::error::Cycled, sim::system::HashType, SearchError, StateView};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -35,6 +35,9 @@ impl Searcher for BfsSearcher {
         let mut log = SearchLog::new();
 
         let mut queue: VecDeque<StateTrace> = start.into_iter().collect();
+
+        let mut last_prune = None;
+        let mut last_already_meet = None;
 
         let mut goal_achieved = false;
         while let Some(v) = queue.pop_front() {
@@ -62,27 +65,30 @@ impl Searcher for BfsSearcher {
             })?;
 
             // check goal achieved
-            if goal(view.clone()) {
+            let goal_check_result = goal(view.clone());
+            if goal_check_result.is_ok() {
                 goal_achieved = true;
                 continue;
             }
 
             // check prune
             if prune(view) {
+                last_prune = Some(AllPruned::new(v.clone(), system.log()));
                 continue;
             }
 
             // error if no transitions available
             let steps = state.gen.borrow().steps(system.clone(), &self.cfg);
             if steps.is_empty() {
-                let err = LivenessViolation::this_one(v, system.log());
+                let err = LivenessViolation::new(v, system.log(), goal_check_result.unwrap_err());
                 let err = SearchErrorKind::LivenessViolation(err);
                 let err = SearchError::new(err, &log);
                 return Err(err);
             }
 
-            // check depth restriction
-            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) || already_meet {
+            // check already meet condition
+            if already_meet {
+                last_already_meet = Some(Cycled::new(v, system.log(), h));
                 continue;
             }
 
@@ -99,9 +105,13 @@ impl Searcher for BfsSearcher {
 
         if goal_achieved {
             Ok(log)
+        } else if let Some(last_prune) = last_prune {
+            let err = SearchErrorKind::AllPruned(last_prune);
+            let err = SearchError::new(err, &log);
+            Err(err)
         } else {
-            let kind = SearchErrorKind::LivenessViolation(LivenessViolation::no_one());
-            let err = SearchError::new(kind, &log);
+            let err = SearchErrorKind::Cycled(last_already_meet.unwrap());
+            let err = SearchError::new(err, &log);
             Err(err)
         }
     }
@@ -142,19 +152,14 @@ impl Searcher for BfsSearcher {
                 SearchError::new(kind, &log)
             })?;
 
+            // check prune and already meet condition
+            if prune(view.clone()) || already_meet {
+                continue;
+            }
+
             // check goal achieved
-            if goal(view.clone()) {
+            if goal(view).is_ok() {
                 collected.push(v);
-                continue;
-            }
-
-            // check prune
-            if prune(view) {
-                continue;
-            }
-
-            // check depth restriction and already meet condition
-            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) || already_meet {
                 continue;
             }
 

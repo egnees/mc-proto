@@ -1,5 +1,6 @@
 pub mod context;
 pub mod error;
+pub mod hash;
 pub mod log;
 pub mod net;
 pub mod node;

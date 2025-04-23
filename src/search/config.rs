@@ -3,7 +3,6 @@ pub struct SearchConfig {
     pub max_node_faults: Option<usize>,
     pub max_disk_faults: Option<usize>,
     pub max_msg_drops: Option<usize>,
-    pub max_depth: Option<usize>,
 }
 
 impl SearchConfig {
@@ -30,7 +29,6 @@ impl SearchConfig {
             max_node_faults: None,
             max_disk_faults: None,
             max_msg_drops: None,
-            max_depth: None,
         }
     }
 }
@@ -42,7 +40,6 @@ pub struct SearchConfigBuilder {
     max_node_faults: Option<usize>,
     max_disk_faults: Option<usize>,
     max_msg_drops: Option<usize>,
-    max_depth: Option<usize>,
 }
 
 impl SearchConfigBuilder {
@@ -65,11 +62,6 @@ impl SearchConfigBuilder {
         self
     }
 
-    pub fn max_depth(mut self, max_depth: usize) -> Self {
-        self.max_depth = Some(max_depth);
-        self
-    }
-
     pub fn no_faults() -> Self {
         Self::new().max_node_faults(0).max_disk_faults(0)
     }
@@ -83,7 +75,6 @@ impl SearchConfigBuilder {
             max_node_faults: self.max_node_faults,
             max_disk_faults: self.max_disk_faults,
             max_msg_drops: self.max_msg_drops,
-            max_depth: self.max_depth,
         }
     }
 }

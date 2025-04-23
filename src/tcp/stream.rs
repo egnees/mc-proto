@@ -48,6 +48,16 @@ async fn send_and_wait_delivery(
 ////////////////////////////////////////////////////////////////////////////////
 
 impl TcpStream {
+    pub fn from(&self) -> &Address {
+        &self.from
+    }
+
+    pub fn to(&self) -> &Address {
+        &self.to
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
     fn packet(&self, kind: TcpPacketKind) -> TcpPacket {
         TcpPacket::new(self.id, kind)
     }

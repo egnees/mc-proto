@@ -103,13 +103,18 @@ fn build_system(sys: SystemHandle) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn goal(sys: StateView) -> bool {
-    sys.system().pending_events() == 0
+fn goal(sys: StateView) -> Result<(), String> {
+    if sys.system().pending_events() == 0
         && sys
             .system()
             .read_locals("node1", "sender")
             .map(|v| !v.is_empty())
             .unwrap_or(false)
+    {
+        Ok(())
+    } else {
+        Err("error".into())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,10 @@
-use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc, time::Duration};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
+    rc::Rc,
+    time::Duration,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -23,7 +29,7 @@ async fn listen_to_durable(to: mc::Address) -> mc::TcpStream {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async fn connect(to: mc::Address) -> mc::TcpStream {
+pub async fn connect(to: mc::Address) -> mc::TcpStream {
     tokio::select! {
         stream = connect_durable(to.clone()) => stream,
         stream = listen_to_durable(to.clone()) => stream,
@@ -71,10 +77,102 @@ impl Connections {
 
 impl Hash for Connections {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let mut keys = self.0.borrow().con.keys().cloned().collect::<Vec<_>>();
-        keys.sort();
-        for addr in keys {
-            addr.hash(state);
+        self.0.borrow().con.len().hash(state);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct Broadcast {
+    con: Connections,
+}
+
+impl Broadcast {
+    fn new(proc: Vec<mc::Address>, me: usize) -> Self {
+        let con = Connections::new(proc, me);
+        Self { con }
+    }
+}
+
+impl mc::Process for Broadcast {
+    fn on_message(&mut self, _from: mc::Address, _content: String) {
+        unreachable!()
+    }
+
+    fn on_local_message(&mut self, content: String) {
+        if content == "connect" {
+            self.con.make_connections();
         }
     }
+
+    fn hash(&self) -> mc::HashType {
+        let mut hasher = DefaultHasher::new();
+        self.con.hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+fn build(s: mc::SystemHandle, nodes: usize) {
+    let addrs = (0..nodes)
+        .map(|node| format!("{node}:bcast").into())
+        .collect::<Vec<_>>();
+    for node in 0..nodes {
+        let bcast = Broadcast::new(addrs.clone(), node);
+        let mut node = mc::Node::new(node.to_string());
+        node.add_proc("bcast", bcast).unwrap();
+        s.add_node_with_role(node, "bcast").unwrap();
+    }
+    s.network()
+        .set_delays(Duration::from_millis(100), Duration::from_millis(200))
+        .unwrap();
+    (0..nodes).for_each(|node| {
+        s.send_local(&format!("{node}:bcast").into(), "connect")
+            .unwrap()
+    });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+fn made_connections(s: mc::StateView) -> Result<(), String> {
+    if s.system().pending_events() == 0 {
+        Ok(())
+    } else {
+        Err("There are still pending events".into())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn establish_connections_bfs() {
+    let nodes = 3;
+    let cfg = mc::SearchConfig::no_faults_no_drops();
+    let searcher = mc::BfsSearcher::new(cfg);
+    let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
+    let log = checker
+        .collect(|_| Ok(()), |_| false, made_connections, searcher)
+        .unwrap();
+    println!("{}", log);
+    println!("collected={}", checker.states_count());
+    checker.for_each(|s| println!("{}", s.log()));
+    assert_eq!(checker.states_count(), 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn establish_connections_dfs() {
+    let nodes = 3;
+    let cfg = mc::SearchConfig::no_faults_no_drops();
+    let searcher = mc::DfsSearcher::new(cfg);
+    let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
+    let log = checker
+        .collect(|_| Ok(()), |_| false, made_connections, searcher)
+        .unwrap();
+    println!("{}", log);
+    println!("collected={}", checker.states_count());
+    checker.for_each(|s| println!("{}", s.log()));
+    assert_eq!(checker.states_count(), 1);
 }

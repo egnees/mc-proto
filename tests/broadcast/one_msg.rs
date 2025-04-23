@@ -1,7 +1,7 @@
 use crate::broadcast::check::check_depth;
 
 use super::{
-    check::{check_delivery_on_correct_nodes, check_locals_cnt, check_someone_deliver},
+    check::{check_locals_cnt, check_someone_deliver, check_validity_and_agreement},
     common::{send_local, BuildFn},
 };
 
@@ -25,8 +25,8 @@ pub fn no_drops(build: impl BuildFn) -> Result<mc::SearchLog, mc::SearchError> {
     checker.check(
         |_| Ok(()),
         // prune: we must find state with depth <= 10 which delivers message
-        |s| s.depth() > 10,
-        move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
+        |_| false,
+        move |s| check_validity_and_agreement(s.system(), nodes),
         searcher,
     )
 }
@@ -53,7 +53,10 @@ pub fn node_crash_after_someone_delivery(
     let collect_log = checker.collect(
         |s| check_depth(s, 20),
         |_| false,
-        move |s| check_someone_deliver(s, nodes).is_some(),
+        move |s| {
+            check_someone_deliver(s.system(), nodes)?;
+            Ok(())
+        },
         searcher,
     )?;
 
@@ -65,7 +68,7 @@ pub fn node_crash_after_someone_delivery(
     checker.check(
         move |s| check_depth(s, 20),
         |_| false,
-        move |s| check_delivery_on_correct_nodes(s, nodes, &messages, false).is_ok(),
+        move |s| check_validity_and_agreement(s.system(), nodes),
         searcher,
     )
 }
@@ -90,8 +93,8 @@ pub fn udp_drops_bfs(build: impl BuildFn) -> Result<mc::SearchLog, mc::SearchErr
     checker.check(
         |_| Ok(()),
         // prune: we must find state with depth <= 20 which delivers message
-        |s| s.depth() > 20,
-        move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
+        |_| false,
+        move |s| check_validity_and_agreement(s.system(), nodes),
         searcher,
     )
 }
@@ -116,8 +119,8 @@ pub fn udp_drops_dfs(build: impl BuildFn) -> Result<mc::SearchLog, mc::SearchErr
     checker.check(
         |_| Ok(()),
         // prune: we must find state with depth <= 20 which delivers message
-        |s| s.depth() > 20,
-        move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
+        |_| false,
+        move |s| check_validity_and_agreement(s.system(), nodes),
         searcher,
     )
 }
@@ -144,8 +147,8 @@ pub fn no_drops_no_faults_check_no_duplications(
     checker.check(
         move |s| check_locals_cnt(s, nodes, 1),
         // prune: we must find state with depth <= 10 which delivers message
-        |s| s.depth() > 10,
-        move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
+        |_| false,
+        move |s| check_validity_and_agreement(s.system(), nodes),
         searcher,
     )
 }

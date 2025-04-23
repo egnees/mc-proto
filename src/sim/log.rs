@@ -269,10 +269,14 @@ impl Display for ProcessInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} ==== {:<12?}",
-            self.time,
-            self.process.to_string(),
-            self.content
+            "{}",
+            format!(
+                "{} {:>12} ==== {:<12?}",
+                self.time,
+                self.process.to_string(),
+                self.content
+            )
+            .purple()
         )
     }
 }

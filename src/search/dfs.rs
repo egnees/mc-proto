@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use super::{
     config::SearchConfig,
     control::{GoalFn, InvariantFn, PruneFn},
-    error::{InvariantViolation, LivenessViolation, SearchError, SearchErrorKind},
+    error::{
+        AllPruned, Cycled, InvariantViolation, LivenessViolation, SearchError, SearchErrorKind,
+    },
     log::SearchLog,
     searcher::{CollectInfo, Searcher},
     state::{SearchState, StateTrace},
@@ -36,6 +38,10 @@ impl Searcher for DfsSearcher {
 
         let mut goal_achieved = false;
 
+        let mut last_prune = None;
+
+        let mut last_already_meet = None;
+
         while let Some(v) = start.pop() {
             log.visited_total += 1;
             let state = SearchState::from_trace(&v).map_err(|kind| SearchError::new(kind, &log))?;
@@ -61,27 +67,30 @@ impl Searcher for DfsSearcher {
             })?;
 
             // check goal achieved
-            if goal(view.clone()) {
+            let goal_check_result = goal(view.clone());
+            if goal_check_result.is_ok() {
                 goal_achieved = true;
                 continue;
             }
 
             // check prune
             if prune(view) {
+                last_prune = Some(AllPruned::new(v.clone(), system.log()));
                 continue;
             }
 
             // error if no transitions available
             let steps = state.gen.borrow().steps(system.clone(), &self.cfg);
             if steps.is_empty() {
-                let err = LivenessViolation::this_one(v, system.log());
+                let err = LivenessViolation::new(v, system.log(), goal_check_result.unwrap_err());
                 let err = SearchErrorKind::LivenessViolation(err);
                 let err = SearchError::new(err, &log);
                 return Err(err);
             }
 
-            // check depth restriction or already meet condition
-            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) || already_meet {
+            // check already meet condition
+            if already_meet {
+                last_already_meet = Some(Cycled::new(v, system.log(), h));
                 continue;
             }
 
@@ -98,9 +107,12 @@ impl Searcher for DfsSearcher {
 
         if goal_achieved {
             Ok(log)
+        } else if let Some(last_prune) = last_prune {
+            let err = SearchErrorKind::AllPruned(last_prune);
+            let err = SearchError::new(err, &log);
+            Err(err)
         } else {
-            let err = LivenessViolation::no_one();
-            let err = SearchErrorKind::LivenessViolation(err);
+            let err = SearchErrorKind::Cycled(last_already_meet.unwrap());
             let err = SearchError::new(err, &log);
             Err(err)
         }
@@ -140,19 +152,14 @@ impl Searcher for DfsSearcher {
                 SearchError::new(kind, &log)
             })?;
 
+            // check prune and already meet condition
+            if prune(view.clone()) || already_meet {
+                continue;
+            }
+
             // check goal achieved
-            if goal(view.clone()) {
+            if goal(view.clone()).is_ok() {
                 collected.push(v);
-                continue;
-            }
-
-            // check prune
-            if prune(view) {
-                continue;
-            }
-
-            // check depth condition or already meet condition
-            if v.depth() >= self.cfg.max_depth.unwrap_or(usize::MAX) || already_meet {
                 continue;
             }
 

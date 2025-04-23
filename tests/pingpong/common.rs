@@ -39,18 +39,22 @@ pub fn make_goal(locals: usize) -> impl mc::GoalFn {
     move |s: mc::StateView| {
         let s = s.system();
         let Some(mut ping_locals) = s.read_locals("n1", "ping") else {
-            return false;
+            return Err("No such address n1:ping".into());
         };
         ping_locals.sort();
 
         let Some(mut pong_locals) = s.read_locals("n2", "pong") else {
-            return false;
+            return Err("No such address n2:pong".into());
         };
         pong_locals.sort();
 
         let ref_locals = (0..locals).map(|n| n.to_string()).collect::<Vec<_>>();
 
-        ping_locals == ref_locals && pong_locals == ref_locals
+        if ping_locals == ref_locals && pong_locals == ref_locals {
+            Ok(())
+        } else {
+            Err("Goal not achieved".into())
+        }
     }
 }
 

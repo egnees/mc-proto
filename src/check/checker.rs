@@ -11,22 +11,15 @@ use crate::{
     SearchError,
 };
 
-use crate::sim::system::HashType;
-
 use super::search::ApplyFnWrapper;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct ModelChecker {
     states: Vec<StateTrace>,
-    visited: HashSet<HashType>,
 }
 
 impl ModelChecker {
-    pub fn visited(&self) -> &HashSet<HashType> {
-        &self.visited
-    }
-
     pub fn new_with_build(build: impl ApplyFn) -> Self {
         let mut start = StateTrace::new();
         let apply_fn = ApplyFnWrapper::new(build);
@@ -34,24 +27,18 @@ impl ModelChecker {
         start.add_step(step);
         Self {
             states: vec![start],
-            visited: HashSet::default(),
         }
     }
 
     pub fn check(
-        mut self,
+        self,
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
         mut searcher: impl Searcher,
     ) -> Result<SearchLog, SearchError> {
-        searcher.check(
-            self.states.clone(),
-            &mut self.visited,
-            invariant,
-            prune,
-            goal,
-        )
+        let mut visited = HashSet::default();
+        searcher.check(self.states.clone(), &mut visited, invariant, prune, goal)
     }
 
     pub fn collect(
@@ -63,7 +50,8 @@ impl ModelChecker {
     ) -> Result<SearchLog, SearchError> {
         let mut states = Vec::default();
         std::mem::swap(&mut states, &mut self.states);
-        let collect_info = searcher.collect(states, &mut self.visited, invariant, prune, goal)?;
+        let mut visited = HashSet::default();
+        let collect_info = searcher.collect(states, &mut visited, invariant, prune, goal)?;
         self.states = collect_info.states;
         Ok(collect_info.log)
     }

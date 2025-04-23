@@ -2,7 +2,6 @@ use std::{
     cell::RefCell,
     collections::{BTreeSet, HashMap},
     future::Future,
-    hash::Hash,
     rc::{Rc, Weak},
     time::Duration,
 };
@@ -12,6 +11,7 @@ use crate::{
     runtime::{JoinHandle, RuntimeHandle},
     sim::{
         context::{Context, Guard},
+        hash::HashContext,
         log::{
             FutureFellAsleep, FutureWokeUp, Log, LogEntry, NodeCrashed, ProcessInfo,
             ProcessReceivedLocalMessage, ProcessSentLocalMessage, TcpMessageDropped,
@@ -62,6 +62,12 @@ pub struct EventManagerState {
 }
 
 impl EventManagerState {
+    fn hash(&self, ctx: HashContext) -> HashType {
+        ctx.hash_events(self.unhandled_events.iter().map(|e| &self.events[*e]))
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
     fn inc_udp_msg_id(&mut self) -> usize {
         let res = self.next_udp_msg_id;
         self.next_udp_msg_id += 1;
@@ -167,6 +173,10 @@ impl EventManager {
 
     pub fn set_system_handle(&self, handle: SystemHandle) {
         self.0.borrow_mut().system = Some(handle);
+    }
+
+    pub fn hash(&self, ctx: HashContext) -> HashType {
+        self.0.borrow().hash(ctx)
     }
 }
 
@@ -399,6 +409,10 @@ impl EventManagerHandle {
             let event = state.events[event_id].cloned();
 
             // update time
+
+            assert!(state.time.from <= outcome.time.from);
+            assert!(state.time.to <= outcome.time.to);
+
             state.time = outcome.time;
 
             // return event
@@ -432,7 +446,7 @@ impl EventManagerHandle {
             from: msg.from.address(),
             to: msg.to.address(),
             content: msg.content.clone(),
-            time: event.time,
+            time: state.time,
         };
         let log_entry = LogEntry::UdpMessageDropped(dropped_entry);
         state.event_log.add_entry(log_entry);
@@ -453,7 +467,7 @@ impl EventManagerHandle {
                 from: msg.from.address(),
                 to: msg.to.address(),
                 content: msg.content.clone(),
-                time: event.time,
+                time: state.time,
             };
             let log_entry = LogEntry::UdpMessageReceived(received_entry);
             state.event_log.add_entry(log_entry);
@@ -485,7 +499,7 @@ impl EventManagerHandle {
             let wakeup_entry = FutureWokeUp {
                 tag: timer.timer_id,
                 proc: timer.proc.address(),
-                time: event.time,
+                time: state.time,
             };
             let log_entry = LogEntry::FutureWokeUp(wakeup_entry);
             state.event_log.add_entry(log_entry);
@@ -521,19 +535,6 @@ impl EventManagerHandle {
         // store local
         let _guard = self.guard(proc.clone());
         proc.proc().borrow_mut().on_local_message(content);
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-impl Hash for EventManager {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let manager_state = self.0.borrow();
-        manager_state
-            .unhandled_events
-            .iter()
-            .map(|e| &manager_state.events[*e])
-            .for_each(|e| e.hash(state));
     }
 }
 
