@@ -1,4 +1,10 @@
-use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc, time::Duration};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
+    rc::Rc,
+    time::Duration,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -78,10 +84,6 @@ impl Hash for Connections {
         }
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-
-use std::hash::{DefaultHasher, Hasher};
 
 ////////////////////////////////////////////////////////////////////////////////
 
