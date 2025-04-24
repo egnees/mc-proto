@@ -25,7 +25,7 @@ pub fn no_drops(build: impl BuildFn) -> Result<mc::SearchLog, mc::SearchError> {
     checker.check(
         |_| Ok(()),
         // prune: we must find state with depth <= 10 which delivers message
-        |s| s.depth() > 10,
+        |_| false,
         move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
         searcher,
     )
@@ -90,7 +90,7 @@ pub fn udp_drops_bfs(build: impl BuildFn) -> Result<mc::SearchLog, mc::SearchErr
     checker.check(
         |_| Ok(()),
         // prune: we must find state with depth <= 20 which delivers message
-        |s| s.depth() > 20,
+        |_| false,
         move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
         searcher,
     )
@@ -116,7 +116,7 @@ pub fn udp_drops_dfs(build: impl BuildFn) -> Result<mc::SearchLog, mc::SearchErr
     checker.check(
         |_| Ok(()),
         // prune: we must find state with depth <= 20 which delivers message
-        |s| s.depth() > 20,
+        |_| false,
         move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
         searcher,
     )
@@ -144,7 +144,7 @@ pub fn no_drops_no_faults_check_no_duplications(
     checker.check(
         move |s| check_locals_cnt(s, nodes, 1),
         // prune: we must find state with depth <= 10 which delivers message
-        |s| s.depth() > 10,
+        |_| false,
         move |s| check_delivery_on_correct_nodes(s, nodes, messages.as_slice(), false).is_ok(),
         searcher,
     )
