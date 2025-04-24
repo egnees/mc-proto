@@ -205,7 +205,6 @@ mod tests {
             .max_node_faults(1)
             .max_disk_faults(0)
             .max_msg_drops(0)
-            .max_depth(20)
             .build();
         let searcher = mc::DfsSearcher::new(cfg);
         let checker = mc::ModelChecker::new_with_build(build);
@@ -236,16 +235,17 @@ mod tests {
         );
         let cfg = mc::SearchConfigBuilder::no_faults()
             .max_msg_drops(0)
-            .max_depth(20)
             .build();
         let searcher = mc::BfsSearcher::new(cfg.clone());
         let mut checker = mc::ModelChecker::new_with_build(build);
-        let collected = checker
+        let log = checker
             .collect(invariant.clone(), prune.clone(), goal, searcher)
             .unwrap();
-        assert!(collected.visited_unique > 0);
-        println!("collected = '{collected}'");
+        assert!(log.visited_unique > 0);
+        println!("{}", log);
+        println!("collected = {}", checker.states_count());
         checker.apply(|s| s.crash_node("n2").unwrap());
+        checker.for_each(|s| println!("{}", s.log()));
         let searcher = mc::BfsSearcher::new(cfg);
         let goal = make_goal(locals);
         let result = checker.check(invariant, prune, goal, searcher);

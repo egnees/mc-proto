@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{btree_map::Entry, BTreeMap};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -23,7 +23,7 @@ impl TcpPacketKind {
 
 pub struct ReadyTcpPacketFilter<M> {
     // (stream, dir) -> tcp_packet_id
-    packets: HashMap<(usize, bool), (usize, M)>,
+    packets: BTreeMap<(usize, bool), (usize, M)>,
 }
 
 impl<M> ReadyTcpPacketFilter<M> {
@@ -128,6 +128,45 @@ mod tests {
             .collect::<Vec<_>>();
         packets.sort();
         assert_eq!(packets, [0, 3, 6, 7]);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    fn consistent() {
+        let get = || {
+            let mut filter = ReadyTcpPacketFilter::new();
+            let mut add = |id, stream, dir| {
+                filter.add(&TcpPacketKind::new(id, stream, dir), ());
+            };
+            add(1, 0, false);
+            add(2, 0, false);
+            add(4, 0, true);
+            add(6, 1, true);
+            add(7, 2, false);
+            add(5, 0, true);
+            add(3, 0, true);
+            add(0, 0, false);
+            add(10, 2, false);
+            add(8, 2, false);
+            add(9, 1, true);
+            filter
+                .ready_packets()
+                .map(|(id, _)| *id)
+                .collect::<Vec<_>>()
+        };
+
+        let r = get();
+        {
+            let mut r = r.clone();
+            r.sort();
+            assert_eq!(r, [0, 3, 6, 7]);
+        }
+
+        for _ in 0..100 {
+            let cur = get();
+            assert_eq!(cur, r);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////

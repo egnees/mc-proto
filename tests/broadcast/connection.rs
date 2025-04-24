@@ -23,7 +23,7 @@ async fn listen_to_durable(to: mc::Address) -> mc::TcpStream {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async fn connect(to: mc::Address) -> mc::TcpStream {
+pub async fn connect(to: mc::Address) -> mc::TcpStream {
     tokio::select! {
         stream = connect_durable(to.clone()) => stream,
         stream = listen_to_durable(to.clone()) => stream,

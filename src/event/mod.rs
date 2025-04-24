@@ -36,7 +36,6 @@ impl Event {
 
 impl Hash for Event {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.time.hash(state);
         self.info.hash(state);
     }
 }

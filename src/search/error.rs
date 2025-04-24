@@ -55,23 +55,13 @@ impl Display for InvariantViolation {
 
 #[derive(Clone)]
 pub struct LivenessViolation {
-    pub trace: Option<StateTrace>,
-    pub log: Option<Log>,
+    pub trace: StateTrace,
+    pub log: Log,
 }
 
 impl LivenessViolation {
-    pub fn no_one() -> Self {
-        Self {
-            trace: None,
-            log: None,
-        }
-    }
-
-    pub fn this_one(trace: StateTrace, log: Log) -> Self {
-        Self {
-            trace: Some(trace),
-            log: Some(log),
-        }
+    pub fn new(trace: StateTrace, log: Log) -> Self {
+        Self { trace, log }
     }
 }
 
@@ -84,15 +74,79 @@ impl Debug for LivenessViolation {
 impl Display for LivenessViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Liveness violation: ")?;
-        if self.trace.is_some() {
-            writeln!(f, "found terminal state which not achieves goal.")?;
-            writeln!(f, "======== TRACE ========")?;
-            write!(f, "{}", self.trace.as_ref().unwrap())?;
-            writeln!(f, "========= LOG =========")?;
-            write!(f, "{}", self.log.as_ref().unwrap())?;
-        } else {
-            write!(f, "not found states which achieve goal.")?;
+        writeln!(f, "found terminal state which not achieves goal.")?;
+        writeln!(f, "======== TRACE ========")?;
+        write!(f, "{}", self.trace)?;
+        writeln!(f, "========= LOG =========")?;
+        write!(f, "{}", self.log)?;
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct AllPruned {
+    pub last_trace: StateTrace,
+    pub last_log: Log,
+}
+
+impl AllPruned {
+    pub fn new(last_trace: StateTrace, last_log: Log) -> Self {
+        Self {
+            last_trace,
+            last_log,
         }
+    }
+}
+
+impl Debug for AllPruned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl Display for AllPruned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Pruned all states and did not find state achieving goal."
+        )?;
+        writeln!(f, "======== LAST PRUNED TRACE ========")?;
+        write!(f, "{}", self.last_trace)?;
+        writeln!(f, "========= LAST PRUNED LOG =========")?;
+        write!(f, "{}", self.last_log)?;
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct Cycled {
+    pub trace: StateTrace,
+    pub log: Log,
+}
+
+impl Cycled {
+    pub fn new(trace: StateTrace, log: Log) -> Self {
+        Self { trace, log }
+    }
+}
+
+impl Debug for Cycled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl Display for Cycled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Found cycle which is impossible to get out of.")?;
+        writeln!(f, "======== TRACE ========")?;
+        write!(f, "{}", self.trace)?;
+        writeln!(f, "========= LOG =========")?;
+        write!(f, "{}", self.log)?;
         Ok(())
     }
 }
@@ -103,7 +157,9 @@ impl Display for LivenessViolation {
 pub enum SearchErrorKind {
     InvariantViolation(InvariantViolation),
     LivenessViolation(LivenessViolation),
+    AllPruned(AllPruned),
     ProcessPanic(ProcessPanic),
+    Cycled(Cycled),
 }
 
 impl Display for SearchErrorKind {
@@ -116,6 +172,8 @@ impl Display for SearchErrorKind {
                 write!(f, "{}", liveness_violation)
             }
             SearchErrorKind::ProcessPanic(p) => write!(f, "{}", p),
+            SearchErrorKind::AllPruned(err) => write!(f, "{}", err),
+            SearchErrorKind::Cycled(cycled) => write!(f, "{}", cycled),
         }
     }
 }

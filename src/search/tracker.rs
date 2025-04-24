@@ -46,8 +46,8 @@ pub struct Tracker<T: Endpoint> {
 }
 
 impl<T: Endpoint> Tracker<T> {
-    pub fn add(&mut self, from: T, to: T, tag: usize) {
-        let segment = EventTimespan::new(from, to, tag);
+    pub fn add(&mut self, from: T, to: T, id: usize) {
+        let segment = EventTimespan::new(from, to, id);
         self.segments.push(segment);
         self.segments.sort();
     }
