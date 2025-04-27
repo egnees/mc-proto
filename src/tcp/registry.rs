@@ -2,7 +2,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{util::trigger::Trigger, Address};
 
-use super::{error::TcpError, packet::TcpPacket, stream::TcpStream};
+use super::{
+    error::TcpError,
+    packet::TcpPacket,
+    stream::{TcpSender, TcpStream},
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -26,7 +30,7 @@ pub trait TcpRegistry {
         on_listen: Trigger,
     ) -> Result<(), TcpError>;
 
-    fn emit_disconnect(&mut self, sender: &mut TcpStream);
+    fn emit_disconnect(&mut self, sender: &mut TcpSender);
 
     ////////////////////////////////////////////////////////////////////////////////
 

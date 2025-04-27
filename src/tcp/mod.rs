@@ -9,7 +9,7 @@ pub mod stream;
 
 pub use error::TcpError;
 pub use listen::TcpListener;
-pub use stream::TcpStream;
+pub use stream::{TcpReceiver, TcpSender, TcpStream};
 
 ////////////////////////////////////////////////////////////////////////////////
 

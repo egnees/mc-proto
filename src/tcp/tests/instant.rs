@@ -6,6 +6,7 @@ use tokio::task::LocalSet;
 use crate::{
     runtime::Runtime,
     sim::proc::{ProcessHandle, ProcessState},
+    tcp::stream::TcpSender,
     util::trigger::{make_trigger, Trigger},
     Address, HashType, Process,
 };
@@ -69,12 +70,12 @@ impl TcpRegistry for InstantTcpRegister {
         self.manager.listen_to(from, to, on_listen)
     }
 
-    fn emit_disconnect(&mut self, stream: &mut TcpStream) {
+    fn emit_disconnect(&mut self, sender: &mut TcpSender) {
         let (_, trigger) = make_trigger();
         let _ = self.emit_packet(
-            &stream.from,
-            &stream.to,
-            &TcpPacket::new(stream.id, TcpPacketKind::Disconnect()),
+            &sender.me,
+            &sender.other,
+            &TcpPacket::new(sender.stream_id, TcpPacketKind::Disconnect()),
             trigger,
         );
     }
@@ -128,7 +129,7 @@ async fn basic() {
     rt.spawn_local({
         let reg = reg.clone();
         async move {
-            let mut stream = TcpStream::connect_addr(a2, a1, reg.clone()).await.unwrap();
+            let stream = TcpStream::connect_addr(a2, a1, reg.clone()).await.unwrap();
             let bytes = stream.send("hello".as_bytes()).await.unwrap();
             assert_eq!(bytes, "hello".len());
         }
@@ -216,7 +217,7 @@ async fn symmetric_connection() {
         }
     });
     rt.spawn_local(async move {
-        let mut stream = make_connection_with_retry(a2, a1, reg).await;
+        let stream = make_connection_with_retry(a2, a1, reg).await;
         let send_bytes = stream.send("hello".as_bytes()).await.unwrap();
         assert_eq!(send_bytes, "hello".len());
     });

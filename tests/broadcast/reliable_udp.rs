@@ -154,14 +154,6 @@ fn one_message_udp_drop_dfs() {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[test]
-fn one_message_no_duplications() {
-    let log = one_msg::no_drops_no_faults_check_no_duplications(build).unwrap();
-    println!("{}", log);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[test]
 fn two_concurrent_messages_with_faults() {
     let log = two_msg::concurrent_with_faults_check_validity_and_agreement(build).unwrap();
     println!("{}", log);

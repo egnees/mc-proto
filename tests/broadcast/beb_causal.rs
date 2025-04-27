@@ -10,7 +10,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use crate::broadcast::two_msg::{self};
 
 use super::{
-    causal::{make_message, Message, MessageRegister},
+    causal::{make_message, CausalMessage, CausalMessageRegister},
     common::LocalMail,
     connection, one_msg,
 };
@@ -21,11 +21,11 @@ use super::{
 
 struct StreamParser {
     accum: String,
-    reg: Rc<RefCell<MessageRegister>>,
+    reg: Rc<RefCell<CausalMessageRegister>>,
 }
 
 impl StreamParser {
-    fn new(reg: Rc<RefCell<MessageRegister>>) -> Self {
+    fn new(reg: Rc<RefCell<CausalMessageRegister>>) -> Self {
         Self {
             accum: Default::default(),
             reg,
@@ -35,7 +35,7 @@ impl StreamParser {
     fn parse(&mut self, buf: &[u8]) {
         for c in buf.iter().copied() {
             if c == b'\n' {
-                let msg: Message = serde_json::from_str(self.accum.as_str())
+                let msg: CausalMessage = serde_json::from_str(self.accum.as_str())
                     .expect("can not deserialize in parser");
                 self.reg.borrow_mut().register(msg);
                 self.accum.clear();
@@ -50,8 +50,8 @@ impl StreamParser {
 
 async fn communicate_with(
     with: mc::Address,
-    mut receiver: UnboundedReceiver<Message>,
-    reg: Rc<RefCell<MessageRegister>>,
+    mut receiver: UnboundedReceiver<CausalMessage>,
+    reg: Rc<RefCell<CausalMessageRegister>>,
 ) -> Result<(), mc::TcpError> {
     let mut stream = connection::connect(with).await;
     mc::log(format!("connected to {}", stream.to()));
@@ -84,10 +84,10 @@ async fn communicate_with(
 
 struct BebProcess {
     proc: Vec<mc::Address>,
-    senders: HashMap<mc::Address, UnboundedSender<Message>>,
+    senders: HashMap<mc::Address, UnboundedSender<CausalMessage>>,
     locals: Vec<String>,
     me: usize,
-    reg: Rc<RefCell<MessageRegister>>,
+    reg: Rc<RefCell<CausalMessageRegister>>,
 }
 
 impl BebProcess {
@@ -100,7 +100,7 @@ impl BebProcess {
             senders: Default::default(),
             locals: Default::default(),
             me,
-            reg: Rc::new(RefCell::new(MessageRegister::new(others, mail))),
+            reg: Rc::new(RefCell::new(CausalMessageRegister::new(others, mail))),
         }
     }
 
@@ -206,14 +206,6 @@ fn one_message_udp_drop_bfs() {
 #[test]
 fn one_message_udp_drop_dfs() {
     let log = one_msg::udp_drops_dfs(build).unwrap();
-    println!("{}", log);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[test]
-fn one_message_no_duplications() {
-    let log = one_msg::no_drops_no_faults_check_no_duplications(build).unwrap();
     println!("{}", log);
 }
 

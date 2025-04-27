@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     sim::context::Context,
+    spawn,
     util::{self, trigger::make_trigger},
     Address,
 };
@@ -15,13 +16,8 @@ use super::{
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpStream {
-    pub(crate) id: usize,
-    registry: Rc<RefCell<dyn TcpRegistry>>,
-    pub(crate) from: Address,
-    pub(crate) to: Address,
-    pub(crate) sender: Rc<util::append::Sender>,
-    receiver: util::append::Receiver,
-    connected: bool,
+    pub(crate) sender: TcpSender,
+    pub(crate) receiver: TcpReceiver,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,20 +43,34 @@ async fn send_and_wait_delivery(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl TcpStream {
-    pub fn from(&self) -> &Address {
-        &self.from
-    }
+pub struct TcpSender {
+    pub(crate) stream_id: usize,
+    registry: Rc<RefCell<dyn TcpRegistry>>,
+    pub(crate) me: Address,
+    pub(crate) other: Address,
+    pub(crate) sender: Rc<util::append::Sender>,
+    connected: bool,
+}
 
-    pub fn to(&self) -> &Address {
-        &self.to
+impl TcpSender {
+    fn new(
+        stream_id: usize,
+        registry: Rc<RefCell<dyn TcpRegistry>>,
+        me: Address,
+        other: Address,
+        sender: Rc<util::append::Sender>,
+    ) -> Self {
+        Self {
+            stream_id,
+            registry,
+            me,
+            other,
+            sender,
+            connected: false,
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-
-    fn packet(&self, kind: TcpPacketKind) -> TcpPacket {
-        TcpPacket::new(self.id, kind)
-    }
 
     pub(crate) fn mark_connected(&mut self) {
         self.connected = true;
@@ -70,25 +80,20 @@ impl TcpStream {
         self.connected = false;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+
+    fn packet(&self, kind: TcpPacketKind) -> TcpPacket {
+        TcpPacket::new(self.stream_id, kind)
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
     /// Emit packet from this to opposite and wait for packet delivery.
     async fn send_and_wait_delivery_dirrect(&self, kind: TcpPacketKind) -> Result<(), TcpError> {
         let packet = self.packet(kind);
         send_and_wait_delivery(
-            self.from.clone(),
-            self.to.clone(),
-            packet,
-            self.registry.clone(),
-        )
-        .await
-    }
-
-    /// Emit packet from opposite to this and wait delivery
-    /// Should not return error.
-    async fn send_and_wait_delivery_opposite(&self, kind: TcpPacketKind) -> Result<(), TcpError> {
-        let packet = self.packet(kind);
-        send_and_wait_delivery(
-            self.to.clone(),
-            self.from.clone(),
+            self.me.clone(),
+            self.other.clone(),
             packet,
             self.registry.clone(),
         )
@@ -97,7 +102,22 @@ impl TcpStream {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub async fn send(&mut self, bytes: &[u8]) -> Result<usize, TcpError> {
+    /// Emit packet from opposite to this and wait delivery
+    /// Should not return error.
+    async fn send_and_wait_delivery_opposite(&self, kind: TcpPacketKind) -> Result<(), TcpError> {
+        let packet = self.packet(kind);
+        send_and_wait_delivery(
+            self.other.clone(),
+            self.me.clone(),
+            packet,
+            self.registry.clone(),
+        )
+        .await
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub async fn send(&self, bytes: &[u8]) -> Result<usize, TcpError> {
         let packet = TcpPacketKind::Data(bytes.to_vec());
         let send_result = self
             .send_and_wait_delivery_dirrect(packet)
@@ -115,6 +135,29 @@ impl TcpStream {
         send_result
     }
 
+    pub fn send_sync(&self, bytes: &[u8]) -> Result<usize, TcpError> {
+        let packet = self.packet(TcpPacketKind::Data(bytes.to_vec()));
+        let from = self.me.clone();
+        let to = self.other.clone();
+        let reg = self.registry.clone();
+        spawn(async {
+            let _ = send_and_wait_delivery(from, to, packet, reg).await;
+        });
+        Ok(bytes.len())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct TcpReceiver {
+    receiver: util::append::Receiver,
+}
+
+impl TcpReceiver {
+    fn new(receiver: util::append::Receiver) -> Self {
+        Self { receiver }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
 
     pub async fn recv(&mut self, bytes: &mut [u8]) -> Result<usize, TcpError> {
@@ -122,6 +165,61 @@ impl TcpStream {
             .recv(bytes)
             .await
             .ok_or(TcpError::ConnectionRefused) // must fail on sender drop
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+impl TcpStream {
+    fn new(
+        stream_id: usize,
+        reg: Rc<RefCell<dyn TcpRegistry>>,
+        from: Address,
+        to: Address,
+        sender: util::append::Sender,
+        receiver: util::append::Receiver,
+    ) -> Self {
+        let sender = TcpSender::new(stream_id, reg, from, to, Rc::new(sender));
+        let receiver = TcpReceiver::new(receiver);
+        Self { sender, receiver }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn from(&self) -> &Address {
+        &self.sender.me
+    }
+
+    pub fn to(&self) -> &Address {
+        &self.sender.other
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub(crate) fn mark_connected(&mut self) {
+        self.sender.mark_connected();
+    }
+
+    pub(crate) fn unmark_connected(&mut self) {
+        self.sender.unmark_connected();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub async fn send(&self, bytes: &[u8]) -> Result<usize, TcpError> {
+        self.sender.send(bytes).await
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn send_sync(&self, bytes: &[u8]) -> Result<usize, TcpError> {
+        self.sender.send_sync(bytes)
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub async fn recv(&mut self, bytes: &mut [u8]) -> Result<usize, TcpError> {
+        self.receiver.recv(bytes).await
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -192,11 +290,17 @@ impl TcpStream {
         let from = Context::current().proc.address();
         Self::connect_addr(from, to.clone(), registry).await
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn split(self) -> (TcpSender, TcpReceiver) {
+        (self.sender, self.receiver)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl Drop for TcpStream {
+impl Drop for TcpSender {
     fn drop(&mut self) {
         if self.connected {
             self.registry.clone().borrow_mut().emit_disconnect(self);
@@ -210,29 +314,11 @@ pub(crate) fn make_connection(
     a: Address,
     b: Address,
     stream_id: usize,
-    registry: Rc<RefCell<dyn TcpRegistry>>,
+    reg: Rc<RefCell<dyn TcpRegistry>>,
 ) -> (TcpStream, TcpStream) {
     let (s1, r1) = util::append::mpsc_channel();
     let (s2, r2) = util::append::mpsc_channel();
-    let s1 = Rc::new(s1);
-    let s2 = Rc::new(s2);
-    let first = TcpStream {
-        registry: registry.clone(),
-        from: a.clone(),
-        to: b.clone(),
-        sender: s1,
-        receiver: r2,
-        connected: false,
-        id: stream_id,
-    };
-    let second = TcpStream {
-        registry,
-        from: b.clone(),
-        to: a.clone(),
-        sender: s2,
-        receiver: r1,
-        connected: false,
-        id: stream_id,
-    };
+    let first = TcpStream::new(stream_id, reg.clone(), a.clone(), b.clone(), s1, r2);
+    let second = TcpStream::new(stream_id, reg, b, a, s2, r1);
     (first, second)
 }

@@ -25,7 +25,7 @@ use crate::{
         manager::TcpConnectionManager,
         packet::{TcpPacket, TcpPacketKind},
         registry::TcpRegistry,
-        stream::TcpStream,
+        stream::{TcpSender, TcpStream},
     },
     util::{
         oneshot::Sender,
@@ -552,6 +552,10 @@ impl TcpRegistry for EventManagerState {
         packet: &TcpPacket,
         on_delivery: Trigger,
     ) -> Result<(), TcpError> {
+        if self.system().proc_by_addr(from).is_none() || self.system().proc_by_addr(to).is_none() {
+            return Err(TcpError::ConnectionRefused);
+        }
+
         // add log entry
         {
             let log_entry = TcpMessageSent {
@@ -611,16 +615,16 @@ impl TcpRegistry for EventManagerState {
         self.tcp.listen_to(from, to, on_listen)
     }
 
-    fn emit_disconnect(&mut self, sender: &mut TcpStream) {
+    fn emit_disconnect(&mut self, sender: &mut TcpSender) {
         if self.system().system_dropped() {
             return;
         }
 
         let (waiter, trigger) = make_trigger();
         self.emit_packet(
-            &sender.from.clone(),
-            &sender.to.clone(),
-            &TcpPacket::new(sender.id, TcpPacketKind::Disconnect()),
+            &sender.me.clone(),
+            &sender.other.clone(),
+            &TcpPacket::new(sender.stream_id, TcpPacketKind::Disconnect()),
             trigger,
         )
         .unwrap();

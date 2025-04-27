@@ -49,7 +49,7 @@ impl PartialOrd for VecClock {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct Message {
+pub struct CausalMessage {
     pub content: String,
     pub vc: VecClock,
     pub from: usize,
@@ -62,20 +62,20 @@ pub trait Mailman {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-pub struct MessageRegister {
+pub struct CausalMessageRegister {
     mailman: Box<dyn Mailman>,
     vc: VecClock,
-    not_delivered: Vec<Message>,
-    reg: Vec<Message>,
+    not_delivered: Vec<CausalMessage>,
+    reg: Vec<CausalMessage>,
 }
 
-impl Hash for MessageRegister {
+impl Hash for CausalMessageRegister {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.reg.iter().for_each(|m| m.content.hash(state));
     }
 }
 
-impl MessageRegister {
+impl CausalMessageRegister {
     pub fn new(proc_cnt: usize, mailman: impl Mailman + 'static) -> Self {
         Self {
             mailman: Box::new(mailman),
@@ -89,7 +89,7 @@ impl MessageRegister {
         &self.vc
     }
 
-    pub fn register(&mut self, msg: Message) {
+    pub fn register(&mut self, msg: CausalMessage) {
         assert_eq!(msg.vc.0.len(), self.vc.0.len());
         self.vc.inc(msg.from);
         self.reg.push(msg.clone());
@@ -124,9 +124,9 @@ impl MessageRegister {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn make_message(content: String, me: usize, mut vc: VecClock) -> Message {
+pub fn make_message(content: String, me: usize, mut vc: VecClock) -> CausalMessage {
     vc.inc(me);
-    Message {
+    CausalMessage {
         content,
         vc,
         from: me,
@@ -219,14 +219,14 @@ mod tests {
             }
         }
 
-        let mut register = MessageRegister::new(
+        let mut register = CausalMessageRegister::new(
             3,
             Mail {
                 store: store.clone(),
             },
         );
 
-        let m1 = Message {
+        let m1 = CausalMessage {
             content: "hello".into(),
             vc: VecClock(vec![0, 1, 1]),
             from: 1,
@@ -234,7 +234,7 @@ mod tests {
         register.register(m1);
         assert!(store.borrow().is_empty());
 
-        let prev_m = Message {
+        let prev_m = CausalMessage {
             content: "hello0".into(),
             vc: VecClock(vec![0, 0, 1]),
             from: 2,
@@ -262,14 +262,14 @@ mod tests {
             }
         }
 
-        let mut register = MessageRegister::new(
+        let mut register = CausalMessageRegister::new(
             3,
             Mail {
                 store: store.clone(),
             },
         );
 
-        let m1 = Message {
+        let m1 = CausalMessage {
             content: "hello3".into(),
             vc: VecClock(vec![1, 1, 1]),
             from: 0,
@@ -277,7 +277,7 @@ mod tests {
         register.register(m1);
         assert!(store.borrow().is_empty());
 
-        let m2 = Message {
+        let m2 = CausalMessage {
             content: "hello1".into(),
             vc: VecClock(vec![0, 1, 0]),
             from: 2,
@@ -285,7 +285,7 @@ mod tests {
         register.register(m2);
         assert!(store.borrow().is_empty());
 
-        let m3 = Message {
+        let m3 = CausalMessage {
             content: "hello2".into(),
             vc: VecClock(vec![0, 1, 1]),
             from: 1,
@@ -314,17 +314,17 @@ mod tests {
         }
 
         struct Node {
-            reg: MessageRegister,
+            reg: CausalMessageRegister,
             delivered: Rc<RefCell<usize>>,
             me: usize,
         }
 
         impl Node {
-            fn recv(&mut self, msg: Message) {
+            fn recv(&mut self, msg: CausalMessage) {
                 self.reg.register(msg);
             }
 
-            fn bcast(&mut self) -> Message {
+            fn bcast(&mut self) -> CausalMessage {
                 let content = "123".into();
                 let msg = make_message(content, self.me, self.reg.vc().clone());
                 self.recv(msg.clone());
@@ -340,7 +340,7 @@ mod tests {
                 let mail = Mail {
                     delivered: d.clone(),
                 };
-                let reg = MessageRegister::new(node_cnt, mail);
+                let reg = CausalMessageRegister::new(node_cnt, mail);
                 Self {
                     reg,
                     delivered: d,
@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn serde() {
-        let msg = Message {
+        let msg = CausalMessage {
             content: "123".into(),
             vc: VecClock(vec![3, 2, 1]),
             from: 0,
@@ -404,7 +404,7 @@ mod tests {
         let ser = serde_json::to_string(&msg).unwrap();
         println!("{}", ser);
         assert!(!ser.contains(|c: char| c == '\n' || c.is_whitespace()));
-        let deser: Message = serde_json::from_str(ser.as_str()).unwrap();
+        let deser: CausalMessage = serde_json::from_str(ser.as_str()).unwrap();
         assert_eq!(deser, msg);
     }
 

@@ -4,7 +4,7 @@
 - [x] Fix logs output
 - [x] Fix tests
 - [x] Node crash
-- [ ] TCP channel (sync send recv)
+- [x] TCP channel (sync send recv)
 - [ ] Network split
 - [x] Fix Time in steps
 - [ ] Research runtime change question

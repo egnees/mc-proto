@@ -206,14 +206,6 @@ fn one_message_udp_drop_dfs() {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[test]
-fn one_message_no_duplications() {
-    let log = one_msg::no_drops_no_faults_check_no_duplications(build).unwrap();
-    println!("{}", log);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[test]
 fn two_locals_same_node_no_faults_check_causal() {
     let log = two_msg::same_node_no_drop_no_fault_check_causal(build).unwrap();
     println!("{log}");

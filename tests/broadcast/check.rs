@@ -53,6 +53,7 @@ pub fn check_someone_deliver(s: mc::SystemHandle, nodes: usize) -> Result<usize,
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[allow(unused)]
 pub fn check_depth(s: mc::StateView, max_depth: usize) -> Result<(), String> {
     if s.depth() <= max_depth {
         Ok(())
@@ -67,10 +68,13 @@ pub fn check_depth(s: mc::StateView, max_depth: usize) -> Result<(), String> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn check_locals_cnt(s: mc::StateView, nodes: usize, max_locals: usize) -> Result<(), String> {
+pub fn check_locals_cnt(
+    s: mc::SystemHandle,
+    nodes: usize,
+    max_locals: usize,
+) -> Result<(), String> {
     for node in 0..nodes {
         let locals = s
-            .system()
             .read_locals(node.to_string(), "bcast")
             .map(|v| v.len())
             .unwrap_or(0);

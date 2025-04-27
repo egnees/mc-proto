@@ -29,6 +29,6 @@ pub use search::{
     state::StateView,
 };
 
-pub use tcp::{TcpError, TcpListener, TcpStream};
+pub use tcp::{TcpError, TcpListener, TcpReceiver, TcpSender, TcpStream};
 
 pub use util::hash::hash_set;

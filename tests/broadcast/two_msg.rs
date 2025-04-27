@@ -10,11 +10,38 @@ use super::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
+pub fn collect_until_no_events(
+    checker: &mut mc::ModelChecker,
+) -> Result<mc::SearchLog, mc::SearchError> {
+    let cfg = mc::SearchConfig::no_faults_no_drops();
+    let searcher = mc::BfsSearcher::new(cfg);
+    checker.collect(
+        |_| Ok(()),
+        |_| false,
+        |s: mc::StateView| {
+            if s.system().pending_events() == 0 {
+                Ok(())
+            } else {
+                Err("Contains pending events".into())
+            }
+        },
+        searcher,
+    )
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 pub fn same_node_no_drop_no_fault_check_causal(
     build: impl BuildFn,
 ) -> Result<mc::SearchLog, mc::SearchError> {
     let nodes = 3;
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
+
+    // initial
+    let collect_log = collect_until_no_events(&mut checker)?;
+    println!("Collect log:");
+    println!("{collect_log}");
+    println!("Collected: {}", checker.states_count());
 
     // send local message
     checker.apply(|s| {
@@ -67,6 +94,12 @@ pub fn concurrent_no_drop_no_fault_check_causal(
     let nodes = 3;
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
 
+    // initial
+    let collect_log = collect_until_no_events(&mut checker)?;
+    println!("Collect log:");
+    println!("{collect_log}");
+    println!("Collected: {}", checker.states_count());
+
     // send local message
     checker.apply(|s| {
         send_local(s.clone(), 0, "m1");
@@ -94,6 +127,12 @@ pub fn send_after_recv_no_drop_no_fault_check_causal(
 ) -> Result<mc::SearchLog, mc::SearchError> {
     let nodes = 3;
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
+
+    // initial
+    let collect_log = collect_until_no_events(&mut checker)?;
+    println!("Collect log:");
+    println!("{collect_log}");
+    println!("Collected: {}", checker.states_count());
 
     let first_local = 0;
 
@@ -149,6 +188,12 @@ pub fn send_after_recv_no_drop_no_fault_check_all(
     let nodes = 3;
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
 
+    // initial
+    let collect_log = collect_until_no_events(&mut checker)?;
+    println!("Collect log:");
+    println!("{collect_log}");
+    println!("Collected: {}", checker.states_count());
+
     let first_local = 0;
 
     // send local message
@@ -202,6 +247,12 @@ pub fn send_after_recv_no_drop_with_fault_check_all(
 ) -> Result<mc::SearchLog, mc::SearchError> {
     let nodes = 3;
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
+
+    // initial
+    let collect_log = collect_until_no_events(&mut checker)?;
+    println!("Collect log:");
+    println!("{collect_log}");
+    println!("Collected: {}", checker.states_count());
 
     let first_local = 0;
 
@@ -257,6 +308,12 @@ pub fn concurrent_with_faults_check_validity_and_agreement(
     let nodes = 3;
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
 
+    // initial
+    let collect_log = collect_until_no_events(&mut checker)?;
+    println!("Collect log:");
+    println!("{collect_log}");
+    println!("Collected: {}", checker.states_count());
+
     // send local message
     checker.apply(|s| {
         send_local(s.clone(), 0, "m1");
@@ -279,6 +336,12 @@ pub fn concurrent_without_faults_check_validity_and_agreement(
 ) -> Result<mc::SearchLog, mc::SearchError> {
     let nodes = 3;
     let mut checker = mc::ModelChecker::new_with_build(move |s| build(s, nodes));
+
+    // initial
+    let collect_log = collect_until_no_events(&mut checker)?;
+    println!("Collect log:");
+    println!("{collect_log}");
+    println!("Collected: {}", checker.states_count());
 
     // send local message
     checker.apply(|s| {
