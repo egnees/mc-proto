@@ -2,23 +2,23 @@ use std::fmt::{Debug, Display};
 
 use crate::{sim::log::Log, HashType};
 
-use super::{log::SearchLog, state::StateTrace};
+use super::log::SearchLog;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub struct ProcessPanic {
-    pub trace: Option<StateTrace>,
+    // pub trace: Option<StateTrace>,
     pub log: Log,
 }
 
 impl Display for ProcessPanic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Process panic.")?;
-        if let Some(trace) = self.trace.as_ref() {
-            writeln!(f, "========= TRACE =========")?;
-            write!(f, "{}", trace)?;
-        }
+        // if let Some(trace) = self.trace.as_ref() {
+        //     writeln!(f, "========= TRACE =========")?;
+        //     write!(f, "{}", trace)?;
+        // }
         writeln!(f, "========= LOG =========")?;
         write!(f, "{}", self.log)?;
         Ok(())
@@ -29,7 +29,7 @@ impl Display for ProcessPanic {
 
 #[derive(Clone)]
 pub struct InvariantViolation {
-    pub trace: StateTrace,
+    // pub trace: StateTrace,
     pub log: Log,
     pub report: String,
 }
@@ -43,8 +43,8 @@ impl Debug for InvariantViolation {
 impl Display for InvariantViolation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Invariant violation: {}.", self.report)?;
-        writeln!(f, "======== TRACE ========")?;
-        write!(f, "{}", self.trace)?;
+        // writeln!(f, "======== TRACE ========")?;
+        // write!(f, "{}", self.trace)?;
         writeln!(f, "========= LOG =========")?;
         write!(f, "{}", self.log)?;
         Ok(())
@@ -55,14 +55,14 @@ impl Display for InvariantViolation {
 
 #[derive(Clone)]
 pub struct LivenessViolation {
-    pub trace: StateTrace,
+    // pub trace: StateTrace,
     pub log: Log,
     pub report: String,
 }
 
 impl LivenessViolation {
-    pub fn new(trace: StateTrace, log: Log, report: String) -> Self {
-        Self { trace, log, report }
+    pub fn new(log: Log, report: String) -> Self {
+        Self { log, report }
     }
 }
 
@@ -77,8 +77,8 @@ impl Display for LivenessViolation {
         write!(f, "Liveness violation: ")?;
         writeln!(f, "found terminal state which not achieves goal.")?;
         writeln!(f, "Reason: {}.", self.report)?;
-        writeln!(f, "======== TRACE ========")?;
-        write!(f, "{}", self.trace)?;
+        // writeln!(f, "======== TRACE ========")?;
+        // write!(f, "{}", self.trace)?;
         writeln!(f, "========= LOG =========")?;
         write!(f, "{}", self.log)?;
         Ok(())
@@ -89,16 +89,12 @@ impl Display for LivenessViolation {
 
 #[derive(Clone)]
 pub struct AllPruned {
-    pub last_trace: StateTrace,
     pub last_log: Log,
 }
 
 impl AllPruned {
-    pub fn new(last_trace: StateTrace, last_log: Log) -> Self {
-        Self {
-            last_trace,
-            last_log,
-        }
+    pub fn new(last_log: Log) -> Self {
+        Self { last_log }
     }
 }
 
@@ -114,8 +110,6 @@ impl Display for AllPruned {
             f,
             "Pruned all states and did not find state achieving goal."
         )?;
-        writeln!(f, "======== LAST PRUNED TRACE ========")?;
-        write!(f, "{}", self.last_trace)?;
         writeln!(f, "========= LAST PRUNED LOG =========")?;
         write!(f, "{}", self.last_log)?;
         Ok(())
@@ -126,14 +120,14 @@ impl Display for AllPruned {
 
 #[derive(Clone)]
 pub struct Cycled {
-    pub trace: StateTrace,
+    // pub trace: StateTrace,
     pub log: Log,
     pub hash: HashType,
 }
 
 impl Cycled {
-    pub fn new(trace: StateTrace, log: Log, hash: HashType) -> Self {
-        Self { trace, log, hash }
+    pub fn new(log: Log, hash: HashType) -> Self {
+        Self { log, hash }
     }
 }
 
@@ -146,8 +140,8 @@ impl Debug for Cycled {
 impl Display for Cycled {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Found cycle which is impossible to get out of.")?;
-        writeln!(f, "======== TRACE ========")?;
-        write!(f, "{}", self.trace)?;
+        // writeln!(f, "======== TRACE ========")?;
+        // write!(f, "{}", self.trace)?;
         writeln!(f, "========= LOG =========")?;
         writeln!(f, "{}", self.log)?;
         write!(f, "State hash: {}", self.hash)?;

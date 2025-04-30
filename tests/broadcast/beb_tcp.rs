@@ -42,7 +42,7 @@ async fn communicate_with(
     reg: Rc<RefCell<Vec<String>>>,
 ) -> Result<(), mc::TcpError> {
     let mut stream = connection::connect(with).await;
-    let mut buf = [0u8; 1024];
+    let mut buf = [0u8; 256];
     let mut parser = StreamParser {
         accum: Default::default(),
         reg,

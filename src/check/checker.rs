@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 
+use generic_clone::{store::Store, view::View};
+
 use crate::{
     search::{
         control::{ApplyFn, ApplyFunctor, GoalFn, InvariantFn, PruneFn},
         log::SearchLog,
         searcher::Searcher,
-        state::{SearchState, StateTrace},
-        step::StateTraceStep,
+        state::SearchState,
     },
     SearchError,
 };
@@ -15,30 +16,52 @@ use super::search::ApplyFnWrapper;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+pub struct ModelCheckerConfig {
+    pub max_states: usize,
+    pub max_state_size: usize,
+}
+
+impl Default for ModelCheckerConfig {
+    fn default() -> Self {
+        Self {
+            max_states: 50000,
+            max_state_size: 1000000,
+        }
+    }
+}
+
 pub struct ModelChecker {
-    states: Vec<StateTrace>,
+    _state_store: Store,
+    states: Vec<View<SearchState>>,
 }
 
 impl ModelChecker {
-    pub fn new_with_build(build: impl ApplyFn) -> Self {
-        let mut start = StateTrace::new();
-        let apply_fn = ApplyFnWrapper::new(build);
-        let step = StateTraceStep::Apply(Box::new(apply_fn));
-        start.add_step(step);
+    pub fn new_with_cfg(build: impl ApplyFn, cfg: &ModelCheckerConfig) -> Self {
+        let store = Store::new(cfg.max_state_size, cfg.max_states).unwrap();
+        let mut view = store.allocate::<SearchState>().unwrap();
+        view.enter(|v| build(v.system.handle()));
+        let states = vec![view; 1];
         Self {
-            states: vec![start],
+            _state_store: store,
+            states,
         }
     }
 
+    pub fn new_with_build(build: impl ApplyFn) -> Self {
+        Self::new_with_cfg(build, &ModelCheckerConfig::default())
+    }
+
     pub fn check(
-        self,
+        mut self,
         invariant: impl InvariantFn,
         prune: impl PruneFn,
         goal: impl GoalFn,
         mut searcher: impl Searcher,
     ) -> Result<SearchLog, SearchError> {
         let mut visited = HashSet::default();
-        searcher.check(self.states.clone(), &mut visited, invariant, prune, goal)
+        let mut states = Vec::new();
+        std::mem::swap(&mut self.states, &mut states);
+        searcher.check(states, &mut visited, invariant, prune, goal)
     }
 
     pub fn collect(
@@ -60,13 +83,12 @@ impl ModelChecker {
         let f = Box::new(ApplyFnWrapper::new(f));
         self.states
             .iter_mut()
-            .for_each(|s| s.add_step(StateTraceStep::Apply(f.clone())));
+            .for_each(|s| s.enter(|s| f.apply(s.system.handle())));
     }
 
-    pub fn for_each(&self, f: impl ApplyFn) {
-        self.states.iter().for_each(|s| {
-            let state = SearchState::from_trace(s).unwrap();
-            f(state.system.handle());
+    pub fn for_each(&mut self, f: impl ApplyFn) {
+        self.states.iter_mut().for_each(|s| {
+            s.enter(|s| f(s.system.handle()));
         });
     }
 

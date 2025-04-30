@@ -68,7 +68,6 @@ impl StateTraceStep {
         }))
         .map_err(|_| {
             let p = ProcessPanic {
-                trace: None,
                 log: state.system.handle().log(),
             };
             SearchErrorKind::ProcessPanic(p)
@@ -76,6 +75,7 @@ impl StateTraceStep {
     }
 
     pub fn apply(&self, state: &mut SearchState) -> Result<(), SearchErrorKind> {
+        state.trace_depth += 1;
         match self {
             StateTraceStep::SelectUdp(i, msg) => {
                 let kind = if msg.drop {

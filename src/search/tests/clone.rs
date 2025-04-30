@@ -1,10 +1,11 @@
-use std::{cell::RefCell, rc::Rc, time::Duration};
+use crate::search::state::SearchState;
+use std::time::Duration;
+
+use generic_clone::view::View;
 
 use crate::{
-    event::driver::EventDriver,
-    search::{gen::Generator, state::SearchState, step::StateTraceStep},
-    send_local, sleep, spawn, time, Address, HashType, NetConfig, Node, Process, SearchConfig,
-    System, SystemHandle, TcpError, TcpListener, TcpStream,
+    search::step::StateTraceStep, send_local, sleep, spawn, time, Address, HashType, Node, Process,
+    SearchConfig, SystemHandle, TcpError, TcpListener, TcpStream,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,37 +99,30 @@ fn build_system(sys: SystemHandle) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[test]
-fn collect() {
-    // build system
-    let gen = Rc::new(RefCell::new(Generator::new()));
-    let net = NetConfig::new(Duration::from_millis(100), Duration::from_millis(200)).unwrap();
-    let system = System::new(&net, &(gen.clone() as Rc<RefCell<dyn EventDriver>>));
-    build_system(system.handle());
-    let mut state = SearchState {
-        system,
-        gen,
-        trace_depth: 0,
-    };
-
-    // apply first step (timer)
+fn clone_works() {
+    let store = generic_clone::store::Store::new(16000, 3).unwrap();
+    let mut view: View<SearchState> = store.allocate().unwrap();
+    view.enter(|v| build_system(v.system.handle()));
+    let mut view1 = view.clone();
     let cfg = SearchConfig::no_faults_no_drops();
-    let steps = state.gen.borrow().steps(state.system.handle(), &cfg);
-    println!("{:?}", steps);
-    assert_eq!(steps.len(), 1);
-    assert!(matches!(&steps[0], StateTraceStep::SelectTimer(_, _)));
-    steps[0].apply(&mut state).unwrap();
-
-    // apply second step (tcp)
-    let steps = state.gen.borrow().steps(state.system.handle(), &cfg);
-    assert_eq!(steps.len(), 1);
-    println!("{:?}", steps);
-    assert!(matches!(&steps[0], StateTraceStep::SelectTcp(_, _)));
-    steps[0].apply(&mut state).unwrap();
-
-    // apply third step
-    let steps = state.gen.borrow().steps(state.system.handle(), &cfg);
-
-    // check only one tcp msg appear
-    assert_eq!(steps.len(), 1);
-    assert!(matches!(&steps[0], StateTraceStep::SelectTcp(_, _)));
+    view.enter(|v| {
+        let steps = v.gen.borrow().steps(v.system.handle(), &cfg);
+        assert_eq!(steps.len(), 1);
+        assert!(matches!(&steps[0], StateTraceStep::SelectTimer(_, _)));
+        steps[0].apply(v).unwrap();
+        let steps = v.gen.borrow().steps(v.system.handle(), &cfg);
+        assert_eq!(steps.len(), 1);
+        assert!(matches!(&steps[0], StateTraceStep::SelectTcp(_, _)));
+        steps[0].apply(v).unwrap();
+    });
+    view1.enter(|v| {
+        let steps = v.gen.borrow().steps(v.system.handle(), &cfg);
+        assert_eq!(steps.len(), 1);
+        assert!(matches!(&steps[0], StateTraceStep::SelectTimer(_, _)));
+        steps[0].apply(v).unwrap();
+        let steps = v.gen.borrow().steps(v.system.handle(), &cfg);
+        assert_eq!(steps.len(), 1);
+        assert!(matches!(&steps[0], StateTraceStep::SelectTcp(_, _)));
+        steps[0].apply(v).unwrap();
+    });
 }

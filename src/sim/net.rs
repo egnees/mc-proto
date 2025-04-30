@@ -37,6 +37,12 @@ impl Network {
     }
 }
 
+impl Default for Network {
+    fn default() -> Self {
+        Self::new(&Config::default())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct NetworkHandle(Weak<RefCell<NetworkState>>);

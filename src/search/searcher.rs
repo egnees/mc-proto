@@ -1,18 +1,20 @@
 use std::collections::HashSet;
 
+use generic_clone::view::View;
+
 use crate::sim::system::HashType;
 
 use super::{
     control::{GoalFn, InvariantFn, PruneFn},
     error::SearchError,
     log::SearchLog,
-    state::StateTrace,
+    state::SearchState,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct CollectInfo {
-    pub states: Vec<StateTrace>,
+    pub states: Vec<View<SearchState>>,
     pub log: SearchLog,
 }
 
@@ -21,7 +23,7 @@ pub struct CollectInfo {
 pub trait Searcher {
     fn check(
         &mut self,
-        start: Vec<StateTrace>,
+        start: Vec<View<SearchState>>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantFn,
         prune: impl PruneFn,
@@ -30,7 +32,7 @@ pub trait Searcher {
 
     fn collect(
         &mut self,
-        start: Vec<StateTrace>,
+        start: Vec<View<SearchState>>,
         visited: &mut HashSet<HashType>,
         invariant: impl InvariantFn,
         prune: impl PruneFn,

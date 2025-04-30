@@ -13,16 +13,46 @@ use super::{gen::Generator, step::StateTraceStep};
 pub struct SearchState {
     pub(crate) system: System,
     pub(crate) gen: Rc<RefCell<Generator>>,
+    pub(crate) trace_depth: usize,
 }
 
 impl SearchState {
     pub fn from_trace(trace: &StateTrace) -> Result<Self, SearchErrorKind> {
+        let mut state = SearchState::default();
+        trace.apply_steps(&mut state)?;
+        Ok(state)
+    }
+
+    pub fn system(&self) -> SystemHandle {
+        self.system.handle()
+    }
+
+    pub fn depth(&self) -> usize {
+        self.trace_depth
+    }
+
+    pub fn view(&self) -> StateView {
+        StateView {
+            system: self.system.handle(),
+            trace_depth: self.trace_depth,
+        }
+    }
+
+    pub(crate) fn apply_step(&mut self, step: &StateTraceStep) -> Result<(), SearchErrorKind> {
+        step.apply(self)
+    }
+}
+
+impl Default for SearchState {
+    fn default() -> Self {
         let gen = Rc::new(RefCell::new(Generator::new()));
         let driver = gen.clone() as Rc<RefCell<dyn EventDriver>>;
         let system = System::new_default_net(&driver);
-        let mut state = Self { system, gen };
-        trace.apply_steps(&mut state)?;
-        Ok(state)
+        Self {
+            system,
+            gen,
+            trace_depth: 0,
+        }
     }
 }
 
@@ -53,13 +83,7 @@ impl StateTrace {
     fn apply_steps(&self, state: &mut SearchState) -> Result<(), SearchErrorKind> {
         for i in 0..self.steps.len() {
             let step = &self.steps[i];
-            let mut apply_result = step.apply(state);
-            if let Err(SearchErrorKind::ProcessPanic(p)) = apply_result.as_mut() {
-                let steps = self.steps.as_slice()[..i + 1].to_vec();
-                let trace = StateTrace { steps };
-                p.trace = Some(trace);
-            }
-            apply_result?;
+            step.apply(state)?;
         }
         Ok(())
     }
@@ -85,14 +109,15 @@ impl Display for StateTrace {
 #[derive(Clone)]
 pub struct StateView {
     system: SystemHandle,
-    trace: StateTrace,
+    trace_depth: usize,
 }
 
 impl StateView {
-    pub(crate) fn new(state: &SearchState, trace: StateTrace) -> Self {
+    #[allow(unused)]
+    pub(crate) fn new(state: &SearchState, trace_depth: usize) -> Self {
         Self {
             system: state.system.handle(),
-            trace,
+            trace_depth,
         }
     }
 
@@ -101,6 +126,6 @@ impl StateView {
     }
 
     pub fn depth(&self) -> usize {
-        self.trace.steps.len()
+        self.trace_depth
     }
 }
