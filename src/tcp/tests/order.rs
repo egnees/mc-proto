@@ -5,8 +5,8 @@ use std::{
 
 use crate::{
     send_local, sleep, spawn, time, Address, BfsSearcher, HashType, LogEntry, ModelChecker, Node,
-    Process, SearchConfig, SearchConfigBuilder, StateView, SystemHandle, TcpError, TcpListener,
-    TcpStream,
+    Process, SearchConfig, SearchConfigBuilder, SearchErrorKind, StateView, SystemHandle, TcpError,
+    TcpListener, TcpStream,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,4 +203,18 @@ fn check_node_fault() {
     let log = checker.check(invariant, |_| false, goal, searcher).unwrap();
     println!("{}", log);
     assert!(log.visited_total > 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn both_fail() {
+    let checker = ModelChecker::new_with_build(build_system);
+    let searcher = BfsSearcher::new(SearchConfig::with_node_faults_only(2));
+    let err = checker.check(invariant, |_| false, goal, searcher);
+    assert!(err.is_err());
+    assert!(matches!(
+        err.unwrap_err().kind,
+        SearchErrorKind::LivenessViolation(..),
+    ));
 }

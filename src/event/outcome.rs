@@ -1,10 +1,15 @@
+use crate::TcpError;
+
 use super::time::TimeSegment;
+
+////////////////////////////////////////////////////////////////////////////////
 
 pub enum EventOutcomeKind {
     UdpMessageDropped(),
     UdpMessageDelivered(),
     TimerFired(),
     TcpPacketDelivered(),
+    TcpEventHappen(Result<(), TcpError>),
 }
 
 ////////////////////////////////////////////////////////////////////////////////

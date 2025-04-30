@@ -1,13 +1,18 @@
 use std::{collections::HashMap, time::Duration};
 
 use crate::{
-    event::{driver::EventDriver, info::EventInfo, time::TimeSegment, Event},
+    event::{
+        driver::EventDriver,
+        info::{EventInfo, TcpEventKind},
+        time::TimeSegment,
+        Event,
+    },
     SystemHandle,
 };
 
 use super::{
     config::SearchConfig,
-    step::{StateTraceStep, TcpPacket, Timer, UdpMessage},
+    step::{StateTraceStep, TcpEvent, TcpPacket, Timer, UdpMessage},
     tcp::{ReadyTcpPacketFilter, TcpPacketKind},
     tracker::Tracker,
 };
@@ -18,6 +23,7 @@ enum EventKind {
     UdpMessage(usize),
     Timer(usize),
     TcpPacket(TcpPacketKind),
+    TcpEvent(TcpEventKind),
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +44,7 @@ impl EventDriver for Generator {
                 stream: msg.packet.tcp_stream_id,
                 dir: msg.from.address() < msg.to.address(),
             }),
+            EventInfo::TcpEvent(e) => EventKind::TcpEvent(e.kind.clone()),
         };
         let prev_value = self.event_info.insert(event.id, kind);
         assert!(prev_value.is_none());
@@ -110,8 +117,19 @@ impl Generator {
                         time,
                         tcp_msg_id: tcp.tcp_packet_id,
                     };
-                    let step = StateTraceStep::SelectTcp(i, packet);
+                    let step = StateTraceStep::SelectTcpPacket(i, packet);
                     tcp_filter.add(tcp, step);
+                }
+                EventKind::TcpEvent(kind) => {
+                    let step = StateTraceStep::SelectTcpEvent(
+                        i,
+                        TcpEvent {
+                            event_id,
+                            time,
+                            kind: kind.clone(),
+                        },
+                    );
+                    res.push(step);
                 }
             }
         }

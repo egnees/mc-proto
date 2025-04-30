@@ -255,11 +255,17 @@ impl SystemHandle {
         let rt = self.state().borrow().rt.handle();
         rt.cancel_tasks(|p| p.address().node == node);
 
-        self.state()
+        let node = self
+            .state()
             .borrow_mut()
             .nodes
             .remove(node.as_str())
             .ok_or(Error::NotFound)?;
+
+        drop(node);
+
+        self.run_async_tasks();
+
         Ok(())
     }
 }

@@ -5,6 +5,7 @@ use std::{
 
 use crate::{
     event::{
+        info::TcpEventKind,
         outcome::{EventOutcome, EventOutcomeKind},
         time::TimeSegment,
     },
@@ -43,11 +44,21 @@ pub struct TcpPacket {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone, Debug)]
+pub struct TcpEvent {
+    pub event_id: usize,
+    pub time: TimeSegment,
+    pub kind: TcpEventKind,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Clone)]
 pub enum StateTraceStep {
     SelectUdp(usize, UdpMessage),
     SelectTimer(usize, Timer),
-    SelectTcp(usize, TcpPacket),
+    SelectTcpPacket(usize, TcpPacket),
+    SelectTcpEvent(usize, TcpEvent),
     CrashNode(usize), // id of node
     Apply(Box<dyn ApplyFunctor>),
 }
@@ -98,11 +109,20 @@ impl StateTraceStep {
                 };
                 self.apply_event_outcome(state, *i, outcome)
             }
-            StateTraceStep::SelectTcp(i, tcp) => {
+            StateTraceStep::SelectTcpPacket(i, tcp) => {
                 let outcome = EventOutcome {
                     event_id: tcp.event_id,
                     kind: EventOutcomeKind::TcpPacketDelivered(),
                     time: tcp.time,
+                };
+                self.apply_event_outcome(state, *i, outcome)
+            }
+            StateTraceStep::SelectTcpEvent(i, e) => {
+                let tcp_result = e.kind.tcp_result();
+                let outcome = EventOutcome {
+                    event_id: e.event_id,
+                    kind: EventOutcomeKind::TcpEventHappen(tcp_result),
+                    time: e.time,
                 };
                 self.apply_event_outcome(state, *i, outcome)
             }
@@ -131,11 +151,16 @@ impl Debug for StateTraceStep {
                 .field(arg0)
                 .field(arg1)
                 .finish(),
-            Self::SelectTcp(arg0, arg1) => {
+            Self::SelectTcpPacket(arg0, arg1) => {
                 f.debug_tuple("SelectTcp").field(arg0).field(arg1).finish()
             }
             Self::Apply(_) => f.debug_tuple("Apply").finish(),
             Self::CrashNode(arg0) => f.debug_tuple("CrashNode").field(arg0).finish(),
+            Self::SelectTcpEvent(arg0, arg1) => f
+                .debug_tuple("SelectTcpEvent")
+                .field(arg0)
+                .field(arg1)
+                .finish(),
         }
     }
 }
@@ -162,7 +187,7 @@ impl Display for StateTraceStep {
                 write!(f, "Select {}: Timer {} fired", i, timer.timer_id)
             }
             StateTraceStep::Apply(_) => write!(f, "Apply"),
-            StateTraceStep::SelectTcp(i, tcp_packet) => {
+            StateTraceStep::SelectTcpPacket(i, tcp_packet) => {
                 write!(
                     f,
                     "Select {}: Tcp packet {} delivered",
@@ -171,6 +196,9 @@ impl Display for StateTraceStep {
             }
             StateTraceStep::CrashNode(node) => {
                 write!(f, "Crash node {}", node)
+            }
+            StateTraceStep::SelectTcpEvent(i, _) => {
+                write!(f, "Select {}: Tcp event", *i)
             }
         }
     }

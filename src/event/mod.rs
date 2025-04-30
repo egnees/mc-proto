@@ -1,4 +1,7 @@
-use std::hash::Hash;
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+};
 
 use info::EventInfo;
 use time::TimeSegment;
@@ -34,8 +37,37 @@ impl Event {
     }
 }
 
+impl Clone for Event {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id,
+            time: self.time,
+            info: self.info.clone(),
+            on_happen: None,
+        }
+    }
+}
+
 impl Hash for Event {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.info.hash(state);
     }
 }
+
+impl Display for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "id: {}, ", self.id)?;
+        write!(f, "time: {}, ", self.time)?;
+        write!(f, "info: [{}]", self.info)
+    }
+}
+
+impl Debug for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests;

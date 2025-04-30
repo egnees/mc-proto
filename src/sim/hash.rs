@@ -64,6 +64,10 @@ impl<'a> HashContext<'a> {
                 timer.duration.hash(&mut hasher);
                 self.hash_address(&timer.proc.address());
             }
+            EventInfo::TcpEvent(event) => {
+                event.kind.hash(&mut hasher);
+                self.hash_address(&event.to.address());
+            }
         }
         hasher.finish()
     }

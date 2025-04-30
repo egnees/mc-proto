@@ -122,17 +122,12 @@ impl TcpSender {
         let send_result = self
             .send_and_wait_delivery_dirrect(packet)
             .await
-            .map(|_| bytes.len());
-        if send_result.is_ok() {
-            let sent = self.sender.send(bytes);
-            assert!(sent);
-            self.send_and_wait_delivery_opposite(TcpPacketKind::Ack())
-                .await?;
-        } else {
-            self.send_and_wait_delivery_opposite(TcpPacketKind::Nack())
-                .await?;
-        }
-        send_result
+            .map(|_| bytes.len())?;
+        let sent = self.sender.send(bytes);
+        assert!(sent);
+        self.send_and_wait_delivery_opposite(TcpPacketKind::Ack())
+            .await?;
+        Ok(send_result)
     }
 
     pub fn send_sync(&self, bytes: &[u8]) -> Result<usize, TcpError> {
@@ -303,7 +298,7 @@ impl TcpStream {
 impl Drop for TcpSender {
     fn drop(&mut self) {
         if self.connected {
-            self.registry.clone().borrow_mut().emit_disconnect(self);
+            self.registry.clone().borrow_mut().emit_sender_dropped(self);
         }
     }
 }

@@ -23,7 +23,7 @@ use crate::{
     tcp::{
         error::TcpError,
         manager::TcpConnectionManager,
-        packet::{TcpPacket, TcpPacketKind},
+        packet::TcpPacket,
         registry::TcpRegistry,
         stream::{TcpSender, TcpStream},
     },
@@ -35,7 +35,7 @@ use crate::{
 };
 
 use super::{
-    info::{EventInfo, Timer, UdpMessage},
+    info::{EventInfo, TcpEvent, TcpEventKind, Timer, UdpMessage},
     outcome::{EventOutcome, EventOutcomeKind},
     stat::EventStat,
     time::TimeSegment,
@@ -236,6 +236,7 @@ impl EventManagerHandle {
                 msg.from.address().node == node || msg.to.address().node == node
             }
             EventInfo::Timer(timer) => timer.proc.address().node == node,
+            EventInfo::TcpEvent(e) => e.to.address().node == node,
         });
 
         self.state().borrow_mut().stat.nodes_crashed += 1;
@@ -418,7 +419,7 @@ impl EventManagerHandle {
             // return event
             event
         };
-        match outcome.kind {
+        match &outcome.kind {
             EventOutcomeKind::UdpMessageDropped() => self.handle_udp_message_dropped(&event),
             EventOutcomeKind::UdpMessageDelivered() => self.handle_udp_message_delivered(&event),
             EventOutcomeKind::TimerFired() => self.handle_timer_fired(&event),
@@ -427,6 +428,9 @@ impl EventManagerHandle {
                     .on_happen
                     .unwrap()
                     .invoke::<Result<(), TcpError>>(Ok(()));
+            }
+            EventOutcomeKind::TcpEventHappen(r) => {
+                let _ = event.on_happen.unwrap().invoke(r.clone());
             }
         }
     }
@@ -544,6 +548,75 @@ impl EventManagerHandle {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+impl EventManagerState {
+    fn make_dummy_proc_handle() -> ProcessHandle {
+        struct DummyProc {}
+        impl Process for DummyProc {
+            fn on_message(&mut self, _from: Address, _content: String) {
+                unreachable!()
+            }
+
+            fn on_local_message(&mut self, _content: String) {
+                unreachable!()
+            }
+
+            fn hash(&self) -> HashType {
+                unreachable!()
+            }
+        }
+
+        let proc = Rc::new(RefCell::new(DummyProc {}));
+        let dummy_proc = Rc::new(RefCell::new(ProcessState::new(proc, "0:0".into())));
+        ProcessHandle::new(&dummy_proc)
+    }
+
+    fn make_and_register_tcp_event(
+        &mut self,
+        kind: TcpEventKind,
+        to: ProcessHandle,
+        trigger: Trigger,
+    ) -> &Event {
+        let event = TcpEvent { kind, to };
+        let (min_shift, max_shift) = self.system().network().delays_range();
+        let event = Event {
+            id: self.events.len(),
+            time: self.time.shift_range(min_shift, max_shift),
+            info: EventInfo::TcpEvent(event),
+            on_happen: Some(trigger),
+        };
+
+        self.register_event(&event);
+        self.events.push(event);
+
+        self.events.last().unwrap()
+    }
+
+    fn make_and_register_tcp_message(
+        &mut self,
+        from: ProcessHandle,
+        to: ProcessHandle,
+        packet: &TcpPacket,
+        trigger: Trigger,
+    ) -> &Event {
+        let msg = TcpMessage {
+            tcp_msg_id: self.inc_tcp_msg_id(),
+            from,
+            to,
+            packet: packet.clone(),
+        };
+        let (min_shift, max_shift) = self.system().network().delays_range();
+        let event = Event {
+            id: self.events.len(),
+            time: self.time.shift_range(min_shift, max_shift),
+            info: EventInfo::TcpMessage(msg),
+            on_happen: Some(trigger),
+        };
+        self.register_event(&event);
+        self.events.push(event);
+        self.events.last().unwrap()
+    }
+}
+
 impl TcpRegistry for EventManagerState {
     fn emit_packet(
         &mut self,
@@ -552,10 +625,6 @@ impl TcpRegistry for EventManagerState {
         packet: &TcpPacket,
         on_delivery: Trigger,
     ) -> Result<(), TcpError> {
-        if self.system().proc_by_addr(from).is_none() || self.system().proc_by_addr(to).is_none() {
-            return Err(TcpError::ConnectionRefused);
-        }
-
         // add log entry
         {
             let log_entry = TcpMessageSent {
@@ -582,23 +651,18 @@ impl TcpRegistry for EventManagerState {
             };
             let log_entry = LogEntry::TcpMessageDropped(log_entry);
             self.event_log.add_entry(log_entry);
-            return Err(TcpError::ConnectionRefused);
+
+            // schedule event
+            self.make_and_register_tcp_event(
+                TcpEventKind::ConnectionRefused,
+                from_proc,
+                on_delivery,
+            );
+
+            return Ok(());
         };
-        let msg = TcpMessage {
-            tcp_msg_id: self.inc_tcp_msg_id(),
-            from: from_proc,
-            to: to_proc,
-            packet: packet.clone(),
-        };
-        let (min_shift, max_shift) = self.system().network().delays_range();
-        let event = Event {
-            id: self.events.len(),
-            time: self.time.shift_range(min_shift, max_shift),
-            info: EventInfo::TcpMessage(msg),
-            on_happen: Some(on_delivery),
-        };
-        self.register_event(&event);
-        self.events.push(event);
+
+        self.make_and_register_tcp_message(from_proc, to_proc, packet, on_delivery);
         Ok(())
     }
 
@@ -615,47 +679,24 @@ impl TcpRegistry for EventManagerState {
         self.tcp.listen_to(from, to, on_listen)
     }
 
-    fn emit_disconnect(&mut self, sender: &mut TcpSender) {
+    fn emit_sender_dropped(&mut self, sender: &mut TcpSender) {
         if self.system().system_dropped() {
             return;
         }
-
         let (waiter, trigger) = make_trigger();
-        self.emit_packet(
-            &sender.me.clone(),
-            &sender.other.clone(),
-            &TcpPacket::new(sender.stream_id, TcpPacketKind::Disconnect()),
-            trigger,
-        )
-        .unwrap();
+        let Some(to) = self.system().proc_by_addr(&sender.other) else {
+            return;
+        };
+        self.make_and_register_tcp_event(TcpEventKind::SenderDropped, to, trigger);
 
         let sender = sender.sender.clone();
-
-        struct DummyProc {}
-        impl Process for DummyProc {
-            fn on_message(&mut self, _from: Address, _content: String) {
-                unreachable!()
-            }
-
-            fn on_local_message(&mut self, _content: String) {
-                unreachable!()
-            }
-
-            fn hash(&self) -> HashType {
-                unreachable!()
-            }
-        }
-
-        let proc = Rc::new(RefCell::new(DummyProc {}));
-        let dummy_proc = Rc::new(RefCell::new(ProcessState::new(proc, "0:0".into())));
-        let proc_handle = ProcessHandle::new(&dummy_proc);
 
         self.rt.spawn(
             async move {
                 let _ = waiter.wait::<Result<(), TcpError>>().await;
                 drop(sender);
             },
-            proc_handle,
+            Self::make_dummy_proc_handle(),
         );
     }
 

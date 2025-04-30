@@ -291,7 +291,7 @@ pub struct NodeCrashed {
 
 impl Display for NodeCrashed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {:>12}  💀", self.time, self.node)
+        write!(f, "{} {:>12}  💥", self.time, self.node)
     }
 }
 

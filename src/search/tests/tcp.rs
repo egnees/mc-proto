@@ -111,6 +111,12 @@ fn collect() {
     let steps = state.gen.borrow().steps(state.system.handle(), &cfg);
     println!("{:?}", steps);
     assert_eq!(steps.len(), 1);
+    assert!(matches!(&steps[0], StateTraceStep::SelectTcpEvent(_, _)));
+    steps[0].apply(&mut state).unwrap();
+
+    let steps = state.gen.borrow().steps(state.system.handle(), &cfg);
+    println!("{:?}", steps);
+    assert_eq!(steps.len(), 1);
     assert!(matches!(&steps[0], StateTraceStep::SelectTimer(_, _)));
     steps[0].apply(&mut state).unwrap();
 
@@ -118,7 +124,7 @@ fn collect() {
     let steps = state.gen.borrow().steps(state.system.handle(), &cfg);
     assert_eq!(steps.len(), 1);
     println!("{:?}", steps);
-    assert!(matches!(&steps[0], StateTraceStep::SelectTcp(_, _)));
+    assert!(matches!(&steps[0], StateTraceStep::SelectTcpPacket(_, _)));
     steps[0].apply(&mut state).unwrap();
 
     // apply third step
@@ -126,5 +132,5 @@ fn collect() {
 
     // check only one tcp msg appear
     assert_eq!(steps.len(), 1);
-    assert!(matches!(&steps[0], StateTraceStep::SelectTcp(_, _)));
+    assert!(matches!(&steps[0], StateTraceStep::SelectTcpPacket(_, _)));
 }

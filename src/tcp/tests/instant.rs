@@ -7,15 +7,12 @@ use crate::{
     runtime::Runtime,
     sim::proc::{ProcessHandle, ProcessState},
     tcp::stream::TcpSender,
-    util::trigger::{make_trigger, Trigger},
+    util::trigger::Trigger,
     Address, HashType, Process,
 };
 
 use crate::tcp::{
-    error::TcpError,
-    manager::TcpConnectionManager,
-    packet::{TcpPacket, TcpPacketKind},
-    registry::TcpRegistry,
+    error::TcpError, manager::TcpConnectionManager, packet::TcpPacket, registry::TcpRegistry,
     stream::TcpStream,
 };
 
@@ -70,14 +67,8 @@ impl TcpRegistry for InstantTcpRegister {
         self.manager.listen_to(from, to, on_listen)
     }
 
-    fn emit_disconnect(&mut self, sender: &mut TcpSender) {
-        let (_, trigger) = make_trigger();
-        let _ = self.emit_packet(
-            &sender.me,
-            &sender.other,
-            &TcpPacket::new(sender.stream_id, TcpPacketKind::Disconnect()),
-            trigger,
-        );
+    fn emit_sender_dropped(&mut self, _sender: &mut TcpSender) {
+        // do nothing
     }
 
     fn register_packet_delivery(

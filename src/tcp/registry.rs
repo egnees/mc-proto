@@ -2,11 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{util::trigger::Trigger, Address};
 
-use super::{
-    error::TcpError,
-    packet::TcpPacket,
-    stream::{TcpSender, TcpStream},
-};
+use super::{error::TcpError, packet::TcpPacket, stream::TcpStream, TcpSender};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -21,6 +17,8 @@ pub trait TcpRegistry {
         on_delivery: Trigger,
     ) -> Result<(), TcpError>;
 
+    fn emit_sender_dropped(&mut self, sender: &mut TcpSender);
+
     fn emit_listen_request(&mut self, from: &Address, on_listen: Trigger) -> Result<(), TcpError>;
 
     fn emit_listen_to_request(
@@ -29,8 +27,6 @@ pub trait TcpRegistry {
         to: &Address,
         on_listen: Trigger,
     ) -> Result<(), TcpError>;
-
-    fn emit_disconnect(&mut self, sender: &mut TcpSender);
 
     ////////////////////////////////////////////////////////////////////////////////
 

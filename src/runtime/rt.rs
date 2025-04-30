@@ -85,16 +85,10 @@ impl RuntimeHandle {
             let state = self.state();
             let state = state.borrow_mut();
             state
-                .pending
+                .tasks
                 .iter()
-                .cloned()
-                .filter(|task| {
-                    state
-                        .tasks
-                        .get(task)
-                        .map(|task| pred(&task.owner))
-                        .unwrap_or(false)
-                })
+                .filter(|(_id, t)| pred(&t.owner))
+                .map(|(id, _)| *id)
                 .collect::<Vec<_>>()
         };
 
@@ -102,7 +96,9 @@ impl RuntimeHandle {
             // task will be dropped after state borrow is released
             // which is important, because task drop can lead
             // to scheduling of another tasks (in the current runtime)
-            let _ = self.state().borrow_mut().tasks.remove(task);
+            let task = self.state().borrow_mut().tasks.remove(task);
+            assert!(task.is_some());
+            drop(task);
         });
     }
 }

@@ -1,6 +1,6 @@
-use std::{hash::Hash, time::Duration};
+use std::{fmt::Display, hash::Hash, time::Duration};
 
-use crate::{sim::proc::ProcessHandle, tcp::packet::TcpPacket};
+use crate::{sim::proc::ProcessHandle, tcp::packet::TcpPacket, TcpError};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8,7 +8,80 @@ use crate::{sim::proc::ProcessHandle, tcp::packet::TcpPacket};
 pub enum EventInfo {
     UdpMessage(UdpMessage),
     TcpMessage(TcpMessage),
+    TcpEvent(TcpEvent),
     Timer(Timer),
+}
+
+impl Display for EventInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EventInfo::UdpMessage(udp_message) => write!(f, "Udp Message: {{{}}}", udp_message),
+            EventInfo::TcpMessage(tcp_message) => write!(f, "Tcp message: {{{}}}", tcp_message),
+            EventInfo::Timer(timer) => write!(f, "Timer: {}", timer),
+            EventInfo::TcpEvent(tcp_event) => write!(f, "Tcp event: {{{}}}", tcp_event),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub enum TcpEventKind {
+    SenderDropped,
+    #[allow(unused)]
+    ReceiverDropped,
+    ConnectionRefused,
+}
+
+impl TcpEventKind {
+    pub fn tcp_result(&self) -> Result<(), TcpError> {
+        match self {
+            TcpEventKind::SenderDropped => Err(TcpError::ConnectionRefused),
+            TcpEventKind::ReceiverDropped => Err(TcpError::ConnectionRefused),
+            TcpEventKind::ConnectionRefused => Err(TcpError::ConnectionRefused),
+        }
+    }
+}
+
+impl Hash for TcpEventKind {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            TcpEventKind::SenderDropped => 0.hash(state),
+            TcpEventKind::ReceiverDropped => 1.hash(state),
+            TcpEventKind::ConnectionRefused => 2.hash(state),
+        }
+    }
+}
+
+impl Display for TcpEventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TcpEventKind::SenderDropped => write!(f, "sender dropped"),
+            TcpEventKind::ReceiverDropped => write!(f, "receiver dropped"),
+            TcpEventKind::ConnectionRefused => write!(f, "connection refused"),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct TcpEvent {
+    pub kind: TcpEventKind,
+    pub to: ProcessHandle,
+}
+
+impl Hash for TcpEvent {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+        self.to.address().hash(state);
+    }
+}
+
+impl Display for TcpEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "tcp event to '{}'", self.to.address())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,6 +99,15 @@ impl Hash for TcpMessage {
         self.from.address().hash(state);
         self.to.address().hash(state);
         self.packet.hash(state);
+    }
+}
+
+impl Display for TcpMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "id: {}, ", self.tcp_msg_id)?;
+        write!(f, "from: '{}', ", self.from.address())?;
+        write!(f, "to: '{}', ", self.to.address())?;
+        write!(f, "packet: {}", self.packet)
     }
 }
 
@@ -47,6 +129,15 @@ impl Hash for UdpMessage {
     }
 }
 
+impl Display for UdpMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "id: {},  ", self.udp_msg_id)?;
+        write!(f, "from: '{}', ", self.from.address())?;
+        write!(f, "to: '{}', ", self.to.address())?;
+        write!(f, "content: '{}'", self.content)
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
@@ -60,5 +151,13 @@ pub struct Timer {
 impl Hash for Timer {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.duration.hash(state);
+    }
+}
+
+impl Display for Timer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "id: {}, ", self.timer_id)?;
+        write!(f, "proc: '{}', ", self.proc.address())?;
+        write!(f, "duraction: {:?}", self.duration)
     }
 }
