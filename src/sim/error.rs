@@ -5,4 +5,6 @@ pub enum Error {
     NegativeDelay,
     NegativeTime,
     IncorrectRange,
+    FsAlreadySetup,
+    FsNotAvailable,
 }

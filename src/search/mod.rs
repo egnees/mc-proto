@@ -3,6 +3,7 @@ pub mod config;
 pub mod control;
 pub mod dfs;
 pub mod error;
+mod fs;
 mod gen;
 pub mod log;
 pub mod searcher;

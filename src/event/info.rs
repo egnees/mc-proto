@@ -1,6 +1,11 @@
 use std::{fmt::Display, hash::Hash, time::Duration};
 
-use crate::{sim::proc::ProcessHandle, tcp::packet::TcpPacket, TcpError};
+use crate::{
+    fs::event::{FsEventKind, FsEventOutcome},
+    sim::proc::ProcessHandle,
+    tcp::packet::TcpPacket,
+    Address, TcpError,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -9,6 +14,7 @@ pub enum EventInfo {
     UdpMessage(UdpMessage),
     TcpMessage(TcpMessage),
     TcpEvent(TcpEvent),
+    FsEvent(FsEvent),
     Timer(Timer),
 }
 
@@ -19,6 +25,7 @@ impl Display for EventInfo {
             EventInfo::TcpMessage(tcp_message) => write!(f, "Tcp message: {{{}}}", tcp_message),
             EventInfo::Timer(timer) => write!(f, "Timer: {}", timer),
             EventInfo::TcpEvent(tcp_event) => write!(f, "Tcp event: {{{}}}", tcp_event),
+            EventInfo::FsEvent(fs_event) => write!(f, "Fs event: {{{}}}", fs_event),
         }
     }
 }
@@ -159,5 +166,26 @@ impl Display for Timer {
         write!(f, "id: {}, ", self.timer_id)?;
         write!(f, "proc: '{}', ", self.proc.address())?;
         write!(f, "duraction: {:?}", self.duration)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct FsEvent {
+    pub proc: Address,
+    pub kind: FsEventKind,
+    pub outcome: FsEventOutcome,
+}
+
+impl Hash for FsEvent {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+    }
+}
+
+impl Display for FsEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.kind)
     }
 }

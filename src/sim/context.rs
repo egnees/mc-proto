@@ -1,6 +1,9 @@
 use std::{cell::RefCell, future::Future, time::Duration};
 
-use crate::{event::manager::EventManagerHandle, runtime::JoinHandle, util::oneshot};
+use crate::{
+    event::manager::EventManagerHandle, fs::manager::FsManagerHandle, runtime::JoinHandle,
+    util::oneshot,
+};
 
 use super::proc::{Address, ProcessHandle};
 
@@ -10,6 +13,7 @@ use super::proc::{Address, ProcessHandle};
 pub struct Context {
     pub event_manager: EventManagerHandle,
     pub proc: ProcessHandle,
+    pub fs: Option<FsManagerHandle>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////

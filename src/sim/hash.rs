@@ -68,6 +68,10 @@ impl<'a> HashContext<'a> {
                 event.kind.hash(&mut hasher);
                 self.hash_address(&event.to.address());
             }
+            EventInfo::FsEvent(event) => {
+                event.kind.hash(&mut hasher);
+                self.hash_address(&event.proc);
+            }
         }
         hasher.finish()
     }

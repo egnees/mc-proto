@@ -9,6 +9,7 @@ use crate::{
         driver::EventDriver, manager::EventManager, outcome::EventOutcome, stat::EventStat,
         time::TimeSegment,
     },
+    fs::manager::FsManagerHandle,
     runtime::Runtime,
     util, NetConfig,
 };
@@ -112,11 +113,30 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    pub(crate) fn fs(&self, node: &str) -> Option<FsManagerHandle> {
+        self.state()
+            .borrow()
+            .nodes
+            .get(node)
+            .unwrap()
+            .fs
+            .as_ref()
+            .map(|fs| fs.handle())
+    }
+
     fn guard(&self, proc: ProcessHandle) -> Guard {
+        let fs = if proc.alive() {
+            self.fs(&proc.address().node)
+        } else {
+            None
+        };
+
         let ctx = Context {
             event_manager: self.state().borrow().event_manager.handle(),
             proc,
+            fs,
         };
+
         Guard::new(ctx)
     }
 
@@ -194,6 +214,69 @@ impl SystemHandle {
         } else {
             Err(Error::AlreadyExists)
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn setup_fs(
+        &self,
+        node: impl Into<String>,
+        delays: TimeSegment,
+        capacity: usize,
+    ) -> Result<(), Error> {
+        let node = node.into();
+        let reg = self.state().borrow().event_manager.handle().fs_registry();
+        self.state()
+            .borrow_mut()
+            .nodes
+            .get_mut(&node)
+            .ok_or(Error::NotFound)?
+            .setup_fs(reg, delays, capacity)
+    }
+
+    pub fn crash_fs(&self, node: impl Into<String>) -> Result<(), Error> {
+        let node = node.into();
+        self.state()
+            .borrow_mut()
+            .nodes
+            .get_mut(&node)
+            .ok_or(Error::NotFound)?
+            .crash_fs();
+        Ok(())
+    }
+
+    pub fn shutdown_fs(&self, node: impl Into<String>) -> Result<(), Error> {
+        let node = node.into();
+        self.state()
+            .borrow_mut()
+            .nodes
+            .get_mut(&node)
+            .ok_or(Error::NotFound)?
+            .shutdown_fs()
+    }
+
+    pub fn shutdown_node(&self, node: impl Into<String>) -> Result<(), Error> {
+        let node = node.into();
+
+        self.state()
+            .borrow()
+            .event_manager
+            .handle()
+            .on_node_crash(node.as_str());
+
+        let rt = self.state().borrow().rt.handle();
+        rt.cancel_tasks(|p| p.address().node == node);
+
+        self.state()
+            .borrow_mut()
+            .nodes
+            .get_mut(node.as_str())
+            .ok_or(Error::NotFound)?
+            .shutdown();
+
+        self.run_async_tasks();
+
+        Ok(())
     }
 
     ////////////////////////////////////////////////////////////////////////////////

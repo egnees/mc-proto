@@ -4,7 +4,11 @@ use std::{
     rc::Rc,
 };
 
-use crate::Address;
+use crate::{
+    event::time::TimeSegment,
+    fs::{manager::FsManager, registry::FsEventRegistry},
+    Address,
+};
 
 use super::{
     error::Error,
@@ -16,6 +20,7 @@ use super::{
 #[derive(Default)]
 pub struct Node {
     proc: BTreeMap<String, Rc<RefCell<ProcessState>>>,
+    pub(crate) fs: Option<FsManager>,
     pub(crate) name: String,
 }
 
@@ -24,7 +29,43 @@ impl Node {
         Self {
             proc: Default::default(),
             name: name.into(),
+            fs: None,
         }
+    }
+
+    pub(crate) fn setup_fs(
+        &mut self,
+        reg: Rc<RefCell<dyn FsEventRegistry>>,
+        delays: TimeSegment,
+        capacity: usize,
+    ) -> Result<(), Error> {
+        if self.fs.is_some() {
+            Err(Error::FsAlreadySetup)
+        } else {
+            let fs = FsManager::new(reg, self.name.clone(), delays, capacity);
+            let _ = self.fs.insert(fs);
+            Ok(())
+        }
+    }
+
+    pub(crate) fn crash_fs(&mut self) {
+        let _ = self.fs.take();
+    }
+
+    pub(crate) fn shutdown_fs(&mut self) -> Result<(), Error> {
+        self.fs
+            .as_ref()
+            .ok_or(Error::FsNotAvailable)?
+            .handle()
+            .shutdown();
+        Ok(())
+    }
+
+    pub(crate) fn shutdown(&mut self) {
+        if let Some(fs) = self.fs.as_ref() {
+            fs.handle().shutdown();
+        }
+        self.proc.clear();
     }
 
     pub fn add_proc_by_ref(
@@ -62,6 +103,10 @@ impl std::hash::Hash for Node {
             name.hash(state);
             proc.borrow().hash(state);
         });
+
+        if let Some(fs) = self.fs.as_ref() {
+            fs.hash(state);
+        }
     }
 }
 

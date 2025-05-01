@@ -1,5 +1,6 @@
 mod check;
 mod event;
+mod fs;
 mod runtime;
 mod search;
 mod sim;
@@ -32,3 +33,5 @@ pub use search::{
 pub use tcp::{TcpError, TcpListener, TcpReceiver, TcpSender, TcpStream};
 
 pub use util::hash::hash_set;
+
+pub use fs::file::File;

@@ -120,6 +120,12 @@ impl ProcessHandle {
     pub(crate) fn proc(&self) -> Rc<RefCell<dyn Process>> {
         self.state().borrow().proc()
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub(crate) fn alive(&self) -> bool {
+        self.0.strong_count() > 0
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

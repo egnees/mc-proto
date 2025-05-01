@@ -10,6 +10,7 @@ futures = "0.3.31"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 smol = "2.0.2"
+thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["sync", "macros", "rt"] }
 
 [profile.bench]

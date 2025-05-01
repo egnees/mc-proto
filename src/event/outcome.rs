@@ -1,4 +1,4 @@
-use crate::TcpError;
+use crate::{fs::event::FsEventOutcome, TcpError};
 
 use super::time::TimeSegment;
 
@@ -10,6 +10,7 @@ pub enum EventOutcomeKind {
     TimerFired(),
     TcpPacketDelivered(),
     TcpEventHappen(Result<(), TcpError>),
+    FsEventHappen(FsEventOutcome),
 }
 
 ////////////////////////////////////////////////////////////////////////////////

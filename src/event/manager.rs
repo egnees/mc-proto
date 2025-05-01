@@ -8,6 +8,7 @@ use std::{
 
 use crate::{
     event::{driver::EventDriver, info::TcpMessage},
+    fs::{event::FsEvent, registry::FsEventRegistry},
     runtime::{JoinHandle, RuntimeHandle},
     sim::{
         context::{Context, Guard},
@@ -194,11 +195,19 @@ impl EventManagerHandle {
         self.state()
     }
 
+    pub(crate) fn fs_registry(&self) -> Rc<RefCell<dyn FsEventRegistry>> {
+        self.state()
+    }
+
     fn guard(&self, proc: ProcessHandle) -> Guard {
+        let fs = self.state().borrow().system().fs(&proc.address().node);
+
         let ctx = Context {
             event_manager: self.clone(),
             proc,
+            fs,
         };
+
         Guard::new(ctx)
     }
 
@@ -237,6 +246,7 @@ impl EventManagerHandle {
             }
             EventInfo::Timer(timer) => timer.proc.address().node == node,
             EventInfo::TcpEvent(e) => e.to.address().node == node,
+            EventInfo::FsEvent(e) => e.proc.node == node,
         });
 
         self.state().borrow_mut().stat.nodes_crashed += 1;
@@ -431,6 +441,9 @@ impl EventManagerHandle {
             }
             EventOutcomeKind::TcpEventHappen(r) => {
                 let _ = event.on_happen.unwrap().invoke(r.clone());
+            }
+            EventOutcomeKind::FsEventHappen(outcome) => {
+                let _ = event.on_happen.unwrap().invoke(outcome.clone());
             }
         }
     }
@@ -731,5 +744,43 @@ impl TcpRegistry for EventManagerState {
         let res = self.next_tcp_stream_id;
         self.next_tcp_stream_id += 1;
         res
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// FS
+////////////////////////////////////////////////////////////////////////////////
+
+impl FsEventRegistry for EventManagerState {
+    fn register_instant_event(&mut self, event: &FsEvent) {
+        let entry = event.clone().make_log_entry_on_init(self.time);
+        self.event_log.add_entry(entry);
+    }
+
+    fn register_event_initiated(&mut self, event: &FsEvent) {
+        let entry = event.clone().make_log_entry_on_init(self.time);
+        self.event_log.add_entry(entry);
+    }
+
+    fn register_event_pipelined(&mut self, trigger: Trigger, event: &FsEvent) {
+        // no log here
+        let info = EventInfo::FsEvent(super::info::FsEvent {
+            proc: event.initiated_by.clone(),
+            kind: event.kind.clone(),
+            outcome: event.outcome.clone(),
+        });
+        let event = Event {
+            id: self.events.len(),
+            time: self.time.shift_range(event.delay.from, event.delay.to),
+            info,
+            on_happen: Some(trigger),
+        };
+        self.register_event(&event);
+        self.events.push(event);
+    }
+
+    fn register_event_happen(&mut self, event: &FsEvent) {
+        let entry = event.clone().make_log_entry_on_complete(self.time);
+        self.event_log.add_entry(entry);
     }
 }

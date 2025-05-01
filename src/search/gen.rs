@@ -12,7 +12,8 @@ use crate::{
 
 use super::{
     config::SearchConfig,
-    step::{StateTraceStep, TcpEvent, TcpPacket, Timer, UdpMessage},
+    fs::FsEventKind,
+    step::{FsEvent, StateTraceStep, TcpEvent, TcpPacket, Timer, UdpMessage},
     tcp::{ReadyTcpPacketFilter, TcpPacketKind},
     tracker::Tracker,
 };
@@ -24,6 +25,7 @@ enum EventKind {
     Timer(usize),
     TcpPacket(TcpPacketKind),
     TcpEvent(TcpEventKind),
+    FsEvent(FsEventKind),
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,6 +47,10 @@ impl EventDriver for Generator {
                 dir: msg.from.address() < msg.to.address(),
             }),
             EventInfo::TcpEvent(e) => EventKind::TcpEvent(e.kind.clone()),
+            EventInfo::FsEvent(e) => EventKind::FsEvent(FsEventKind {
+                kind: e.kind.clone(),
+                outcome: e.outcome.clone(),
+            }),
         };
         let prev_value = self.event_info.insert(event.id, kind);
         assert!(prev_value.is_none());
@@ -127,6 +133,17 @@ impl Generator {
                             event_id,
                             time,
                             kind: kind.clone(),
+                        },
+                    );
+                    res.push(step);
+                }
+                EventKind::FsEvent(kind) => {
+                    let step = StateTraceStep::SelectFsEvent(
+                        i,
+                        FsEvent {
+                            event_id,
+                            time,
+                            outcome: kind.outcome.clone(),
                         },
                     );
                     res.push(step);

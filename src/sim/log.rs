@@ -2,9 +2,231 @@ use std::{fmt::Display, time::Duration};
 
 use colored::Colorize;
 
-use crate::{event::time::TimeSegment, tcp::packet::TcpPacket};
+use crate::{event::time::TimeSegment, fs::event::FsEventOutcome, tcp::packet::TcpPacket};
 
 use super::proc::Address;
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct OpenFileRequested {
+    pub time: TimeSegment,
+    pub proc: Address,
+    pub file: String,
+    pub outcome: FsEventOutcome,
+}
+
+impl Display for OpenFileRequested {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.outcome.is_ok() {
+            write!(
+                f,
+                "{} {:>12}   O  {:<12}",
+                self.time,
+                self.proc.to_string(),
+                self.file.to_string()
+            )
+        } else {
+            write!(
+                f,
+                "{}",
+                format!(
+                    "{} {:>12}   O  {:<12} <--- failed",
+                    self.time,
+                    self.proc.to_string(),
+                    self.file.to_string()
+                )
+                .red(),
+            )
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct CreateFileRequested {
+    pub time: TimeSegment,
+    pub proc: Address,
+    pub file: String,
+    pub outcome: FsEventOutcome,
+}
+
+impl Display for CreateFileRequested {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.outcome.is_ok() {
+            write!(
+                f,
+                "{} {:>12}   C  {:<12}",
+                self.time,
+                self.proc.to_string(),
+                self.file.to_string()
+            )
+        } else {
+            write!(
+                f,
+                "{}",
+                format!(
+                    "{} {:>12}   C  {:<12} <--- failed",
+                    self.time,
+                    self.proc.to_string(),
+                    self.file.to_string()
+                )
+                .red(),
+            )
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct DeleteFileRequested {
+    pub time: TimeSegment,
+    pub proc: Address,
+    pub file: String,
+    pub outcome: FsEventOutcome,
+}
+
+impl Display for DeleteFileRequested {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.outcome.is_ok() {
+            write!(
+                f,
+                "{} {:>12}   D  {:<12}",
+                self.time,
+                self.proc.to_string(),
+                self.file.to_string()
+            )
+        } else {
+            write!(
+                f,
+                "{}",
+                format!(
+                    "{} {:>12}   D  {:<12} <--- failed",
+                    self.time,
+                    self.proc.to_string(),
+                    self.file.to_string()
+                )
+                .red(),
+            )
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct ReadFileInitiated {
+    pub time: TimeSegment,
+    pub proc: Address,
+    pub file: String,
+}
+
+impl Display for ReadFileInitiated {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} R 🚀 {:<12}",
+            self.time,
+            self.proc.to_string(),
+            self.file.to_string()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct ReadFileCompleted {
+    pub time: TimeSegment,
+    pub proc: Address,
+    pub file: String,
+    pub outcome: FsEventOutcome,
+}
+
+impl Display for ReadFileCompleted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.outcome.is_ok() {
+            write!(
+                f,
+                "{} {:>12} R 🚩 {:<12}",
+                self.time,
+                self.proc.to_string(),
+                self.file.to_string()
+            )
+        } else {
+            write!(
+                f,
+                "{}",
+                format!(
+                    "{} {:>12} R 🚩 {:<12} <--- failed",
+                    self.time,
+                    self.proc.to_string(),
+                    self.file.to_string()
+                )
+                .red(),
+            )
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct WriteFileInitiated {
+    pub time: TimeSegment,
+    pub proc: Address,
+    pub file: String,
+}
+
+impl Display for WriteFileInitiated {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} W 🚀 {:<12}",
+            self.time,
+            self.proc.to_string(),
+            self.file.to_string()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct WriteFileCompleted {
+    pub time: TimeSegment,
+    pub proc: Address,
+    pub file: String,
+    pub outcome: FsEventOutcome,
+}
+
+impl Display for WriteFileCompleted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.outcome.is_ok() {
+            write!(
+                f,
+                "{} {:>12} W 🚩 {:<12}",
+                self.time,
+                self.proc.to_string(),
+                self.file.to_string()
+            )
+        } else {
+            write!(
+                f,
+                "{}",
+                format!(
+                    "{} {:>12} W 🚩 {:<12} <--- failed",
+                    self.time,
+                    self.proc.to_string(),
+                    self.file.to_string()
+                )
+                .red(),
+            )
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -311,6 +533,13 @@ pub enum LogEntry {
     FutureWokeUp(FutureWokeUp),
     ProcessInfo(ProcessInfo),
     NodeCrashed(NodeCrashed),
+    CreateFileRequested(CreateFileRequested),
+    DeleteFileRequested(DeleteFileRequested),
+    ReadFileInitiated(ReadFileInitiated),
+    ReadFileCompleted(ReadFileCompleted),
+    WriteFileInitiated(WriteFileInitiated),
+    WriteFileCompleted(WriteFileCompleted),
+    OpenFileRequested(OpenFileRequested),
 }
 
 impl Display for LogEntry {
@@ -328,6 +557,13 @@ impl Display for LogEntry {
             LogEntry::FutureWokeUp(e) => write!(f, "{}", e),
             LogEntry::ProcessInfo(e) => write!(f, "{}", e),
             LogEntry::NodeCrashed(e) => write!(f, "{}", e),
+            LogEntry::CreateFileRequested(e) => write!(f, "{}", e),
+            LogEntry::DeleteFileRequested(e) => write!(f, "{}", e),
+            LogEntry::ReadFileInitiated(e) => write!(f, "{}", e),
+            LogEntry::ReadFileCompleted(e) => write!(f, "{}", e),
+            LogEntry::WriteFileInitiated(e) => write!(f, "{}", e),
+            LogEntry::WriteFileCompleted(e) => write!(f, "{}", e),
+            LogEntry::OpenFileRequested(e) => write!(f, "{}", e),
         }
     }
 }

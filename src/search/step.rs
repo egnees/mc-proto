@@ -9,6 +9,7 @@ use crate::{
         outcome::{EventOutcome, EventOutcomeKind},
         time::TimeSegment,
     },
+    fs::event::FsEventOutcome,
     SearchErrorKind,
 };
 
@@ -53,12 +54,22 @@ pub struct TcpEvent {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone, Debug)]
+pub struct FsEvent {
+    pub event_id: usize,
+    pub time: TimeSegment,
+    pub outcome: FsEventOutcome,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Clone)]
 pub enum StateTraceStep {
     SelectUdp(usize, UdpMessage),
     SelectTimer(usize, Timer),
     SelectTcpPacket(usize, TcpPacket),
     SelectTcpEvent(usize, TcpEvent),
+    SelectFsEvent(usize, FsEvent),
     CrashNode(usize), // id of node
     Apply(Box<dyn ApplyFunctor>),
 }
@@ -134,6 +145,14 @@ impl StateTraceStep {
                 state.system.handle().crash_node_index(*node);
                 Ok(())
             }
+            StateTraceStep::SelectFsEvent(i, e) => {
+                let outcome = EventOutcome {
+                    event_id: e.event_id,
+                    kind: EventOutcomeKind::FsEventHappen(e.outcome.clone()),
+                    time: e.time,
+                };
+                self.apply_event_outcome(state, *i, outcome)
+            }
         }
     }
 }
@@ -158,6 +177,11 @@ impl Debug for StateTraceStep {
             Self::CrashNode(arg0) => f.debug_tuple("CrashNode").field(arg0).finish(),
             Self::SelectTcpEvent(arg0, arg1) => f
                 .debug_tuple("SelectTcpEvent")
+                .field(arg0)
+                .field(arg1)
+                .finish(),
+            Self::SelectFsEvent(arg0, arg1) => f
+                .debug_tuple("SelectFsEvent")
                 .field(arg0)
                 .field(arg1)
                 .finish(),
@@ -199,6 +223,9 @@ impl Display for StateTraceStep {
             }
             StateTraceStep::SelectTcpEvent(i, _) => {
                 write!(f, "Select {}: Tcp event", *i)
+            }
+            StateTraceStep::SelectFsEvent(i, _) => {
+                write!(f, "Select {}: Fs event", *i)
             }
         }
     }

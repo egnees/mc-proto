@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{event::driver::EventDriver, SearchErrorKind, System, SystemHandle};
+use crate::{event::driver::EventDriver, SearchConfig, SearchErrorKind, System, SystemHandle};
 
 use super::{gen::Generator, step::StateTraceStep};
 
@@ -23,6 +23,16 @@ impl SearchState {
         let mut state = Self { system, gen };
         trace.apply_steps(&mut state)?;
         Ok(state)
+    }
+
+    pub fn steps(&self, cfg: &SearchConfig) -> Vec<StateTraceStep> {
+        let system = self.system.handle();
+        self.gen.borrow().steps(system, cfg)
+    }
+
+    pub fn select_ready_event(&self, i: usize) {
+        self.gen.borrow_mut().select_ready_event(i);
+        self.system.handle().run_async_tasks();
     }
 }
 
