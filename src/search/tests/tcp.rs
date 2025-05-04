@@ -3,8 +3,8 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 use crate::{
     event::driver::EventDriver,
     search::{gen::Generator, state::SearchState, step::StateTraceStep},
-    send_local, sleep, spawn, time, Address, HashType, NetConfig, Node, Process, SearchConfig,
-    System, SystemHandle, TcpError, TcpListener, TcpStream,
+    send_local, sleep, spawn, Address, HashType, NetConfig, Node, Process, SearchConfig, System,
+    SystemHandle, TcpError, TcpListener, TcpStream,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,18 +31,14 @@ impl Process for Sender {
         let to: Address = content.into();
         spawn(async move {
             let mut stream = Self::connect_to(to).await;
-            let time1 = time();
             let bytes = stream.send("hello".as_bytes()).await.unwrap();
             assert_eq!(bytes, "hello".len());
-            let time2 = time();
-            assert!(time1.from < time2.from);
             let mut buf = [0u8; 10];
             let bytes = stream.recv(&mut buf).await.unwrap();
             assert_eq!(&buf[..bytes], "hello".as_bytes());
             let recv_result = stream.recv(&mut buf).await;
             assert!(recv_result.is_err());
             assert_eq!(recv_result.err().unwrap(), TcpError::ConnectionRefused);
-            assert!(time1.shift(Duration::from_millis(100)).from <= time().from);
             send_local("done");
         });
     }

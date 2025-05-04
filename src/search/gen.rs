@@ -4,7 +4,7 @@ use crate::{
     event::{
         driver::EventDriver,
         info::{EventInfo, TcpEventKind},
-        time::TimeSegment,
+        time::Time,
         Event,
     },
     SystemHandle,
@@ -54,7 +54,13 @@ impl EventDriver for Generator {
         };
         let prev_value = self.event_info.insert(event.id, kind);
         assert!(prev_value.is_none());
-        self.tracker.add(event.time.from, event.time.to, event.id);
+        match event.time {
+            Time::Point(_duration) => panic!("only time segments supported for generator"),
+            Time::Segment(time_segment) => {
+                self.tracker
+                    .add(time_segment.from, time_segment.to, event.id)
+            }
+        }
     }
 
     fn cancel_event(&mut self, event: &Event) {
@@ -62,6 +68,10 @@ impl EventDriver for Generator {
         assert!(removed.is_some());
         let removed = self.event_info.remove(&event.id);
         assert!(removed.is_some());
+    }
+
+    fn start_time(&self) -> Time {
+        Time::default_range()
     }
 }
 
@@ -80,7 +90,7 @@ impl Generator {
         let mut tcp_filter = ReadyTcpPacketFilter::new();
         for i in 0..pending {
             let e = self.tracker.get_ready(i).unwrap();
-            let time = TimeSegment::new(e.from, e.to);
+            let time = Time::new_segment(e.from, e.to);
             let event_id = e.event_id;
             let kind = self.event_info.get(&e.event_id).unwrap();
             match kind {

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    event::time::TimeSegment,
+    event::time::Time,
     fs::{event::FsEvent, registry::FsEventRegistry},
     util::trigger::Trigger,
     Log,
@@ -16,12 +16,12 @@ pub struct InstantRegister {
 
 impl FsEventRegistry for InstantRegister {
     fn register_instant_event(&mut self, event: &FsEvent) {
-        let e = event.clone().make_log_entry_on_init(TimeSegment::default());
+        let e = event.clone().make_log_entry_on_init(Time::default_range());
         self.log.add_entry(e);
     }
 
     fn register_event_initiated(&mut self, event: &FsEvent) {
-        let e = event.clone().make_log_entry_on_init(TimeSegment::default());
+        let e = event.clone().make_log_entry_on_init(Time::default_range());
         self.log.add_entry(e);
     }
 
@@ -32,7 +32,7 @@ impl FsEventRegistry for InstantRegister {
     fn register_event_happen(&mut self, event: &FsEvent) {
         let e = event
             .clone()
-            .make_log_entry_on_complete(TimeSegment::default());
+            .make_log_entry_on_complete(Time::default_range());
         self.log.add_entry(e);
     }
 }

@@ -4,78 +4,12 @@ use crate::{
     event::{
         driver::EventDriver,
         outcome::{EventOutcome, EventOutcomeKind},
-        time::TimeSegment,
+        time::Time,
         Event,
     },
-    send_local, send_message, sleep, spawn, Address, HashType, NetConfig, Node, Process, System,
+    sim::tests::common::{Pinger, Ponger, Sleeper},
+    Address, NetConfig, Node, System,
 };
-
-////////////////////////////////////////////////////////////////////////////////
-
-struct Pinger {
-    receiver: Address,
-}
-
-impl Process for Pinger {
-    fn on_message(&mut self, from: Address, content: String) {
-        assert_eq!(from, self.receiver);
-        send_local(content);
-    }
-
-    fn on_local_message(&mut self, content: String) {
-        send_message(&self.receiver, content);
-    }
-
-    fn hash(&self) -> HashType {
-        unreachable!()
-    }
-}
-
-struct Ponger {}
-
-impl Process for Ponger {
-    fn on_message(&mut self, from: Address, content: String) {
-        send_message(&from, content.clone());
-        send_local(content);
-    }
-
-    fn on_local_message(&mut self, _content: String) {
-        unreachable!()
-    }
-
-    fn hash(&self) -> HashType {
-        unreachable!()
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Default)]
-struct Sleeper {}
-
-impl Sleeper {
-    fn new() -> Self {
-        Default::default()
-    }
-}
-
-impl Process for Sleeper {
-    fn on_message(&mut self, _from: Address, _content: String) {
-        unreachable!()
-    }
-
-    fn on_local_message(&mut self, content: String) {
-        let ms = u64::from_str_radix(content.as_str(), 10).unwrap();
-        spawn(async move {
-            sleep(Duration::from_millis(ms)).await;
-            send_local(content);
-        });
-    }
-
-    fn hash(&self) -> HashType {
-        unreachable!()
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -97,6 +31,10 @@ impl EventDriver for EventCollector {
     fn cancel_event(&mut self, _event: &Event) {
         unreachable!()
     }
+
+    fn start_time(&self) -> Time {
+        Time::default_range()
+    }
 }
 
 impl EventCollector {
@@ -116,8 +54,8 @@ fn basic_net() {
     };
 
     // add net and system
-    let net_delays = TimeSegment::new(Duration::from_millis(100), Duration::from_millis(200));
-    let net = NetConfig::new(net_delays.from, net_delays.to).unwrap();
+    let net_delays = Time::new_segment(Duration::from_millis(100), Duration::from_millis(200));
+    let net = NetConfig::new(Duration::from_millis(100), Duration::from_millis(200)).unwrap();
     let system = System::new(&net, &(collector.clone() as Rc<RefCell<dyn EventDriver>>));
 
     // add nodes
@@ -161,7 +99,7 @@ fn basic_net() {
     assert_eq!(locals.len(), 1);
     assert_eq!(locals[0], "1");
     assert_eq!(collector.borrow().events.len(), 2);
-    let double_net_delays = net_delays.shift_range(net_delays.from, net_delays.to);
+    let double_net_delays = net_delays.shift_on(net_delays);
     assert_eq!(collector.borrow().events[1].time, double_net_delays);
 
     // deliver second msg
@@ -194,8 +132,7 @@ fn basic_sleep() {
     };
 
     // add net and system
-    let net_delays = TimeSegment::new(Duration::from_millis(100), Duration::from_millis(200));
-    let net = NetConfig::new(net_delays.from, net_delays.to).unwrap();
+    let net = NetConfig::new(Duration::from_millis(100), Duration::from_millis(200)).unwrap();
     let system = System::new(&net, &(collector.clone() as Rc<RefCell<dyn EventDriver>>));
 
     // add nodes
@@ -213,7 +150,7 @@ fn basic_sleep() {
     let ms100 = Duration::from_millis(100);
     assert_eq!(
         collector.borrow().events[0].time,
-        TimeSegment::new(ms100, ms100)
+        Time::new_segment(ms100, ms100)
     );
     let first_sleep_id = collector.borrow().events[0].id;
 
@@ -223,26 +160,26 @@ fn basic_sleep() {
     let ms200 = Duration::from_millis(200);
     assert_eq!(
         collector.borrow().events[1].time,
-        TimeSegment::new(ms200, ms200)
+        Time::new_segment(ms200, ms200)
     );
     let second_sleep_id = collector.borrow().events[1].id;
 
     // first wakeup
     handle.handle_event_outcome(EventOutcome {
         event_id: first_sleep_id,
-        time: TimeSegment::new(ms100, ms100),
+        time: Time::new_segment(ms100, ms100),
         kind: EventOutcomeKind::TimerFired(),
     });
 
-    assert_eq!(handle.time(), TimeSegment::new(ms100, ms100));
+    assert_eq!(handle.time(), Time::new_segment(ms100, ms100));
 
     // second wakeup
     handle.handle_event_outcome(EventOutcome {
         event_id: second_sleep_id,
-        time: TimeSegment::new(ms200, ms200),
+        time: Time::new_segment(ms200, ms200),
         kind: EventOutcomeKind::TimerFired(),
     });
-    assert_eq!(handle.time(), TimeSegment::new(ms200, ms200));
+    assert_eq!(handle.time(), Time::new_segment(ms200, ms200));
     assert_eq!(sleeper.drain_locals(), ["100", "200"]);
 
     // one more local
@@ -252,10 +189,10 @@ fn basic_sleep() {
     let thrid_sleep_id = collector.borrow().events[2].id;
     handle.handle_event_outcome(EventOutcome {
         event_id: thrid_sleep_id,
-        time: TimeSegment::new(ms500, ms500),
+        time: Time::new_segment(ms500, ms500),
         kind: EventOutcomeKind::TimerFired(),
     });
-    assert_eq!(handle.time(), TimeSegment::new(ms500, ms500));
+    assert_eq!(handle.time(), Time::new_segment(ms500, ms500));
     assert_eq!(sleeper.drain_locals(), ["300"]);
 
     // print log

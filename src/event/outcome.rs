@@ -1,6 +1,6 @@
 use crate::{fs::event::FsEventOutcome, TcpError};
 
-use super::time::TimeSegment;
+use super::time::Time;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -18,5 +18,5 @@ pub enum EventOutcomeKind {
 pub struct EventOutcome {
     pub event_id: usize,
     pub kind: EventOutcomeKind,
-    pub time: TimeSegment,
+    pub time: Time,
 }

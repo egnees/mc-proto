@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::{
-    event::time::TimeSegment,
+    event::time::Time,
     fs::{error::FsError, event::FsEventOutcome, file::File, manager::FsManager},
     util,
 };
@@ -13,7 +13,7 @@ use super::{delayed::make_delayed_register, instant::make_shared_instant};
 #[test]
 fn works() {
     let reg = make_shared_instant();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg.clone(), "node".into(), delays, 1024);
     let handle = manager.handle();
     let file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
@@ -45,7 +45,7 @@ fn works() {
 #[test]
 fn capacity_exceed() {
     let reg = make_shared_instant();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg.clone(), "node".into(), delays, 5);
     let handle = manager.handle();
     let file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
@@ -68,7 +68,7 @@ fn capacity_exceed() {
 #[test]
 fn delete_works() {
     let reg = make_shared_instant();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg.clone(), "node".into(), delays, 5);
     let handle = manager.handle();
 
@@ -93,7 +93,7 @@ fn delete_works() {
 #[test]
 fn already_exists() {
     let reg = make_shared_instant();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg, "node".into(), delays, 5);
     let handle = manager.handle();
 
@@ -107,7 +107,7 @@ fn already_exists() {
 #[test]
 fn delete_not_existant() {
     let reg = make_shared_instant();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg, "node".into(), delays, 5);
     let handle = manager.handle();
 
@@ -120,7 +120,7 @@ fn delete_not_existant() {
 #[test]
 fn open() {
     let reg = make_shared_instant();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg.clone(), "node".into(), delays, 5);
     let handle = manager.handle();
 
@@ -153,7 +153,7 @@ fn open() {
 #[test]
 fn open_not_existant() {
     let reg = make_shared_instant();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg.clone(), "node".into(), delays, 5);
     let handle = manager.handle();
 
@@ -175,7 +175,7 @@ fn open_not_existant() {
 #[test]
 fn concurrent_events() {
     let reg = make_delayed_register();
-    let delays = TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100));
+    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
     let manager = FsManager::new(reg.clone(), "node".into(), delays, 100);
     let handle = manager.handle();
 

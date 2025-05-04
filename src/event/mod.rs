@@ -4,7 +4,7 @@ use std::{
 };
 
 use info::EventInfo;
-use time::TimeSegment;
+use time::Time;
 
 use crate::util::trigger::Trigger;
 
@@ -21,7 +21,7 @@ pub mod time;
 
 pub struct Event {
     pub id: usize,
-    pub time: TimeSegment,
+    pub time: Time,
     pub info: EventInfo,
     pub on_happen: Option<Trigger>,
 }

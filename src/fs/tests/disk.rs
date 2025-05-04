@@ -3,7 +3,7 @@ use std::{cell::RefCell, pin::pin, rc::Rc, time::Duration};
 use futures::executor::block_on;
 
 use crate::{
-    event::time::TimeSegment,
+    event::time::Time,
     fs::{
         disk::Disk,
         event::{FsEventKind, FsEventOutcome},
@@ -19,7 +19,7 @@ fn one_request() {
     let reg = Rc::new(RefCell::new(InstantRegister::default()));
     let mut disk = Disk::new(
         reg,
-        TimeSegment::new(Duration::from_millis(100), Duration::from_millis(200)),
+        Time::new_segment(Duration::from_millis(100), Duration::from_millis(200)),
         "node".into(),
         20,
     );
@@ -44,7 +44,7 @@ fn capacity() {
     let reg = Rc::new(RefCell::new(InstantRegister::default()));
     let mut disk = Disk::new(
         reg,
-        TimeSegment::new(Duration::from_millis(100), Duration::from_millis(200)),
+        Time::new_segment(Duration::from_millis(100), Duration::from_millis(200)),
         "node".into(),
         20,
     );
@@ -83,7 +83,7 @@ fn capacity2() {
     let reg = Rc::new(RefCell::new(InstantRegister::default()));
     let mut disk = Disk::new(
         reg,
-        TimeSegment::new(Duration::from_millis(100), Duration::from_millis(200)),
+        Time::new_segment(Duration::from_millis(100), Duration::from_millis(200)),
         "node".into(),
         20,
     );

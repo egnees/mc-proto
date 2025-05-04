@@ -1,4 +1,4 @@
-use crate::event::{driver::EventDriver, Event};
+use crate::event::{driver::EventDriver, time::Time, Event};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -21,6 +21,10 @@ impl EventDriver for TestEventDriver {
             .map(|(i, _)| i)
             .unwrap();
         self.events.remove(index);
+    }
+
+    fn start_time(&self) -> Time {
+        Time::default_range()
     }
 }
 

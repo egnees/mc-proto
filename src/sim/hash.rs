@@ -79,7 +79,7 @@ impl<'a> HashContext<'a> {
     pub fn hash_events(&self, events: impl Iterator<Item = &'a Event> + Clone) -> u64 {
         let min_time = events
             .clone()
-            .map(|e| e.time.from)
+            .map(|e| e.time.min())
             .min()
             .unwrap_or(Duration::ZERO);
         util::hash::hash_multiset(events.map(|e| self.hash_event(min_time, e)))

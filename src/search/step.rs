@@ -7,7 +7,7 @@ use crate::{
     event::{
         info::TcpEventKind,
         outcome::{EventOutcome, EventOutcomeKind},
-        time::TimeSegment,
+        time::Time,
     },
     fs::event::FsEventOutcome,
     SearchErrorKind,
@@ -22,7 +22,7 @@ pub struct UdpMessage {
     pub event_id: usize,
     pub udp_msg_id: usize,
     pub drop: bool,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@ pub struct UdpMessage {
 pub struct Timer {
     pub event_id: usize,
     pub timer_id: usize,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ pub struct Timer {
 pub struct TcpPacket {
     pub event_id: usize,
     pub tcp_msg_id: usize,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +48,7 @@ pub struct TcpPacket {
 #[derive(Clone, Debug)]
 pub struct TcpEvent {
     pub event_id: usize,
-    pub time: TimeSegment,
+    pub time: Time,
     pub kind: TcpEventKind,
 }
 
@@ -57,7 +57,7 @@ pub struct TcpEvent {
 #[derive(Clone, Debug)]
 pub struct FsEvent {
     pub event_id: usize,
-    pub time: TimeSegment,
+    pub time: Time,
     pub outcome: FsEventOutcome,
 }
 

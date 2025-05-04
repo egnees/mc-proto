@@ -2,7 +2,7 @@ use std::{fmt::Display, time::Duration};
 
 use colored::Colorize;
 
-use crate::{event::time::TimeSegment, fs::event::FsEventOutcome, tcp::packet::TcpPacket};
+use crate::{event::time::Time, fs::event::FsEventOutcome, tcp::packet::TcpPacket};
 
 use super::proc::Address;
 
@@ -10,7 +10,7 @@ use super::proc::Address;
 
 #[derive(Debug, Clone)]
 pub struct OpenFileRequested {
-    pub time: TimeSegment,
+    pub time: Time,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -46,7 +46,7 @@ impl Display for OpenFileRequested {
 
 #[derive(Debug, Clone)]
 pub struct CreateFileRequested {
-    pub time: TimeSegment,
+    pub time: Time,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -82,7 +82,7 @@ impl Display for CreateFileRequested {
 
 #[derive(Debug, Clone)]
 pub struct DeleteFileRequested {
-    pub time: TimeSegment,
+    pub time: Time,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -118,7 +118,7 @@ impl Display for DeleteFileRequested {
 
 #[derive(Debug, Clone)]
 pub struct ReadFileInitiated {
-    pub time: TimeSegment,
+    pub time: Time,
     pub proc: Address,
     pub file: String,
 }
@@ -139,7 +139,7 @@ impl Display for ReadFileInitiated {
 
 #[derive(Debug, Clone)]
 pub struct ReadFileCompleted {
-    pub time: TimeSegment,
+    pub time: Time,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -175,7 +175,7 @@ impl Display for ReadFileCompleted {
 
 #[derive(Debug, Clone)]
 pub struct WriteFileInitiated {
-    pub time: TimeSegment,
+    pub time: Time,
     pub proc: Address,
     pub file: String,
 }
@@ -196,7 +196,7 @@ impl Display for WriteFileInitiated {
 
 #[derive(Debug, Clone)]
 pub struct WriteFileCompleted {
-    pub time: TimeSegment,
+    pub time: Time,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -235,7 +235,7 @@ pub struct TcpMessageSent {
     pub from: Address,
     pub to: Address,
     pub packet: TcpPacket,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for TcpMessageSent {
@@ -258,7 +258,7 @@ pub struct TcpMessageReceived {
     pub from: Address,
     pub to: Address,
     pub packet: TcpPacket,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for TcpMessageReceived {
@@ -281,7 +281,7 @@ pub struct TcpMessageDropped {
     pub from: Address,
     pub to: Address,
     pub packet: TcpPacket,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for TcpMessageDropped {
@@ -308,7 +308,7 @@ pub struct UdpMessageSent {
     pub from: Address,
     pub to: Address,
     pub content: String,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for UdpMessageSent {
@@ -331,7 +331,7 @@ pub struct UdpMessageReceived {
     pub from: Address,
     pub to: Address,
     pub content: String,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for UdpMessageReceived {
@@ -354,7 +354,7 @@ pub struct UdpMessageDropped {
     pub from: Address,
     pub to: Address,
     pub content: String,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for UdpMessageDropped {
@@ -381,7 +381,7 @@ pub struct FutureFellAsleep {
     pub tag: usize,
     pub proc: Address,
     pub duration: Duration,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for FutureFellAsleep {
@@ -407,7 +407,7 @@ impl Display for FutureFellAsleep {
 pub struct FutureWokeUp {
     pub tag: usize,
     pub proc: Address,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for FutureWokeUp {
@@ -432,7 +432,7 @@ impl Display for FutureWokeUp {
 pub struct ProcessSentLocalMessage {
     pub process: Address,
     pub content: String,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for ProcessSentLocalMessage {
@@ -458,7 +458,7 @@ impl Display for ProcessSentLocalMessage {
 pub struct ProcessReceivedLocalMessage {
     pub process: Address,
     pub content: String,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for ProcessReceivedLocalMessage {
@@ -483,7 +483,7 @@ impl Display for ProcessReceivedLocalMessage {
 #[derive(Debug, Clone)]
 pub struct ProcessInfo {
     pub process: Address,
-    pub time: TimeSegment,
+    pub time: Time,
     pub content: String,
 }
 
@@ -508,7 +508,7 @@ impl Display for ProcessInfo {
 #[derive(Debug, Clone)]
 pub struct NodeCrashed {
     pub node: String,
-    pub time: TimeSegment,
+    pub time: Time,
 }
 
 impl Display for NodeCrashed {

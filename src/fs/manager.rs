@@ -5,7 +5,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{event::time::TimeSegment, util::trigger::Waiter, Address};
+use crate::{event::time::Time, util::trigger::Waiter, Address};
 
 use super::{
     disk::Disk,
@@ -29,7 +29,7 @@ impl FsManagerState {
     pub fn new(
         reg: Rc<RefCell<dyn FsEventRegistry>>,
         node: String,
-        disk_delays: TimeSegment,
+        disk_delays: Time,
         disk_capacity: usize,
     ) -> Self {
         let disk = Disk::new(reg.clone(), disk_delays, node.clone(), disk_capacity);
@@ -51,7 +51,7 @@ impl FsManager {
     pub fn new(
         reg: Rc<RefCell<dyn FsEventRegistry>>,
         node: String,
-        disk_delays: TimeSegment,
+        disk_delays: Time,
         disk_capacity: usize,
     ) -> Self {
         let state = FsManagerState::new(reg, node, disk_delays, disk_capacity);
@@ -101,7 +101,7 @@ impl FsManagerHandle {
         };
 
         state.reg.borrow_mut().register_event_initiated(&FsEvent {
-            delay: TimeSegment::default(), // does not matter here
+            delay: Time::default_point(), // does not matter here
             initiated_by: Address::new(state.node.clone(), proc),
             kind: FsEventKind::Open { file: name },
             outcome: outcome.clone().map(|_| ()),
@@ -132,7 +132,7 @@ impl FsManagerHandle {
         };
 
         state.reg.borrow_mut().register_instant_event(&FsEvent {
-            delay: TimeSegment::default(), // does not matter
+            delay: Time::default_point(), // does not matter
             initiated_by: Address::new(state.node.clone(), proc),
             kind: FsEventKind::Create { file: name },
             outcome: outcome.clone().map(|_| ()),
@@ -160,7 +160,7 @@ impl FsManagerHandle {
             }
         };
         state.reg.borrow_mut().register_instant_event(&FsEvent {
-            delay: TimeSegment::default(), // does not matter here
+            delay: Time::default_point(), // does not matter here
             initiated_by: Address::new(state.node.clone(), proc),
             kind: FsEventKind::Delete {
                 file: name.to_string(),

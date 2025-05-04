@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    event::{driver::EventDriver, time::TimeSegment},
+    event::{driver::EventDriver, time::Time},
     search::{gen::Generator, state::SearchState, step::StateTraceStep},
     send_local, spawn, Address, File, HashType, Node, Process, SearchConfig, System, SystemHandle,
 };
@@ -93,7 +93,7 @@ fn build_system(s: SystemHandle) {
     s.add_node(node).unwrap();
     s.setup_fs(
         "n",
-        TimeSegment::new(Duration::from_millis(20), Duration::from_millis(100)),
+        Time::new_segment(Duration::from_millis(20), Duration::from_millis(100)),
         100,
     )
     .unwrap();

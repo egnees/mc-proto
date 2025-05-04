@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 use crate::{
-    event::time::TimeSegment,
+    event::time::Time,
     util::trigger::{make_trigger, Trigger, Waiter},
     Address,
 };
@@ -21,7 +21,7 @@ struct Request(Trigger, FsEvent);
 pub struct Disk {
     reg: Rc<RefCell<dyn FsEventRegistry>>,
     queue: VecDeque<Request>,
-    delay: TimeSegment,
+    delay: Time,
     node: String,
     capacity: usize,
     used: usize,
@@ -31,7 +31,7 @@ pub struct Disk {
 impl Disk {
     pub fn new(
         reg: Rc<RefCell<dyn FsEventRegistry>>,
-        delay: TimeSegment,
+        delay: Time,
         node: String,
         capacity: usize,
     ) -> Self {

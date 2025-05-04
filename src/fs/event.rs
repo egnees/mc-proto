@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::{
-    event::time::TimeSegment,
+    event::time::Time,
     sim::log::{
         CreateFileRequested, DeleteFileRequested, OpenFileRequested, ReadFileCompleted,
         ReadFileInitiated, WriteFileCompleted, WriteFileInitiated,
@@ -60,7 +60,7 @@ pub type FsEventOutcome = Result<(), FsError>;
 
 #[derive(Clone, Debug)]
 pub struct FsEvent {
-    pub delay: TimeSegment,
+    pub delay: Time,
     pub initiated_by: Address,
     pub kind: FsEventKind,
     pub outcome: FsEventOutcome,
@@ -69,11 +69,11 @@ pub struct FsEvent {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl FsEvent {
-    pub fn make_log_entry_on_init(self, t: TimeSegment) -> LogEntry {
+    pub fn make_log_entry_on_init(self, time: Time) -> LogEntry {
         match self.kind {
             FsEventKind::Create { file } => {
                 let entry = CreateFileRequested {
-                    time: t.shift_range(self.delay.from, self.delay.to),
+                    time,
                     proc: self.initiated_by,
                     file,
                     outcome: self.outcome,
@@ -82,7 +82,7 @@ impl FsEvent {
             }
             FsEventKind::Delete { file } => {
                 let entry = DeleteFileRequested {
-                    time: t.shift_range(self.delay.from, self.delay.to),
+                    time,
                     proc: self.initiated_by,
                     file,
                     outcome: self.outcome,
@@ -91,7 +91,7 @@ impl FsEvent {
             }
             FsEventKind::Open { file } => {
                 let entry = OpenFileRequested {
-                    time: t.shift_range(self.delay.from, self.delay.to),
+                    time,
                     proc: self.initiated_by,
                     file,
                     outcome: self.outcome,
@@ -100,7 +100,7 @@ impl FsEvent {
             }
             FsEventKind::Read { file, .. } => {
                 let entry = ReadFileInitiated {
-                    time: t.shift_range(self.delay.from, self.delay.to),
+                    time,
                     proc: self.initiated_by,
                     file,
                 };
@@ -108,7 +108,7 @@ impl FsEvent {
             }
             FsEventKind::Write { file, .. } => {
                 let entry = WriteFileInitiated {
-                    time: t.shift_range(self.delay.from, self.delay.to),
+                    time,
                     proc: self.initiated_by,
                     file,
                 };
@@ -117,11 +117,11 @@ impl FsEvent {
         }
     }
 
-    pub fn make_log_entry_on_complete(self, t: TimeSegment) -> LogEntry {
+    pub fn make_log_entry_on_complete(self, time: Time) -> LogEntry {
         match self.kind {
             FsEventKind::Read { file, .. } => {
                 let entry = ReadFileCompleted {
-                    time: t.shift_range(self.delay.from, self.delay.to),
+                    time,
                     proc: self.initiated_by,
                     file,
                     outcome: self.outcome,
@@ -130,7 +130,7 @@ impl FsEvent {
             }
             FsEventKind::Write { file, .. } => {
                 let entry = WriteFileCompleted {
-                    time: t.shift_range(self.delay.from, self.delay.to),
+                    time,
                     proc: self.initiated_by,
                     file,
                     outcome: self.outcome,

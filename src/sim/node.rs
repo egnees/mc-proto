@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    event::time::TimeSegment,
+    event::time::Time,
     fs::{manager::FsManager, registry::FsEventRegistry},
     Address,
 };
@@ -36,7 +36,7 @@ impl Node {
     pub(crate) fn setup_fs(
         &mut self,
         reg: Rc<RefCell<dyn FsEventRegistry>>,
-        delays: TimeSegment,
+        delays: Time,
         capacity: usize,
     ) -> Result<(), Error> {
         if self.fs.is_some() {

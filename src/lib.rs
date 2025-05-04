@@ -35,3 +35,5 @@ pub use tcp::{TcpError, TcpListener, TcpReceiver, TcpSender, TcpStream};
 pub use util::hash::hash_set;
 
 pub use fs::file::File;
+
+pub use sim::StepConfig;

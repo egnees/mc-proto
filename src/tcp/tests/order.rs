@@ -37,14 +37,14 @@ impl Process for Sender {
             let bytes = stream.send("hello".as_bytes()).await.unwrap();
             assert_eq!(bytes, "hello".len());
             let time2 = time();
-            assert!(time1.from < time2.from);
+            assert!(time1.min() < time2.min());
             let mut buf = [0u8; 10];
             let bytes = stream.recv(&mut buf).await.unwrap();
             assert_eq!(&buf[..bytes], "hello".as_bytes());
             let recv_result = stream.recv(&mut buf).await;
             assert!(recv_result.is_err());
             assert_eq!(recv_result.err().unwrap(), TcpError::ConnectionRefused);
-            assert!(time1.shift(Duration::from_millis(100)).from <= time().from);
+            assert!(time1.shift(Duration::from_millis(100)).min() <= time().min());
             send_local("done");
         });
     }

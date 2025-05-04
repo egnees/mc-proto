@@ -7,7 +7,7 @@ use std::{
 use crate::{
     event::{
         driver::EventDriver, manager::EventManager, outcome::EventOutcome, stat::EventStat,
-        time::TimeSegment,
+        time::Time,
     },
     fs::manager::FsManagerHandle,
     runtime::Runtime,
@@ -221,7 +221,7 @@ impl SystemHandle {
     pub fn setup_fs(
         &self,
         node: impl Into<String>,
-        delays: TimeSegment,
+        delays: Time,
         capacity: usize,
     ) -> Result<(), Error> {
         let node = node.into();
@@ -287,7 +287,7 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub fn time(&self) -> TimeSegment {
+    pub fn time(&self) -> Time {
         self.state().borrow().event_manager.handle().time()
     }
 

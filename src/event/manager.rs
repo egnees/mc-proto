@@ -39,7 +39,7 @@ use super::{
     info::{EventInfo, TcpEvent, TcpEventKind, Timer, UdpMessage},
     outcome::{EventOutcome, EventOutcomeKind},
     stat::EventStat,
-    time::TimeSegment,
+    time::Time,
     Event,
 };
 
@@ -49,7 +49,7 @@ pub struct EventManagerState {
     system: Option<SystemHandle>,
     rt: RuntimeHandle,
     events: Vec<Event>,
-    time: TimeSegment,
+    time: Time,
     event_log: Log,
     driver: Weak<RefCell<dyn EventDriver>>,
     timers: HashMap<usize, Sender<bool>>,
@@ -154,7 +154,7 @@ impl EventManager {
             rt,
             events: Default::default(),
             event_log: Default::default(),
-            time: Default::default(),
+            time: driver.borrow().start_time(),
             driver: Rc::downgrade(driver),
             timers: Default::default(),
             next_udp_msg_id: 0,
@@ -213,7 +213,7 @@ impl EventManagerHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub fn time(&self) -> TimeSegment {
+    pub fn time(&self) -> Time {
         self.state().borrow().time
     }
 
@@ -421,8 +421,7 @@ impl EventManagerHandle {
 
             // update time
 
-            assert!(state.time.from <= outcome.time.from);
-            assert!(state.time.to <= outcome.time.to);
+            assert!(state.time <= outcome.time);
 
             state.time = outcome.time;
 
@@ -764,14 +763,15 @@ impl FsEventRegistry for EventManagerState {
 
     fn register_event_pipelined(&mut self, trigger: Trigger, event: &FsEvent) {
         // no log here
-        let info = EventInfo::FsEvent(super::info::FsEvent {
+        let e = super::info::FsEvent {
             proc: event.initiated_by.clone(),
             kind: event.kind.clone(),
             outcome: event.outcome.clone(),
-        });
+        };
+        let info = EventInfo::FsEvent(e);
         let event = Event {
             id: self.events.len(),
-            time: self.time.shift_range(event.delay.from, event.delay.to),
+            time: self.time.shift_on(event.delay),
             info,
             on_happen: Some(trigger),
         };

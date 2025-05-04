@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{event::time::TimeSegment, runtime::JoinHandle};
+use crate::{event::time::Time, runtime::JoinHandle};
 
 use super::{context::Context, system::HashType};
 
@@ -160,7 +160,7 @@ where
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn time() -> TimeSegment {
+pub fn time() -> Time {
     Context::current().event_manager.time()
 }
 
