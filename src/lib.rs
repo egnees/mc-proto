@@ -36,4 +36,4 @@ pub use util::hash::hash_set;
 
 pub use fs::file::File;
 
-pub use sim::StepConfig;
+pub use sim::{Simulation, StepConfig};

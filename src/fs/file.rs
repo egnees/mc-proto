@@ -160,6 +160,10 @@ impl File {
         let fs = ctx.fs.ok_or(FsError::StorageNotAvailable)?;
         Self::delete_file(proc, name.into(), fs)
     }
+
+    pub fn size(&self) -> Result<usize, FsError> {
+        Ok(self.content()?.borrow().0.len())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
