@@ -1,6 +1,7 @@
 mod check;
 mod event;
 mod fs;
+mod rpc;
 mod runtime;
 mod search;
 mod sim;
