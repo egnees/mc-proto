@@ -41,7 +41,8 @@ impl<T> Sender<T> {
     }
 
     pub fn has_receiver(&self) -> bool {
-        !matches!(*self.shared.borrow(), SharedState::<T>::ReceiverDropped)
+        let state = self.shared.borrow();
+        !matches!(*state, SharedState::<T>::ReceiverDropped)
     }
 }
 

@@ -72,6 +72,15 @@ impl<'a> HashContext<'a> {
                 event.kind.hash(&mut hasher);
                 self.hash_address(&event.proc);
             }
+            EventInfo::RpcMessage(rpc) => {
+                rpc.kind.hash(&mut hasher);
+                self.hash_address(&rpc.from.address()).hash(&mut hasher);
+                self.hash_address(&rpc.to.address()).hash(&mut hasher);
+            }
+            EventInfo::RpcEvent(e) => {
+                e.kind.hash(&mut hasher);
+                self.hash_address(&e.to.address()).hash(&mut hasher);
+            }
         }
         hasher.finish()
     }

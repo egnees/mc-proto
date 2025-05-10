@@ -336,7 +336,7 @@ impl SystemHandle {
             .on_node_crash(node.as_str());
 
         let rt = self.state().borrow().rt.handle();
-        rt.cancel_tasks(|p| p.address().node == node);
+        rt.cancel_tasks(|p| p.try_address().map(|a| a.node == node).unwrap_or(false));
 
         let node = self
             .state()

@@ -2,6 +2,7 @@ use std::{fmt::Display, hash::Hash, time::Duration};
 
 use crate::{
     fs::event::{FsEventKind, FsEventOutcome},
+    rpc::{RpcError, RpcResult},
     sim::proc::ProcessHandle,
     tcp::packet::TcpPacket,
     Address, TcpError,
@@ -14,6 +15,8 @@ pub enum EventInfo {
     UdpMessage(UdpMessage),
     TcpMessage(TcpMessage),
     TcpEvent(TcpEvent),
+    RpcMessage(RpcMessage),
+    RpcEvent(RpcEvent),
     FsEvent(FsEvent),
     Timer(Timer),
 }
@@ -26,7 +29,114 @@ impl Display for EventInfo {
             EventInfo::Timer(timer) => write!(f, "Timer: {}", timer),
             EventInfo::TcpEvent(tcp_event) => write!(f, "Tcp event: {{{}}}", tcp_event),
             EventInfo::FsEvent(fs_event) => write!(f, "Fs event: {{{}}}", fs_event),
+            EventInfo::RpcMessage(rpc_msg) => write!(f, "Rpc message: {{{}}}", rpc_msg),
+            EventInfo::RpcEvent(rpc_event) => write!(f, "Rpc event: {{{}}}", rpc_event),
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone, Hash)]
+pub enum RpcMessageKind {
+    Request {
+        id: u64,
+        tag: u64,
+        content: Vec<u8>,
+    },
+    Response {
+        id: u64,
+        content: RpcResult<Vec<u8>>,
+    },
+}
+
+impl Display for RpcMessageKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RpcMessageKind::Request { id, tag, content } => write!(
+                f,
+                "request, id: {}, tag: {}, content: {:?}",
+                id,
+                tag,
+                String::from_utf8(content.clone()).unwrap()
+            ),
+            RpcMessageKind::Response { id, content } => {
+                write!(
+                    f,
+                    "response, id: {}, content: {:?}",
+                    id,
+                    match content {
+                        Ok(c) => {
+                            String::from_utf8(c.clone()).unwrap()
+                        }
+                        Err(e) => {
+                            e.to_string()
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct RpcMessage {
+    pub from: ProcessHandle,
+    pub to: ProcessHandle,
+    pub kind: RpcMessageKind,
+}
+
+impl Hash for RpcMessage {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.from.address().hash(state);
+        self.to.address().hash(state);
+        self.kind.hash(state);
+    }
+}
+
+impl Display for RpcMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "from: '{}', ", self.from.address())?;
+        write!(f, "to: '{}', ", self.to.address())?;
+        write!(f, "kind: '{}'", self.kind)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone, Hash)]
+pub enum RpcEventKind {
+    ConnectionRefused,
+}
+
+impl RpcEventKind {
+    pub fn rpc_result(&self) -> RpcResult<()> {
+        match self {
+            RpcEventKind::ConnectionRefused => Err(RpcError::ConnectionRefused),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)]
+pub struct RpcEvent {
+    pub kind: RpcEventKind,
+    pub to: ProcessHandle,
+}
+
+impl Hash for RpcEvent {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+        self.to.address().hash(state);
+    }
+}
+
+impl Display for RpcEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "rpc event to: '{}'", self.to.address())
     }
 }
 

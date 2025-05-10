@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use crate::{
     event::{
         driver::EventDriver,
-        info::{EventInfo, TcpEventKind},
+        info::{EventInfo, RpcEventKind, RpcMessageKind, TcpEventKind},
         time::Time,
         Event,
     },
@@ -13,7 +13,8 @@ use crate::{
 use super::{
     config::SearchConfig,
     fs::FsEventKind,
-    step::{FsEvent, StateTraceStep, TcpEvent, TcpPacket, Timer, UdpMessage},
+    rpc::{ReadyRpcRequestsFilter, RpcMessageInfo},
+    step::{FsEvent, RpcEvent, RpcMessage, StateTraceStep, TcpEvent, TcpPacket, Timer, UdpMessage},
     tcp::{ReadyTcpPacketFilter, TcpPacketKind},
     tracker::Tracker,
 };
@@ -25,6 +26,8 @@ enum EventKind {
     Timer(usize),
     TcpPacket(TcpPacketKind),
     TcpEvent(TcpEventKind),
+    RpcMessage(RpcMessageInfo),
+    RpcEvent(RpcEventKind),
     FsEvent(FsEventKind),
 }
 
@@ -38,20 +41,30 @@ pub struct Generator {
 
 impl EventDriver for Generator {
     fn register_event(&mut self, event: &Event) {
-        let kind = match &event.info {
-            EventInfo::UdpMessage(msg) => EventKind::UdpMessage(msg.udp_msg_id),
-            EventInfo::Timer(timer) => EventKind::Timer(timer.timer_id),
-            EventInfo::TcpMessage(msg) => EventKind::TcpPacket(TcpPacketKind {
-                tcp_packet_id: msg.tcp_msg_id,
-                stream: msg.packet.tcp_stream_id,
-                dir: msg.from.address() < msg.to.address(),
-            }),
-            EventInfo::TcpEvent(e) => EventKind::TcpEvent(e.kind.clone()),
-            EventInfo::FsEvent(e) => EventKind::FsEvent(FsEventKind {
-                kind: e.kind.clone(),
-                outcome: e.outcome.clone(),
-            }),
-        };
+        let kind =
+            match &event.info {
+                EventInfo::UdpMessage(msg) => EventKind::UdpMessage(msg.udp_msg_id),
+                EventInfo::Timer(timer) => EventKind::Timer(timer.timer_id),
+                EventInfo::TcpMessage(msg) => EventKind::TcpPacket(TcpPacketKind {
+                    tcp_packet_id: msg.tcp_msg_id,
+                    stream: msg.packet.tcp_stream_id,
+                    dir: msg.from.address() < msg.to.address(),
+                }),
+                EventInfo::TcpEvent(e) => EventKind::TcpEvent(e.kind.clone()),
+                EventInfo::FsEvent(e) => EventKind::FsEvent(FsEventKind {
+                    kind: e.kind.clone(),
+                    outcome: e.outcome.clone(),
+                }),
+                EventInfo::RpcMessage(msg) => match &msg.kind {
+                    RpcMessageKind::Request { id, .. } => EventKind::RpcMessage(
+                        RpcMessageInfo::new(*id, msg.from.address(), msg.to.address()),
+                    ),
+                    RpcMessageKind::Response { id, .. } => EventKind::RpcMessage(
+                        RpcMessageInfo::new(*id, msg.from.address(), msg.to.address()),
+                    ),
+                },
+                EventInfo::RpcEvent(e) => EventKind::RpcEvent(e.kind.clone()),
+            };
         let prev_value = self.event_info.insert(event.id, kind);
         assert!(prev_value.is_none());
         match event.time {
@@ -88,6 +101,7 @@ impl Generator {
         let pending = self.tracker.ready_count();
         let mut res = Vec::new();
         let mut tcp_filter = ReadyTcpPacketFilter::new();
+        let mut rpc_filter = ReadyRpcRequestsFilter::new();
         for i in 0..pending {
             let e = self.tracker.get_ready(i).unwrap();
             let time = Time::new_segment(e.from, e.to);
@@ -147,6 +161,26 @@ impl Generator {
                     );
                     res.push(step);
                 }
+                EventKind::RpcMessage(rpc) => {
+                    let rpc_msg = RpcMessage {
+                        event_id,
+                        time,
+                        rpc_request_id: rpc.id,
+                    };
+                    let step = StateTraceStep::SelectRpcMessage(i, rpc_msg);
+                    rpc_filter.add(rpc, step);
+                }
+                EventKind::RpcEvent(kind) => {
+                    let step = StateTraceStep::SelectRpcEvent(
+                        i,
+                        RpcEvent {
+                            event_id,
+                            time,
+                            kind: kind.clone(),
+                        },
+                    );
+                    res.push(step);
+                }
                 EventKind::FsEvent(kind) => {
                     let step = StateTraceStep::SelectFsEvent(
                         i,
@@ -163,6 +197,12 @@ impl Generator {
 
         // add tcp packets
         tcp_filter
+            .ready_packets()
+            .map(|(_, s)| s)
+            .cloned()
+            .for_each(|s| res.push(s));
+
+        rpc_filter
             .ready_packets()
             .map(|(_, s)| s)
             .cloned()

@@ -304,6 +304,75 @@ impl Display for TcpMessageDropped {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
+pub struct RpcMessageSent {
+    pub from: Address,
+    pub to: Address,
+    pub content: Vec<u8>,
+    pub time: Time,
+}
+
+impl Display for RpcMessageSent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} ---> {:<12} {:?}",
+            self.time,
+            self.from.to_string(),
+            self.to.to_string(),
+            String::from_utf8(self.content.clone()).unwrap()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct RpcMessageReceived {
+    pub from: Address,
+    pub to: Address,
+    pub content: Vec<u8>,
+    pub time: Time,
+}
+
+impl Display for RpcMessageReceived {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} <--- {:<12} {:?}",
+            self.time,
+            self.to.to_string(),
+            self.from.to_string(),
+            String::from_utf8(self.content.clone()).unwrap()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct RpcMessageDropped {
+    pub from: Address,
+    pub to: Address,
+    pub content: Vec<u8>,
+    pub time: Time,
+}
+
+impl Display for RpcMessageDropped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:>12} ---x {:<12} {:?} <-- message dropped",
+            self.time,
+            self.from.to_string(),
+            self.to.to_string(),
+            String::from_utf8(self.content.clone()).unwrap()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
 pub struct UdpMessageSent {
     pub from: Address,
     pub to: Address,
@@ -540,6 +609,9 @@ pub enum LogEntry {
     WriteFileInitiated(WriteFileInitiated),
     WriteFileCompleted(WriteFileCompleted),
     OpenFileRequested(OpenFileRequested),
+    RpcMessageSent(RpcMessageSent),
+    RpcMessageReceived(RpcMessageReceived),
+    RpcMessageDropped(RpcMessageDropped),
 }
 
 impl Display for LogEntry {
@@ -564,6 +636,9 @@ impl Display for LogEntry {
             LogEntry::WriteFileInitiated(e) => write!(f, "{}", e),
             LogEntry::WriteFileCompleted(e) => write!(f, "{}", e),
             LogEntry::OpenFileRequested(e) => write!(f, "{}", e),
+            LogEntry::RpcMessageSent(e) => write!(f, "{}", e),
+            LogEntry::RpcMessageReceived(e) => write!(f, "{}", e),
+            LogEntry::RpcMessageDropped(e) => write!(f, "{}", e),
         }
     }
 }

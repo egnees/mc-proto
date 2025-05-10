@@ -1,4 +1,4 @@
-use crate::{fs::event::FsEventOutcome, TcpError};
+use crate::{fs::event::FsEventOutcome, rpc::RpcResult, TcpError};
 
 use super::time::Time;
 
@@ -10,6 +10,8 @@ pub enum EventOutcomeKind {
     TimerFired(),
     TcpPacketDelivered(),
     TcpEventHappen(Result<(), TcpError>),
+    RpcMessageDelivered,
+    RpcEventHappen(RpcResult<()>),
     FsEventHappen(FsEventOutcome),
 }
 

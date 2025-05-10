@@ -89,6 +89,10 @@ impl ProcessState {
 pub struct ProcessHandle(Weak<RefCell<ProcessState>>);
 
 impl ProcessHandle {
+    pub fn try_address(&self) -> Option<Address> {
+        self.0.upgrade().map(|s| s.borrow().address.clone())
+    }
+
     pub fn address(&self) -> Address {
         self.state().borrow().address.clone()
     }

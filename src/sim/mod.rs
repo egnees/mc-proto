@@ -32,6 +32,10 @@ impl StepConfig {
             udp_packet_drop_prob,
         }
     }
+
+    pub fn no_drops() -> Self {
+        Self::new(0.)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,9 +53,13 @@ impl Simulation {
     }
 
     pub fn step(&self, cfg: &StepConfig) -> bool {
-        self.driver
-            .borrow_mut()
-            .make_step(self.system.handle(), cfg)
+        let outcome = self.driver.borrow_mut().next_event_outcome(cfg);
+        if let Some(outcome) = outcome {
+            self.system.handle().handle_event_outcome(outcome);
+            true
+        } else {
+            false
+        }
     }
 
     pub fn step_until_no_events(&self, cfg: &StepConfig) {

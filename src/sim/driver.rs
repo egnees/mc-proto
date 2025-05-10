@@ -13,7 +13,7 @@ use crate::{
         time::Time,
         Event,
     },
-    SystemHandle,
+    Address,
 };
 
 use super::StepConfig;
@@ -24,6 +24,8 @@ pub struct Driver {
     info: BTreeMap<usize, (Duration, EventInfo)>,
     queue: BTreeSet<(Duration, usize)>,
     rng: SmallRng,
+    last_tcp: BTreeMap<(usize, bool), Duration>,
+    last_rpc: BTreeMap<(Address, Address), Duration>,
 }
 
 impl EventDriver for Driver {
@@ -31,8 +33,36 @@ impl EventDriver for Driver {
         let t = match event.time {
             Time::Point(duration) => duration,
             Time::Segment(time_segment) => {
-                self.rng.random_range(time_segment.from..time_segment.to)
+                let from = match &event.info {
+                    EventInfo::RpcMessage(m) => self
+                        .last_rpc
+                        .get(&(m.from.address(), m.to.address()))
+                        .cloned()
+                        .unwrap_or(Duration::ZERO)
+                        .max(time_segment.from),
+                    EventInfo::TcpMessage(m) => self
+                        .last_tcp
+                        .get(&(m.packet.tcp_stream_id, m.from.address() < m.to.address()))
+                        .cloned()
+                        .unwrap_or(Duration::ZERO)
+                        .max(time_segment.from),
+                    _ => time_segment.from,
+                };
+                self.rng.random_range(from..time_segment.to)
             }
+        };
+
+        match &event.info {
+            EventInfo::RpcMessage(m) => {
+                self.last_rpc.insert((m.from.address(), m.to.address()), t);
+            }
+            EventInfo::TcpMessage(m) => {
+                self.last_tcp.insert(
+                    (m.packet.tcp_stream_id, m.from.address() < m.to.address()),
+                    t,
+                );
+            }
+            _ => {}
         };
 
         let prev = self.info.insert(event.id, (t, event.info.clone()));
@@ -56,13 +86,15 @@ impl EventDriver for Driver {
 impl Driver {
     pub fn new(seed: u64) -> Self {
         Self {
+            last_rpc: Default::default(),
+            last_tcp: Default::default(),
             info: Default::default(),
             queue: Default::default(),
             rng: SmallRng::seed_from_u64(seed),
         }
     }
 
-    pub fn make_step(&mut self, system: SystemHandle, cfg: &StepConfig) -> bool {
+    pub fn next_event_outcome(&mut self, cfg: &StepConfig) -> Option<EventOutcome> {
         if let Some((time, event_id)) = self.queue.pop_first() {
             let (t, event_info) = self.info.remove(&event_id).unwrap();
             assert_eq!(t, time);
@@ -84,16 +116,17 @@ impl Driver {
                     EventOutcomeKind::FsEventHappen(fs_event.outcome.clone())
                 }
                 EventInfo::Timer(_) => EventOutcomeKind::TimerFired(),
+                EventInfo::RpcMessage(_) => EventOutcomeKind::RpcMessageDelivered,
+                EventInfo::RpcEvent(e) => EventOutcomeKind::RpcEventHappen(e.kind.rpc_result()),
             };
             let outcome = EventOutcome {
                 event_id,
                 kind,
                 time,
             };
-            system.handle_event_outcome(outcome);
-            true
+            Some(outcome)
         } else {
-            false
+            None
         }
     }
 }

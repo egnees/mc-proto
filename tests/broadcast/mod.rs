@@ -21,3 +21,6 @@ mod reliable_udp;
 
 #[cfg(test)]
 mod reliable_tcp_causal;
+
+#[cfg(test)]
+mod reliable_rpc_causal;

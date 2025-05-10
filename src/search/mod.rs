@@ -6,6 +6,7 @@ pub mod error;
 mod fs;
 mod gen;
 pub mod log;
+mod rpc;
 pub mod searcher;
 pub mod state;
 pub mod step;

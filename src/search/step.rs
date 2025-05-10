@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     event::{
-        info::TcpEventKind,
+        info::{RpcEventKind, TcpEventKind},
         outcome::{EventOutcome, EventOutcomeKind},
         time::Time,
     },
@@ -63,12 +63,32 @@ pub struct FsEvent {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone, Debug)]
+pub struct RpcMessage {
+    pub event_id: usize,
+    pub rpc_request_id: u64,
+    pub time: Time,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone, Debug)]
+pub struct RpcEvent {
+    pub event_id: usize,
+    pub time: Time,
+    pub kind: RpcEventKind,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Clone)]
 pub enum StateTraceStep {
     SelectUdp(usize, UdpMessage),
     SelectTimer(usize, Timer),
     SelectTcpPacket(usize, TcpPacket),
     SelectTcpEvent(usize, TcpEvent),
+    SelectRpcMessage(usize, RpcMessage),
+    SelectRpcEvent(usize, RpcEvent),
     SelectFsEvent(usize, FsEvent),
     CrashNode(usize), // id of node
     Apply(Box<dyn ApplyFunctor>),
@@ -137,6 +157,23 @@ impl StateTraceStep {
                 };
                 self.apply_event_outcome(state, *i, outcome)
             }
+            StateTraceStep::SelectRpcMessage(i, rpc) => {
+                let outcome = EventOutcome {
+                    event_id: rpc.event_id,
+                    kind: EventOutcomeKind::RpcMessageDelivered,
+                    time: rpc.time,
+                };
+                self.apply_event_outcome(state, *i, outcome)
+            }
+            StateTraceStep::SelectRpcEvent(i, e) => {
+                let rpc_result = e.kind.rpc_result();
+                let outcome = EventOutcome {
+                    event_id: e.event_id,
+                    kind: EventOutcomeKind::RpcEventHappen(rpc_result),
+                    time: e.time,
+                };
+                self.apply_event_outcome(state, *i, outcome)
+            }
             StateTraceStep::Apply(f) => {
                 f.apply(state.system.handle());
                 Ok(())
@@ -170,9 +207,11 @@ impl Debug for StateTraceStep {
                 .field(arg0)
                 .field(arg1)
                 .finish(),
-            Self::SelectTcpPacket(arg0, arg1) => {
-                f.debug_tuple("SelectTcp").field(arg0).field(arg1).finish()
-            }
+            Self::SelectTcpPacket(arg0, arg1) => f
+                .debug_tuple("SelectTcpPacket")
+                .field(arg0)
+                .field(arg1)
+                .finish(),
             Self::Apply(_) => f.debug_tuple("Apply").finish(),
             Self::CrashNode(arg0) => f.debug_tuple("CrashNode").field(arg0).finish(),
             Self::SelectTcpEvent(arg0, arg1) => f
@@ -182,6 +221,16 @@ impl Debug for StateTraceStep {
                 .finish(),
             Self::SelectFsEvent(arg0, arg1) => f
                 .debug_tuple("SelectFsEvent")
+                .field(arg0)
+                .field(arg1)
+                .finish(),
+            Self::SelectRpcEvent(arg0, arg1) => f
+                .debug_tuple("SelectRpcEvent")
+                .field(arg0)
+                .field(arg1)
+                .finish(),
+            Self::SelectRpcMessage(arg0, arg1) => f
+                .debug_tuple("SelectRpcMessage")
                 .field(arg0)
                 .field(arg1)
                 .finish(),
@@ -218,11 +267,17 @@ impl Display for StateTraceStep {
                     i, tcp_packet.event_id
                 )
             }
-            StateTraceStep::CrashNode(node) => {
-                write!(f, "Crash node {}", node)
-            }
             StateTraceStep::SelectTcpEvent(i, _) => {
                 write!(f, "Select {}: Tcp event", *i)
+            }
+            StateTraceStep::SelectRpcMessage(i, msg) => {
+                write!(f, "Select {}: Rpc message {} delivered", i, msg.event_id)
+            }
+            StateTraceStep::SelectRpcEvent(i, _) => {
+                write!(f, "Select {}: Rpc event", *i)
+            }
+            StateTraceStep::CrashNode(node) => {
+                write!(f, "Crash node {}", node)
             }
             StateTraceStep::SelectFsEvent(i, _) => {
                 write!(f, "Select {}: Fs event", *i)

@@ -1,6 +1,7 @@
 mod check;
 mod event;
 mod fs;
+mod rpc;
 mod runtime;
 mod search;
 mod sim;
@@ -37,3 +38,5 @@ pub use util::hash::hash_set;
 pub use fs::file::File;
 
 pub use sim::{Simulation, StepConfig};
+
+pub use rpc::{rpc, RpcListener, RpcRequest, RpcResponse};

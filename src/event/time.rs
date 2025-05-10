@@ -74,6 +74,13 @@ impl Time {
             Time::Segment(time_segment) => time_segment.from,
         }
     }
+
+    pub fn max(&self) -> Duration {
+        match self {
+            Time::Point(duration) => *duration,
+            Time::Segment(time_segment) => time_segment.to,
+        }
+    }
 }
 
 impl Display for Time {
