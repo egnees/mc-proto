@@ -1,4 +1,5 @@
 use std::{
+    any::{Any, TypeId},
     cell::RefCell,
     fmt::Display,
     future::Future,
@@ -48,7 +49,7 @@ where
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub trait Process {
+pub trait Process: Any {
     fn on_message(&mut self, from: Address, content: String);
 
     fn on_local_message(&mut self, content: String);
@@ -80,6 +81,21 @@ impl ProcessState {
 
     pub fn proc(&self) -> Rc<RefCell<dyn Process>> {
         self.proc.clone()
+    }
+
+    pub fn get_as<T: Any>(&self) -> Option<Rc<RefCell<T>>> {
+        let proc = self.proc();
+        let tid = {
+            let proc = proc.clone() as Rc<RefCell<dyn Any>>;
+            let b = proc.borrow();
+            (*b).type_id()
+        };
+        if TypeId::of::<T>() == tid {
+            let result = unsafe { Rc::from_raw(Rc::into_raw(proc) as *const RefCell<T>) };
+            Some(result)
+        } else {
+            None
+        }
     }
 }
 
@@ -123,6 +139,10 @@ impl ProcessHandle {
 
     pub(crate) fn proc(&self) -> Rc<RefCell<dyn Process>> {
         self.state().borrow().proc()
+    }
+
+    pub(crate) fn proc_state<T: Any>(&self) -> Option<Rc<RefCell<T>>> {
+        self.state().borrow().get_as()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -180,12 +200,53 @@ pub fn log(content: impl Into<String>) {
 
 #[cfg(test)]
 mod tests {
-    use super::Address;
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::{HashType, Process};
+
+    use super::{Address, ProcessState};
+
+    ////////////////////////////////////////////////////////////////////////////////
 
     #[test]
     fn string_to_addr() {
         let a: Address = "node:proc".into();
         assert_eq!(a.node, "node");
         assert_eq!(a.process, "proc");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    fn get_as() {
+        struct Proc {
+            x: i32,
+        }
+        impl Process for Proc {
+            fn on_message(&mut self, _from: Address, _content: String) {
+                unreachable!()
+            }
+
+            fn on_local_message(&mut self, _content: String) {
+                unreachable!()
+            }
+
+            fn hash(&self) -> HashType {
+                0
+            }
+        }
+
+        let proc_state = ProcessState::new(
+            Rc::new(RefCell::new(Proc { x: 1 })),
+            Address::new("n1", "p1"),
+        );
+
+        let proc = proc_state.get_as::<Proc>().unwrap();
+        assert_eq!(proc.borrow().x, 1);
+
+        proc.borrow_mut().x = 2;
+
+        let proc = proc_state.get_as::<Proc>().unwrap();
+        assert_eq!(proc.borrow().x, 2);
     }
 }

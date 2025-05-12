@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     cell::RefCell,
     collections::{btree_map::Entry, BTreeMap},
     rc::{Rc, Weak},
@@ -350,5 +351,16 @@ impl SystemHandle {
         self.run_async_tasks();
 
         Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn proc(&self, addr: impl Into<Address>) -> Option<ProcessHandle> {
+        let addr: Address = addr.into();
+        self.proc_by_addr(&addr)
+    }
+
+    pub fn proc_state<T: Any>(&self, addr: impl Into<Address>) -> Option<Rc<RefCell<T>>> {
+        self.proc(addr).and_then(|p| p.proc_state::<T>())
     }
 }

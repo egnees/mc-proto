@@ -19,7 +19,7 @@ use super::{
 
 #[derive(Default)]
 pub struct Node {
-    proc: BTreeMap<String, Rc<RefCell<ProcessState>>>,
+    pub(crate) proc: BTreeMap<String, Rc<RefCell<ProcessState>>>,
     pub(crate) fs: Option<FsManager>,
     pub(crate) name: String,
 }
