@@ -498,6 +498,83 @@ impl Display for FutureWokeUp {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
+pub struct TimerSet {
+    pub id: usize,
+    pub proc: Address,
+    pub time: Time,
+    pub duration: Duration,
+}
+
+impl Display for TimerSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            format!(
+                "{} {:>12}  ⏳  {:<12} {:.3}",
+                self.time,
+                self.proc.to_string(),
+                self.id.to_string(),
+                self.duration.as_secs_f64()
+            )
+            .bright_blue()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct TimerCanceled {
+    pub id: usize,
+    pub proc: Address,
+    pub time: Time,
+}
+
+impl Display for TimerCanceled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            format!(
+                "{} {:>12}  ❌  {:<12}",
+                self.time,
+                self.proc.to_string(),
+                self.id.to_string(),
+            )
+            .bright_blue()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct TimerFired {
+    pub id: usize,
+    pub proc: Address,
+    pub time: Time,
+}
+
+impl Display for TimerFired {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            format!(
+                "{} {:>12}  🔥  {:<12}",
+                self.time,
+                self.proc.to_string(),
+                self.id.to_string(),
+            )
+            .bright_blue()
+        )
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
 pub struct ProcessSentLocalMessage {
     pub process: Address,
     pub content: String,
@@ -612,6 +689,9 @@ pub enum LogEntry {
     RpcMessageSent(RpcMessageSent),
     RpcMessageReceived(RpcMessageReceived),
     RpcMessageDropped(RpcMessageDropped),
+    TimerFired(TimerFired),
+    TimerSet(TimerSet),
+    TimerCanceled(TimerCanceled),
 }
 
 impl Display for LogEntry {
@@ -639,6 +719,9 @@ impl Display for LogEntry {
             LogEntry::RpcMessageSent(e) => write!(f, "{}", e),
             LogEntry::RpcMessageReceived(e) => write!(f, "{}", e),
             LogEntry::RpcMessageDropped(e) => write!(f, "{}", e),
+            LogEntry::TimerFired(e) => write!(f, "{}", e),
+            LogEntry::TimerSet(e) => write!(f, "{}", e),
+            LogEntry::TimerCanceled(e) => write!(f, "{}", e),
         }
     }
 }

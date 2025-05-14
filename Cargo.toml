@@ -14,5 +14,8 @@ smol = "2.0.2"
 thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["sync", "macros", "rt"] }
 
+[workspace]
+members = ["examples/*", "."]
+
 [profile.bench]
 debug = true

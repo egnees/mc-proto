@@ -1,8 +1,7 @@
-use std::{cell::RefCell, future::Future, time::Duration};
+use std::{cell::RefCell, future::Future};
 
 use crate::{
     event::manager::EventManagerHandle, fs::manager::FsManagerHandle, runtime::JoinHandle,
-    util::oneshot,
 };
 
 use super::proc::{Address, ProcessHandle};
@@ -41,15 +40,6 @@ impl Context {
     pub fn register_udp_message(&self, to: &Address, content: String) {
         self.event_manager
             .register_udp_message(self.proc.clone(), to, content);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-
-    pub fn register_sleep(&self, duration: Duration) -> oneshot::Receiver<bool> {
-        let (sender, receiver) = oneshot::channel();
-        self.event_manager
-            .register_sleep(self.proc.clone(), duration, sender);
-        receiver
     }
 
     ////////////////////////////////////////////////////////////////////////////////

@@ -123,7 +123,7 @@ fn disconnect_delayed() {
                     ..
                 },
                 ..
-            },)
+            })
         ));
         EventOutcome {
             event_id: event.id,
@@ -247,6 +247,8 @@ fn disconnect_on_crash_delayed() {
 
     // crash recv
     system.crash_node("recv").unwrap();
+
+    println!("node crashed");
 
     let o3 = {
         assert_eq!(driver.borrow().events.len(), 1);

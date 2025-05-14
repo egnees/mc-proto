@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{event::time::Time, runtime::JoinHandle};
+use crate::{event::time::Time, runtime::JoinHandle, timer};
 
 use super::{context::Context, system::HashType};
 
@@ -169,8 +169,8 @@ pub fn send_local(content: impl Into<String>) {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub async fn sleep(duration: Duration) {
-    let recv = Context::current().register_sleep(duration);
-    recv.await.unwrap();
+    let timer = timer::sleep(duration);
+    timer.await
 }
 
 ////////////////////////////////////////////////////////////////////////////////

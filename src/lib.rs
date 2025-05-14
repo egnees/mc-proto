@@ -6,6 +6,7 @@ mod runtime;
 mod search;
 mod sim;
 mod tcp;
+mod timer;
 mod util;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,8 +36,10 @@ pub use tcp::{TcpError, TcpListener, TcpReceiver, TcpSender, TcpStream};
 
 pub use util::hash::hash_set;
 
-pub use fs::file::File;
+pub use fs::{error::FsResult, file::File};
 
 pub use sim::{Simulation, StepConfig};
 
-pub use rpc::{rpc, RpcListener, RpcRequest, RpcResponse};
+pub use rpc::{rpc, RpcListener, RpcRequest, RpcResponse, RpcResult};
+
+pub use timer::{cancel_timer, set_timer};

@@ -15,3 +15,7 @@ pub enum FsError {
     #[error("file not available")]
     FileNotAvailable,
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub type FsResult<T> = Result<T, FsError>;

@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{HashMap, VecDeque},
+    collections::{BTreeSet, HashMap, VecDeque},
     future::Future,
     rc::{Rc, Weak},
     sync::Arc,
@@ -89,17 +89,24 @@ impl RuntimeHandle {
                 .iter()
                 .filter(|(_id, t)| pred(&t.owner))
                 .map(|(id, _)| *id)
-                .collect::<Vec<_>>()
+                .collect::<BTreeSet<_>>()
         };
 
         to_cancel.iter().for_each(|task| {
             // task will be dropped after state borrow is released
             // which is important, because task drop can lead
             // to scheduling of another tasks (in the current runtime)
-            let task = self.state().borrow_mut().tasks.remove(task);
-            assert!(task.is_some());
+            let task = self.state().borrow_mut().tasks.remove(task).unwrap();
             drop(task);
         });
+
+        let state = self.state();
+        let mut state = state.borrow_mut();
+
+        // remove tasks from pending
+        let mut v = Default::default();
+        std::mem::swap(&mut v, &mut state.pending);
+        state.pending = v.into_iter().filter(|id| !to_cancel.contains(id)).collect();
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{BTreeSet, HashMap},
+    collections::BTreeSet,
     future::Future,
     rc::{Rc, Weak},
     time::Duration,
@@ -21,7 +21,8 @@ use crate::{
             FutureFellAsleep, FutureWokeUp, Log, LogEntry, NodeCrashed, ProcessInfo,
             ProcessReceivedLocalMessage, ProcessSentLocalMessage, RpcMessageDropped,
             RpcMessageReceived, RpcMessageSent, TcpMessageDropped, TcpMessageReceived,
-            TcpMessageSent, UdpMessageDropped, UdpMessageReceived, UdpMessageSent,
+            TcpMessageSent, TimerCanceled, TimerFired, TimerSet, UdpMessageDropped,
+            UdpMessageReceived, UdpMessageSent,
         },
         proc::{ProcessHandle, ProcessState},
     },
@@ -33,8 +34,9 @@ use crate::{
         stream::{TcpSender, TcpStream},
     },
     time,
+    timer::{manager::TimerManager, registry::TimerRegistry},
     util::{
-        oneshot::{self, Sender},
+        oneshot,
         trigger::{self, make_trigger, Trigger},
     },
     Address, HashType, Process, SystemHandle,
@@ -57,15 +59,14 @@ pub struct EventManagerState {
     time: Time,
     event_log: Rc<RefCell<Log>>,
     driver: Weak<RefCell<dyn EventDriver>>,
-    timers: HashMap<usize, Sender<bool>>,
     next_udp_msg_id: usize,
-    next_timer_id: usize,
     next_tcp_msg_id: usize,
     next_tcp_stream_id: usize,
     stat: EventStat,
     unhandled_events: BTreeSet<usize>,
     tcp: TcpConnectionManager,
     rpc: Rc<RefCell<RpcManager>>,
+    timers: TimerManager,
 }
 
 impl EventManagerState {
@@ -78,12 +79,6 @@ impl EventManagerState {
     fn inc_udp_msg_id(&mut self) -> usize {
         let res = self.next_udp_msg_id;
         self.next_udp_msg_id += 1;
-        res
-    }
-
-    fn inc_timer_id(&mut self) -> usize {
-        let res = self.next_timer_id;
-        self.next_timer_id += 1;
         res
     }
 
@@ -166,15 +161,14 @@ impl EventManager {
             event_log: Default::default(),
             time: driver.borrow().start_time(),
             driver: Rc::downgrade(driver),
-            timers: Default::default(),
             next_udp_msg_id: 0,
-            next_timer_id: 0,
             next_tcp_msg_id: 0,
             next_tcp_stream_id: 0,
             stat: Default::default(),
             unhandled_events: Default::default(),
             tcp: Default::default(),
             rpc: Default::default(),
+            timers: Default::default(),
         };
         Self(Rc::new(RefCell::new(state)))
     }
@@ -211,6 +205,10 @@ impl EventManagerHandle {
     }
 
     pub(crate) fn fs_registry(&self) -> Rc<RefCell<dyn FsEventRegistry>> {
+        self.state()
+    }
+
+    pub(crate) fn timer_registry(&self) -> Rc<RefCell<dyn TimerRegistry>> {
         self.state()
     }
 
@@ -349,46 +347,6 @@ impl EventManagerHandle {
         };
 
         // register event
-        state.register_event(&event);
-        state.events.push(event);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-
-    pub fn register_sleep(&self, proc: ProcessHandle, on: Duration, sender: Sender<bool>) {
-        let state = self.state();
-        let mut state = state.borrow_mut();
-
-        let timer_id = state.inc_timer_id();
-        let insert_result = state.timers.insert(timer_id, sender);
-        assert!(insert_result.is_none());
-
-        // add log entry
-        {
-            let sleep_entry = FutureFellAsleep {
-                tag: timer_id,
-                proc: proc.address(),
-                duration: on,
-                time: state.time,
-            };
-            let log_entry = LogEntry::FutureFellAsleep(sleep_entry);
-            state.event_log.borrow_mut().add_entry(log_entry);
-        }
-
-        // make event
-        let info = Timer {
-            timer_id,
-            proc,
-            duration: on,
-            with_sleep: true,
-        };
-        let info = EventInfo::Timer(info);
-        let event = Event {
-            id: state.events.len(),
-            time: state.time.shift(on),
-            info,
-            on_happen: None,
-        };
         state.register_event(&event);
         state.events.push(event);
     }
@@ -541,23 +499,31 @@ impl EventManagerHandle {
             let state = self.state();
             let mut state = state.borrow_mut();
 
-            let wakeup_entry = FutureWokeUp {
-                tag: timer.timer_id,
-                proc: timer.proc.address(),
-                time: state.time,
+            let entry = if timer.with_sleep {
+                let wakeup_entry = FutureWokeUp {
+                    tag: timer.timer_id,
+                    proc: timer.proc.address(),
+                    time: state.time,
+                };
+                LogEntry::FutureWokeUp(wakeup_entry)
+            } else {
+                let timer_entry = TimerFired {
+                    id: timer.timer_id,
+                    proc: timer.proc.address(),
+                    time: state.time,
+                };
+                LogEntry::TimerFired(timer_entry)
             };
-            let log_entry = LogEntry::FutureWokeUp(wakeup_entry);
-            state.event_log.borrow_mut().add_entry(log_entry);
+            state.event_log.borrow_mut().add_entry(entry);
 
             // get sender
-            state
-                .timers
-                .remove(&timer.timer_id)
-                .expect("trying to handle not registered timer")
+            state.timers.remove(timer.timer_id)
         };
 
         // wakeup sleeping future
-        let _ = sender.send(true);
+        if let Some(sender) = sender {
+            let _ = sender.send(());
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -584,9 +550,7 @@ impl EventManagerHandle {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
 // TCP
-
 ////////////////////////////////////////////////////////////////////////////////
 
 impl EventManagerState {
@@ -724,17 +688,23 @@ impl TcpRegistry for EventManagerState {
         if self.system().system_dropped() {
             return;
         }
+
         let (waiter, trigger) = make_trigger();
         let Some(to) = self.system().proc_by_addr(&sender.other) else {
             return;
         };
+
         self.make_and_register_tcp_event(TcpEventKind::SenderDropped, to, trigger);
 
         let sender = sender.sender.clone();
 
+        println!("spawning...");
+
         self.rt.spawn(
             async move {
+                println!("sender dropped, register waiter");
                 let _ = waiter.wait::<Result<(), TcpError>>().await;
+                println!("waiter.wait done");
                 drop(sender);
             },
             Self::make_dummy_proc_handle(),
@@ -1062,5 +1032,84 @@ impl RpcRegistry for EventManagerState {
 
     fn register_listener(&mut self, from: Address) -> RpcResult<RpcListener> {
         self.rpc.borrow_mut().register_listener(from)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Timer
+////////////////////////////////////////////////////////////////////////////////
+
+impl TimerRegistry for EventManagerState {
+    fn register_timer(
+        &mut self,
+        duration: Duration,
+        with_sleep: bool,
+        proc: Address,
+    ) -> (usize, oneshot::Receiver<()>) {
+        let time = self.time.shift(duration);
+        let id = self.events.len();
+        let receiver = self.timers.create(id);
+        let proc_handle = self.system().proc_by_addr(&proc).unwrap();
+
+        // register log entry
+        {
+            let entry = if !with_sleep {
+                let entry = TimerSet {
+                    id,
+                    proc,
+                    time,
+                    duration,
+                };
+                LogEntry::TimerSet(entry)
+            } else {
+                let entry = FutureFellAsleep {
+                    tag: id,
+                    proc,
+                    time,
+                    duration,
+                };
+                LogEntry::FutureFellAsleep(entry)
+            };
+            self.event_log.borrow_mut().add_entry(entry);
+        }
+
+        let event = {
+            let info = EventInfo::Timer(Timer {
+                timer_id: id,
+                with_sleep,
+                proc: proc_handle,
+                duration,
+            });
+            Event {
+                id,
+                time,
+                info,
+                on_happen: None,
+            }
+        };
+        self.register_event(&event);
+        self.events.push(event);
+
+        (id, receiver)
+    }
+
+    fn cancel_timer(&mut self, id: usize, proc: Address) {
+        println!("cancel timer id={id}");
+        let timer = self.timers.remove(id);
+        if timer.is_some() {
+            let entry = TimerCanceled {
+                id,
+                proc,
+                time: self.time,
+            };
+            let entry = LogEntry::TimerCanceled(entry);
+            self.event_log.borrow_mut().add_entry(entry);
+
+            self.cancel_events(|e| {
+                variant::try_variant!(e.info, EventInfo::Timer(Timer { timer_id, .. }))
+                    .map(|tid| tid == id)
+                    .unwrap_or(false)
+            });
+        }
     }
 }
