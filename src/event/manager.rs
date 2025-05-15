@@ -1094,7 +1094,6 @@ impl TimerRegistry for EventManagerState {
     }
 
     fn cancel_timer(&mut self, id: usize, proc: Address) {
-        println!("cancel timer id={id}");
         let timer = self.timers.remove(id);
         if timer.is_some() {
             let entry = TimerCanceled {

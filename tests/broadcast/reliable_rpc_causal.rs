@@ -195,18 +195,18 @@ fn two_sequenced_messages_with_faults() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// #[cfg(not(debug_assertions))]
-// #[test]
-// fn two_concurrent_messages_with_faults() {
-//     let log = two_msg::concurrent_with_faults_check_validity_and_agreement(build).unwrap();
-//     println!("{}", log);
-// }
+#[cfg(not(debug_assertions))]
+#[test]
+fn two_concurrent_messages_with_faults() {
+    let log = two_msg::concurrent_with_faults_check_validity_and_agreement(build).unwrap();
+    println!("{}", log);
+}
 
-// ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-// #[cfg(not(debug_assertions))]
-// #[test]
-// fn two_concurrent_messages_without_faults() {
-//     let log = two_msg::concurrent_without_faults_check_validity_and_agreement(build).unwrap();
-//     println!("{}", log);
-// }
+#[cfg(not(debug_assertions))]
+#[test]
+fn two_concurrent_messages_without_faults() {
+    let log = two_msg::concurrent_without_faults_check_validity_and_agreement(build).unwrap();
+    println!("{}", log);
+}
