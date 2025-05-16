@@ -186,7 +186,6 @@ fn two_sequenced_messages_without_faults() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(not(debug_assertions))]
 #[test]
 fn two_sequenced_messages_with_faults() {
     let log = two_msg::send_after_recv_no_drop_with_fault_check_all(build).unwrap();

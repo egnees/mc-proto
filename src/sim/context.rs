@@ -18,6 +18,10 @@ pub struct Context {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Context {
+    pub fn installed() -> bool {
+        CONTEXT.with(|c| c.borrow().is_some())
+    }
+
     pub fn current() -> Context {
         CONTEXT.with(|c| {
             c.borrow()

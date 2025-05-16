@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use crate::{
     fs::{
@@ -24,7 +24,13 @@ impl FsEventRegistry for DelayedRegister {
         // do nothing
     }
 
-    fn register_event_pipelined(&mut self, trigger: Trigger, event: &FsEvent) {
+    fn register_event_pipelined(
+        &mut self,
+        trigger: Trigger,
+        event: &FsEvent,
+        _min_delay: Duration,
+        _max_delay: Duration,
+    ) {
         self.events.push((trigger, event.outcome.clone()));
     }
 

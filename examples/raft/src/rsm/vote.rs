@@ -1,18 +1,19 @@
 use serde::{Deserialize, Serialize};
 
-use super::{addr, replicated::RepliactedU64};
+use super::replicated::RepliactedU64;
+use crate::addr;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct RequestVoteRPC {
-    /// candidates term
-    term: u64,
+    // candidates term
+    pub term: u64,
 
-    candidate_id: u64,
-
-    last_log_index: u64,
-    last_log_term: u64,
+    // candidate id = RpcRequest::from
+    // pub candidate_id: usize,
+    pub last_log_index: u64,
+    pub last_log_term: u64,
 }
 
 impl From<&mc::RpcRequest> for RequestVoteRPC {
@@ -22,19 +23,18 @@ impl From<&mc::RpcRequest> for RequestVoteRPC {
 }
 
 impl RequestVoteRPC {
-    const TAG: u64 = 1;
+    pub const TAG: u64 = 1;
 
-    pub async fn send(&self, to: u64) -> mc::RpcResult<RequestVoteResult> {
+    pub async fn send(&self, to: usize) -> mc::RpcResult<RequestVoteResult> {
         let to = addr::make_addr(to);
         mc::rpc(to, Self::TAG, self)
             .await
             .map(mc::RpcResponse::into)
     }
 
-    pub fn new(term: u64, candidate_id: u64, last_log_index: u64, last_log_term: u64) -> Self {
+    pub fn new(term: u64, last_log_index: u64, last_log_term: u64) -> Self {
         Self {
             term,
-            candidate_id,
             last_log_index,
             last_log_term,
         }
@@ -47,8 +47,8 @@ impl RequestVoteRPC {
 pub struct RequestVoteResult {
     /// current term of receiver,
     /// for candidate to update itself
-    term: u64,
-    vote_granted: bool,
+    pub term: u64,
+    pub vote_granted: bool,
 }
 
 impl From<mc::RpcResponse> for RequestVoteResult {
@@ -65,20 +65,24 @@ impl RequestVoteResult {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Default)]
+#[derive(Clone)]
 pub struct VotedFor {
     value: RepliactedU64,
 }
 
 impl VotedFor {
-    pub async fn get(&mut self) -> mc::FsResult<Option<u64>> {
-        self.value
-            .read()
-            .await
-            .map(|v| if v == 0 { None } else { Some(v - 1) })
+    pub async fn new() -> Self {
+        Self {
+            value: RepliactedU64::new("vote.txt").await,
+        }
     }
 
-    pub async fn set(&mut self, value: Option<u64>) -> mc::FsResult<()> {
-        self.value.update(value.map(|v| v + 1).unwrap_or(0)).await
+    pub fn get(&self) -> Option<u64> {
+        let v = self.value.read();
+        if v == 0 { None } else { Some(v - 1) }
+    }
+
+    pub fn set(&self, value: Option<u64>) -> mc::JoinHandle<()> {
+        self.value.update(value.map(|v| v + 1).unwrap_or(0))
     }
 }

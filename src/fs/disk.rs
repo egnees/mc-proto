@@ -1,7 +1,6 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, rc::Rc, time::Duration};
 
 use crate::{
-    event::time::Time,
     util::trigger::{make_trigger, Trigger, Waiter},
     Address,
 };
@@ -21,7 +20,8 @@ struct Request(Trigger, FsEvent);
 pub struct Disk {
     reg: Rc<RefCell<dyn FsEventRegistry>>,
     queue: VecDeque<Request>,
-    delay: Time,
+    min_delay: Duration,
+    max_delay: Duration,
     node: String,
     capacity: usize,
     used: usize,
@@ -31,13 +31,15 @@ pub struct Disk {
 impl Disk {
     pub fn new(
         reg: Rc<RefCell<dyn FsEventRegistry>>,
-        delay: Time,
+        min_delay: Duration,
+        max_delay: Duration,
         node: String,
         capacity: usize,
     ) -> Self {
         Self {
             reg,
-            delay,
+            min_delay,
+            max_delay,
             node,
             capacity,
             used: 0,
@@ -59,7 +61,6 @@ impl Disk {
         };
 
         let event = FsEvent {
-            delay: self.delay,
             initiated_by: Address::new(self.node.clone(), proc),
             kind,
             outcome,
@@ -85,7 +86,6 @@ impl Disk {
         outcome: FsEventOutcome,
     ) {
         let event = FsEvent {
-            delay: self.delay,
             initiated_by: Address::new(self.node.clone(), proc),
             kind,
             outcome,
@@ -104,9 +104,12 @@ impl Disk {
             return;
         };
         self.in_process = true;
-        self.reg
-            .borrow_mut()
-            .register_event_pipelined(request.0, &request.1);
+        self.reg.borrow_mut().register_event_pipelined(
+            request.0,
+            &request.1,
+            self.min_delay,
+            self.max_delay,
+        );
     }
 
     pub fn file_deleted(&mut self, size: usize) {

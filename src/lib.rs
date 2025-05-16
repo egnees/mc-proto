@@ -7,6 +7,7 @@ mod search;
 mod sim;
 mod tcp;
 mod timer;
+mod tracker;
 mod util;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +35,7 @@ pub use search::{
 
 pub use tcp::{TcpError, TcpListener, TcpReceiver, TcpSender, TcpStream};
 
-pub use util::hash::hash_set;
+pub use util::{cancel::CancelSet, hash::hash_set, oneshot};
 
 pub use fs::{error::FsResult, file::File};
 
@@ -42,4 +43,6 @@ pub use sim::{Simulation, StepConfig};
 
 pub use rpc::{rpc, RpcListener, RpcRequest, RpcResponse, RpcResult};
 
-pub use timer::{cancel_timer, set_timer};
+pub use timer::{cancel_timer, set_random_timer, set_timer, Timer};
+
+pub use runtime::{JoinError, JoinHandle};

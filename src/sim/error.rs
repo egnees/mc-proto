@@ -7,4 +7,5 @@ pub enum Error {
     IncorrectRange,
     FsAlreadySetup,
     FsNotAvailable,
+    NodeUnavailable,
 }

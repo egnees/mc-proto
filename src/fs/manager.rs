@@ -3,9 +3,10 @@ use std::{
     collections::{btree_map::Entry, BTreeMap},
     hash::Hash,
     rc::{Rc, Weak},
+    time::Duration,
 };
 
-use crate::{event::time::Time, util::trigger::Waiter, Address};
+use crate::{util::trigger::Waiter, Address};
 
 use super::{
     disk::Disk,
@@ -29,10 +30,17 @@ impl FsManagerState {
     pub fn new(
         reg: Rc<RefCell<dyn FsEventRegistry>>,
         node: String,
-        disk_delays: Time,
+        min_disk_delay: Duration,
+        max_disk_delay: Duration,
         disk_capacity: usize,
     ) -> Self {
-        let disk = Disk::new(reg.clone(), disk_delays, node.clone(), disk_capacity);
+        let disk = Disk::new(
+            reg.clone(),
+            min_disk_delay,
+            max_disk_delay,
+            node.clone(),
+            disk_capacity,
+        );
         Self {
             reg,
             disk,
@@ -51,10 +59,11 @@ impl FsManager {
     pub fn new(
         reg: Rc<RefCell<dyn FsEventRegistry>>,
         node: String,
-        disk_delays: Time,
+        min_disk_delay: Duration,
+        max_disk_delay: Duration,
         disk_capacity: usize,
     ) -> Self {
-        let state = FsManagerState::new(reg, node, disk_delays, disk_capacity);
+        let state = FsManagerState::new(reg, node, min_disk_delay, max_disk_delay, disk_capacity);
         Self(Rc::new(RefCell::new(state)))
     }
 
@@ -101,7 +110,6 @@ impl FsManagerHandle {
         };
 
         state.reg.borrow_mut().register_event_initiated(&FsEvent {
-            delay: Time::default_point(), // does not matter here
             initiated_by: Address::new(state.node.clone(), proc),
             kind: FsEventKind::Open { file: name },
             outcome: outcome.clone().map(|_| ()),
@@ -132,7 +140,6 @@ impl FsManagerHandle {
         };
 
         state.reg.borrow_mut().register_instant_event(&FsEvent {
-            delay: Time::default_point(), // does not matter
             initiated_by: Address::new(state.node.clone(), proc),
             kind: FsEventKind::Create { file: name },
             outcome: outcome.clone().map(|_| ()),
@@ -160,7 +167,6 @@ impl FsManagerHandle {
             }
         };
         state.reg.borrow_mut().register_instant_event(&FsEvent {
-            delay: Time::default_point(), // does not matter here
             initiated_by: Address::new(state.node.clone(), proc),
             kind: FsEventKind::Delete {
                 file: name.to_string(),

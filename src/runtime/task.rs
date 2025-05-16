@@ -2,6 +2,8 @@ use std::{future::Future, pin::Pin};
 
 use crate::{sim::proc::ProcessHandle, util};
 
+use super::RuntimeHandle;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 pub type TaskId = usize;
@@ -22,17 +24,26 @@ pub struct JoinError {}
 pub struct JoinHandle<T> {
     task_id: TaskId,
     result: util::oneshot::Receiver<T>,
+    rt: RuntimeHandle,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T> JoinHandle<T> {
-    pub fn new(task_id: TaskId, result: util::oneshot::Receiver<T>) -> Self {
-        Self { task_id, result }
+    pub fn new(task_id: TaskId, result: util::oneshot::Receiver<T>, rt: RuntimeHandle) -> Self {
+        Self {
+            task_id,
+            result,
+            rt,
+        }
     }
 
     pub fn id(&self) -> TaskId {
         self.task_id
+    }
+
+    pub fn abort(&self) {
+        self.rt.cancel_task(self.task_id);
     }
 }
 

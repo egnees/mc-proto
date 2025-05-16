@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
+    log,
     sim::context::Context,
     spawn,
     util::{self, trigger::make_trigger},
@@ -298,6 +299,7 @@ impl TcpStream {
 impl Drop for TcpSender {
     fn drop(&mut self) {
         if self.connected {
+            log("tcp sender drop");
             self.registry.clone().borrow_mut().emit_sender_dropped(self);
         }
     }

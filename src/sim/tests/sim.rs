@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{event::time::Time, sim::Simulation, Node, StepConfig};
+use crate::{sim::Simulation, Node, StepConfig};
 
 use super::common::{Msg, Store};
 
@@ -14,7 +14,8 @@ fn build_sim() -> Simulation {
     sim.system()
         .setup_fs(
             "n1",
-            Time::new_segment(Duration::from_millis(20), Duration::from_millis(100)),
+            Duration::from_millis(20),
+            Duration::from_millis(100),
             100,
         )
         .unwrap();

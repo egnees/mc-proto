@@ -105,8 +105,8 @@ impl File {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn open_file(
-        name: String,
         owner_proc: String,
+        name: String,
         fs: FsManagerHandle,
     ) -> Result<File, FsError> {
         let content = fs.open_file(owner_proc.clone(), name.clone())?;
@@ -128,8 +128,8 @@ impl File {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn create_file(
-        name: String,
         owner_proc: String,
+        name: String,
         fs: FsManagerHandle,
     ) -> Result<File, FsError> {
         let content = fs.create_file(owner_proc.clone(), name.clone())?;

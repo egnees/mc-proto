@@ -39,14 +39,15 @@ impl Counter {
 
 pub fn election_timeout() -> mc::Timer {
     // from raft article
-    let min_duration = Duration::from_millis(150);
-    let max_duration = Duration::from_millis(300);
-    mc::set_timer(min_duration, max_duration)
+    let min_duration = Duration::from_millis(250);
+    let max_duration = Duration::from_millis(750);
+    mc::set_random_timer(min_duration, max_duration)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 async fn make_election(nodes: usize, me: usize, r: RequestVoteRPC) -> Result<(), u64> {
+    let term = r.term;
     let (sender, recv) = mc::oneshot::channel();
     let counter = Counter::new(sender, nodes / 2 + 1);
     let counter = Rc::new(RefCell::new(counter));
@@ -59,7 +60,7 @@ async fn make_election(nodes: usize, me: usize, r: RequestVoteRPC) -> Result<(),
                 if let Ok(result) = result {
                     if result.vote_granted {
                         counter.borrow_mut().inc();
-                    } else {
+                    } else if term < result.term {
                         counter.borrow_mut().err(result.term);
                     }
                 }
@@ -73,19 +74,17 @@ async fn make_election(nodes: usize, me: usize, r: RequestVoteRPC) -> Result<(),
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub async fn make_election_until_result(
+pub async fn make_election_timeout(
     nodes: usize,
     me: usize,
     rpc: RequestVoteRPC,
-) -> Result<(), u64> {
-    loop {
-        tokio::select! {
-            _ = election_timeout() => {
-                continue;
-            }
-            r = make_election(nodes, me, rpc.clone()) => {
-                return r;
-            }
+) -> Result<(), Option<u64>> {
+    tokio::select! {
+        _ = election_timeout() => {
+            Err(None)
+        }
+        r = make_election(nodes, me, rpc.clone()) => {
+            r.map_err(|t| Some(t))
         }
     }
 }

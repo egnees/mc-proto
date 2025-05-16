@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{event::time::Time, runtime::JoinHandle, timer};
+use crate::{runtime::JoinHandle, timer};
 
 use super::{context::Context, system::HashType};
 
@@ -184,16 +184,18 @@ where
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn time() -> Time {
+pub fn time() -> Duration {
     Context::current().event_manager.time()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn log(content: impl Into<String>) {
-    let context = Context::current();
-    let proc = context.proc;
-    context.event_manager.add_log(proc, content.into());
+    if Context::installed() {
+        let context = Context::current();
+        let proc = context.proc;
+        context.event_manager.add_log(proc, content.into());
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

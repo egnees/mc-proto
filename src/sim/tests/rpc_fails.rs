@@ -151,8 +151,8 @@ fn request_not_responsed() {
             if r.to.node == "n1" {
                 assert!(!found);
                 found = true;
-                assert!(r.time.min() > Duration::from_millis(200));
-                assert!(r.time.max() < Duration::from_millis(203));
+                assert!(r.time > Duration::from_millis(100));
+                assert!(r.time < Duration::from_millis(103));
             }
         }
     }
@@ -190,11 +190,11 @@ fn no_listener() {
     it.next().unwrap();
     let sec = it.next().unwrap();
     assert!(matches!(sec, LogEntry::RpcMessageDropped { .. }));
-    let time = variant::variant!(
+    let time = *variant::variant!(
         sec,
         LogEntry::RpcMessageDropped(RpcMessageDropped { time, .. })
     );
-    assert!(time.min() > Duration::ZERO);
+    assert!(time > Duration::ZERO);
     println!("{}", system.log());
 }
 
@@ -244,8 +244,9 @@ fn on_node_crash() {
             if r.to.node == "n1" {
                 assert!(!found);
                 found = true;
-                assert!(r.time.min() > Duration::from_millis(200));
-                assert!(r.time.max() < Duration::from_millis(203));
+                println!("{:?}", r.time);
+                assert!(r.time > Duration::from_millis(100));
+                assert!(r.time < Duration::from_millis(103));
             }
         }
     }

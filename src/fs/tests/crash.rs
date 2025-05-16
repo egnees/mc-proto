@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use crate::{
-    event::time::Time,
-    fs::{error::FsError, file::File, manager::FsManager},
-};
+use crate::fs::{error::FsError, file::File, manager::FsManager};
 
 use super::instant::make_shared_instant;
 
@@ -12,8 +9,13 @@ use super::instant::make_shared_instant;
 #[test]
 fn crash_basic() {
     let reg = make_shared_instant();
-    let delays = Time::new_segment(Duration::from_millis(20), Duration::from_millis(100));
-    let manager = FsManager::new(reg.clone(), "node".into(), delays, 5);
+    let manager = FsManager::new(
+        reg.clone(),
+        "node".into(),
+        Duration::from_millis(20),
+        Duration::from_millis(100),
+        5,
+    );
     let handle = manager.handle();
 
     let file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();

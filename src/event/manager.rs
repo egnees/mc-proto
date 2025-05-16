@@ -18,10 +18,10 @@ use crate::{
         context::{Context, Guard},
         hash::HashContext,
         log::{
-            FutureFellAsleep, FutureWokeUp, Log, LogEntry, NodeCrashed, ProcessInfo,
+            FutureFellAsleep, FutureWokeUp, Log, LogEntry, NodeCrashed, NodeShutdown, ProcessInfo,
             ProcessReceivedLocalMessage, ProcessSentLocalMessage, RpcMessageDropped,
             RpcMessageReceived, RpcMessageSent, TcpMessageDropped, TcpMessageReceived,
-            TcpMessageSent, TimerCanceled, TimerFired, TimerSet, UdpMessageDropped,
+            TcpMessageSent, TimerCancelled, TimerFired, TimerSet, UdpMessageDropped,
             UdpMessageReceived, UdpMessageSent,
         },
         proc::{ProcessHandle, ProcessState},
@@ -46,7 +46,6 @@ use super::{
     info::{EventInfo, RpcEvent, RpcEventKind, TcpEvent, TcpEventKind, Timer, UdpMessage},
     outcome::{EventOutcome, EventOutcomeKind},
     stat::EventStat,
-    time::Time,
     Event,
 };
 
@@ -56,7 +55,6 @@ pub struct EventManagerState {
     system: Option<SystemHandle>,
     rt: RuntimeHandle,
     events: Vec<Event>,
-    time: Time,
     event_log: Rc<RefCell<Log>>,
     driver: Weak<RefCell<dyn EventDriver>>,
     next_udp_msg_id: usize,
@@ -67,11 +65,14 @@ pub struct EventManagerState {
     tcp: TcpConnectionManager,
     rpc: Rc<RefCell<RpcManager>>,
     timers: TimerManager,
+    time: Duration,
 }
 
 impl EventManagerState {
     fn hash(&self, ctx: HashContext) -> HashType {
-        ctx.hash_events(self.unhandled_events.iter().map(|e| &self.events[*e]))
+        let h1 = ctx.hash_events(self.unhandled_events.iter().map(|e| &self.events[*e]));
+        let h2 = self.driver.upgrade().unwrap().borrow().hash_pending();
+        h1 ^ h2
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -90,12 +91,16 @@ impl EventManagerState {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    fn register_event(&mut self, event: &Event) {
+    fn time(&self) -> Duration {
+        self.time
+    }
+
+    fn register_event(&mut self, event: &Event, min_delay: Duration, max_delay: Duration) {
         self.driver
             .upgrade()
             .expect("can not upgrade driver")
             .borrow_mut()
-            .register_event(event);
+            .register_event(event, min_delay, max_delay);
         self.unhandled_events.insert(event.id);
     }
 
@@ -124,7 +129,7 @@ impl EventManagerState {
                         from: msg.from.address(),
                         to: msg.to.address(),
                         content: msg.content.clone(),
-                        time: self.time,
+                        time: self.time(),
                     };
                     self.event_log
                         .borrow_mut()
@@ -135,11 +140,27 @@ impl EventManagerState {
                         from: msg.from.address(),
                         to: msg.to.address(),
                         packet: msg.packet.clone(),
-                        time: self.time,
+                        time: self.time(),
                     };
                     self.event_log
                         .borrow_mut()
                         .add_entry(LogEntry::TcpMessageDropped(entry));
+                }
+                EventInfo::RpcMessage(msg) => {
+                    let entry = RpcMessageDropped {
+                        from: msg.from.address(),
+                        to: msg.to.address(),
+                        content: match &msg.kind {
+                            RpcMessageKind::Request { content, .. } => content.clone(),
+                            RpcMessageKind::Response { content, .. } => {
+                                content.clone().unwrap_or("failure".into())
+                            }
+                        },
+                        time: self.time(),
+                    };
+                    self.event_log
+                        .borrow_mut()
+                        .add_entry(LogEntry::RpcMessageDropped(entry));
                 }
                 _ => {}
             }
@@ -159,7 +180,6 @@ impl EventManager {
             rt,
             events: Default::default(),
             event_log: Default::default(),
-            time: driver.borrow().start_time(),
             driver: Rc::downgrade(driver),
             next_udp_msg_id: 0,
             next_tcp_msg_id: 0,
@@ -169,6 +189,7 @@ impl EventManager {
             tcp: Default::default(),
             rpc: Default::default(),
             timers: Default::default(),
+            time: Duration::ZERO,
         };
         Self(Rc::new(RefCell::new(state)))
     }
@@ -226,8 +247,8 @@ impl EventManagerHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub fn time(&self) -> Time {
-        self.state().borrow().time
+    pub fn time(&self) -> Duration {
+        self.state().borrow().time()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -240,19 +261,7 @@ impl EventManagerHandle {
         self.state().borrow_mut().cancel_events(pred);
     }
 
-    pub fn on_node_crash(&self, node: &str) {
-        // add log entry
-        let crashed_entry = NodeCrashed {
-            node: node.to_string(),
-            time: self.time(),
-        };
-        let crashed_entry = LogEntry::NodeCrashed(crashed_entry);
-        self.state()
-            .borrow_mut()
-            .event_log
-            .borrow_mut()
-            .add_entry(crashed_entry);
-
+    pub fn cancel_node_events(&self, node: &str) {
         // cancel events with predicate
         self.cancel_events(|e| match &e.info {
             EventInfo::UdpMessage(msg) => {
@@ -269,14 +278,48 @@ impl EventManagerHandle {
                 msg.from.address().node == node || msg.to.address().node == node
             }
         });
+    }
+
+    pub fn on_node_crash(&self, node: &str) {
+        // add log entry
+        let crashed_entry = NodeCrashed {
+            node: node.to_string(),
+            time: self.time(),
+        };
+        let crashed_entry = LogEntry::NodeCrashed(crashed_entry);
+        self.state()
+            .borrow_mut()
+            .event_log
+            .borrow_mut()
+            .add_entry(crashed_entry);
+
+        self.cancel_node_events(node);
 
         self.state().borrow_mut().stat.nodes_crashed += 1;
+    }
+
+    pub fn on_node_shutdown(&self, node: &str) {
+        // add log entry
+        let crashed_entry = NodeShutdown {
+            node: node.to_string(),
+            time: self.time(),
+        };
+        let entry = LogEntry::NodeShutdown(crashed_entry);
+        self.state()
+            .borrow_mut()
+            .event_log
+            .borrow_mut()
+            .add_entry(entry);
+
+        self.cancel_node_events(node);
+
+        self.state().borrow_mut().stat.nodes_shutdown += 1;
     }
 
     pub fn add_log(&self, process: ProcessHandle, content: String) {
         let state = self.state();
         let state = state.borrow_mut();
-        let time = state.time;
+        let time = state.time();
         let info = ProcessInfo {
             process: process.address(),
             time,
@@ -308,7 +351,7 @@ impl EventManagerHandle {
                 from: from.address(),
                 to: to.clone(),
                 content: content.clone(),
-                time: state.time,
+                time: state.time(),
             };
             let log_entry = LogEntry::UdpMessageSent(sent_entry);
             state.event_log.borrow_mut().add_entry(log_entry);
@@ -322,7 +365,7 @@ impl EventManagerHandle {
                 from: from.address(),
                 to: to.clone(),
                 content,
-                time: state.time,
+                time: state.time(),
             };
             let log_entry = LogEntry::UdpMessageDropped(dropped_entry);
             state.event_log.borrow_mut().add_entry(log_entry);
@@ -341,13 +384,13 @@ impl EventManagerHandle {
         let (shift_min, shift_max) = net.delays_range();
         let event = Event {
             id: state.events.len(),
-            time: state.time.shift_range(shift_min, shift_max),
+            time: state.time(),
             info,
             on_happen: None,
         };
 
         // register event
-        state.register_event(&event);
+        state.register_event(&event, shift_min, shift_max);
         state.events.push(event);
     }
 
@@ -362,7 +405,7 @@ impl EventManagerHandle {
             let log_entry = ProcessSentLocalMessage {
                 process: proc.address(),
                 content: content.clone(),
-                time: state.time,
+                time: state.time(),
             };
             let log_entry = LogEntry::ProcessSentLocalMessage(log_entry);
             state.event_log.borrow_mut().add_entry(log_entry);
@@ -391,6 +434,7 @@ impl EventManagerHandle {
         let event = {
             let state = self.state();
             let mut state = state.borrow_mut();
+            state.time = outcome.time;
 
             // remove from unhandled
             let remove_result = state.unhandled_events.remove(&outcome.event_id);
@@ -399,12 +443,6 @@ impl EventManagerHandle {
             // get event
             let event_id = outcome.event_id;
             let event = state.events[event_id].cloned();
-
-            // update time
-
-            assert!(state.time <= outcome.time);
-
-            state.time = outcome.time;
 
             // return event
             event
@@ -449,7 +487,7 @@ impl EventManagerHandle {
             from: msg.from.address(),
             to: msg.to.address(),
             content: msg.content.clone(),
-            time: state.time,
+            time: state.time(),
         };
         let log_entry = LogEntry::UdpMessageDropped(dropped_entry);
         state.event_log.borrow_mut().add_entry(log_entry);
@@ -470,7 +508,7 @@ impl EventManagerHandle {
                 from: msg.from.address(),
                 to: msg.to.address(),
                 content: msg.content.clone(),
-                time: state.time,
+                time: state.time(),
             };
             let log_entry = LogEntry::UdpMessageReceived(received_entry);
             state.event_log.borrow_mut().add_entry(log_entry);
@@ -492,7 +530,6 @@ impl EventManagerHandle {
 
     fn handle_timer_fired(&self, event: &Event) {
         let timer = variant::variant!(&event.info, EventInfo::Timer(timer));
-        assert!(timer.with_sleep);
 
         // add log entry
         let sender = {
@@ -503,14 +540,14 @@ impl EventManagerHandle {
                 let wakeup_entry = FutureWokeUp {
                     tag: timer.timer_id,
                     proc: timer.proc.address(),
-                    time: state.time,
+                    time: state.time(),
                 };
                 LogEntry::FutureWokeUp(wakeup_entry)
             } else {
                 let timer_entry = TimerFired {
                     id: timer.timer_id,
                     proc: timer.proc.address(),
-                    time: state.time,
+                    time: state.time(),
                 };
                 LogEntry::TimerFired(timer_entry)
             };
@@ -537,7 +574,7 @@ impl EventManagerHandle {
             let log_entry = ProcessReceivedLocalMessage {
                 process: proc.address(),
                 content: content.clone(),
-                time: state.time,
+                time: state.time(),
             };
             let log_entry = LogEntry::ProcessReceivedLocalMessage(log_entry);
             state.event_log.borrow_mut().add_entry(log_entry);
@@ -585,12 +622,12 @@ impl EventManagerState {
         let (min_shift, max_shift) = self.system().network().delays_range();
         let event = Event {
             id: self.events.len(),
-            time: self.time.shift_range(min_shift, max_shift),
+            time: self.time(),
             info: EventInfo::TcpEvent(event),
             on_happen: Some(trigger),
         };
 
-        self.register_event(&event);
+        self.register_event(&event, min_shift, max_shift);
         self.events.push(event);
 
         self.events.last().unwrap()
@@ -612,11 +649,11 @@ impl EventManagerState {
         let (min_shift, max_shift) = self.system().network().delays_range();
         let event = Event {
             id: self.events.len(),
-            time: self.time.shift_range(min_shift, max_shift),
+            time: self.time(),
             info: EventInfo::TcpMessage(msg),
             on_happen: Some(trigger),
         };
-        self.register_event(&event);
+        self.register_event(&event, min_shift, max_shift);
         self.events.push(event);
         self.events.last().unwrap()
     }
@@ -636,7 +673,7 @@ impl TcpRegistry for EventManagerState {
                 from: from.clone(),
                 to: to.clone(),
                 packet: packet.clone(),
-                time: self.time,
+                time: self.time(),
             };
             let log_entry = LogEntry::TcpMessageSent(log_entry);
             self.event_log.borrow_mut().add_entry(log_entry);
@@ -652,7 +689,7 @@ impl TcpRegistry for EventManagerState {
                 from: from_proc.address(),
                 to: to.clone(),
                 packet: packet.clone(),
-                time: self.time,
+                time: self.time(),
             };
             let log_entry = LogEntry::TcpMessageDropped(log_entry);
             self.event_log.borrow_mut().add_entry(log_entry);
@@ -698,13 +735,9 @@ impl TcpRegistry for EventManagerState {
 
         let sender = sender.sender.clone();
 
-        println!("spawning...");
-
         self.rt.spawn(
             async move {
-                println!("sender dropped, register waiter");
                 let _ = waiter.wait::<Result<(), TcpError>>().await;
-                println!("waiter.wait done");
                 drop(sender);
             },
             Self::make_dummy_proc_handle(),
@@ -721,7 +754,7 @@ impl TcpRegistry for EventManagerState {
             from: from.clone(),
             to: to.clone(),
             packet: packet.clone(),
-            time: self.time,
+            time: self.time(),
         };
         let log_entry = LogEntry::TcpMessageReceived(log_entry);
         self.event_log.borrow_mut().add_entry(log_entry);
@@ -751,16 +784,22 @@ impl TcpRegistry for EventManagerState {
 
 impl FsEventRegistry for EventManagerState {
     fn register_instant_event(&mut self, event: &FsEvent) {
-        let entry = event.clone().make_log_entry_on_init(self.time);
+        let entry = event.clone().make_log_entry_on_init(self.time());
         self.event_log.borrow_mut().add_entry(entry);
     }
 
     fn register_event_initiated(&mut self, event: &FsEvent) {
-        let entry = event.clone().make_log_entry_on_init(self.time);
+        let entry = event.clone().make_log_entry_on_init(self.time());
         self.event_log.borrow_mut().add_entry(entry);
     }
 
-    fn register_event_pipelined(&mut self, trigger: Trigger, event: &FsEvent) {
+    fn register_event_pipelined(
+        &mut self,
+        trigger: Trigger,
+        event: &FsEvent,
+        min_delay: Duration,
+        max_delay: Duration,
+    ) {
         // no log here
         let e = super::info::FsEvent {
             proc: event.initiated_by.clone(),
@@ -770,16 +809,16 @@ impl FsEventRegistry for EventManagerState {
         let info = EventInfo::FsEvent(e);
         let event = Event {
             id: self.events.len(),
-            time: self.time.shift_on(event.delay),
+            time: self.time(),
             info,
             on_happen: Some(trigger),
         };
-        self.register_event(&event);
+        self.register_event(&event, min_delay, max_delay);
         self.events.push(event);
     }
 
     fn register_event_happen(&mut self, event: &FsEvent) {
-        let entry = event.clone().make_log_entry_on_complete(self.time);
+        let entry = event.clone().make_log_entry_on_complete(self.time());
         self.event_log.borrow_mut().add_entry(entry);
     }
 }
@@ -803,7 +842,7 @@ impl RpcRegistry for EventManagerState {
                 from: request.from.clone(),
                 to: request.to.clone(),
                 content: request.content.clone(),
-                time: self.time,
+                time: self.time(),
             };
             self.event_log
                 .borrow_mut()
@@ -820,7 +859,7 @@ impl RpcRegistry for EventManagerState {
             };
             Event {
                 id: self.events.len(),
-                time: self.time.shift_range(min_net_delay, max_net_delay),
+                time: self.time(),
                 info: EventInfo::RpcEvent(event),
                 on_happen: Some(trigger),
             }
@@ -837,13 +876,13 @@ impl RpcRegistry for EventManagerState {
             };
             Event {
                 id: self.events.len(),
-                time: self.time.shift_range(min_net_delay, max_net_delay),
+                time: self.time(),
                 info: EventInfo::RpcMessage(event),
                 on_happen: Some(trigger),
             }
         };
 
-        self.register_event(&event);
+        self.register_event(&event, min_net_delay, max_net_delay);
         self.events.push(event);
 
         let rpc = self.rpc.clone();
@@ -942,7 +981,7 @@ impl RpcRegistry for EventManagerState {
                 from: from.clone(),
                 to: to.clone(),
                 content: content.clone(),
-                time: self.time,
+                time: self.time(),
             };
             self.event_log
                 .borrow_mut()
@@ -954,7 +993,9 @@ impl RpcRegistry for EventManagerState {
             return Ok(());
         }
 
-        let to_proc = self.system().proc_by_addr(&to).unwrap();
+        let Some(to_proc) = self.system().proc_by_addr(&to) else {
+            return Ok(());
+        };
 
         let from_proc = self.system().proc_by_addr(&from);
 
@@ -985,12 +1026,12 @@ impl RpcRegistry for EventManagerState {
 
         let event = Event {
             id: self.events.len(),
-            time: self.time.shift_range(min_net_delay, max_net_delay),
+            time: self.time(),
             info: event,
             on_happen: Some(trigger),
         };
 
-        self.register_event(&event);
+        self.register_event(&event, min_net_delay, max_net_delay);
         self.events.push(event);
 
         let rpc = self.rpc.clone();
@@ -1042,11 +1083,12 @@ impl RpcRegistry for EventManagerState {
 impl TimerRegistry for EventManagerState {
     fn register_timer(
         &mut self,
-        duration: Duration,
+        min_duration: Duration,
+        max_duration: Duration,
         with_sleep: bool,
         proc: Address,
     ) -> (usize, oneshot::Receiver<()>) {
-        let time = self.time.shift(duration);
+        let time = self.time();
         let id = self.events.len();
         let receiver = self.timers.create(id);
         let proc_handle = self.system().proc_by_addr(&proc).unwrap();
@@ -1058,7 +1100,8 @@ impl TimerRegistry for EventManagerState {
                     id,
                     proc,
                     time,
-                    duration,
+                    min_duration,
+                    max_duration,
                 };
                 LogEntry::TimerSet(entry)
             } else {
@@ -1066,7 +1109,8 @@ impl TimerRegistry for EventManagerState {
                     tag: id,
                     proc,
                     time,
-                    duration,
+                    min_duration,
+                    max_duration,
                 };
                 LogEntry::FutureFellAsleep(entry)
             };
@@ -1078,7 +1122,8 @@ impl TimerRegistry for EventManagerState {
                 timer_id: id,
                 with_sleep,
                 proc: proc_handle,
-                duration,
+                min_duration,
+                max_duration,
             });
             Event {
                 id,
@@ -1087,7 +1132,7 @@ impl TimerRegistry for EventManagerState {
                 on_happen: None,
             }
         };
-        self.register_event(&event);
+        self.register_event(&event, min_duration, max_duration);
         self.events.push(event);
 
         (id, receiver)
@@ -1096,12 +1141,12 @@ impl TimerRegistry for EventManagerState {
     fn cancel_timer(&mut self, id: usize, proc: Address) {
         let timer = self.timers.remove(id);
         if timer.is_some() {
-            let entry = TimerCanceled {
+            let entry = TimerCancelled {
                 id,
                 proc,
-                time: self.time,
+                time: self.time(),
             };
-            let entry = LogEntry::TimerCanceled(entry);
+            let entry = LogEntry::TimerCancelled(entry);
             self.event_log.borrow_mut().add_entry(entry);
 
             self.cancel_events(|e| {

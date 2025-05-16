@@ -61,6 +61,10 @@ impl RpcRequest {
     pub(crate) fn not_await_response(&mut self) {
         self.await_response = false;
     }
+
+    pub fn from(&self) -> &Address {
+        &self.from
+    }
 }
 
 impl Drop for RpcRequest {

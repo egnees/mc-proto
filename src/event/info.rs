@@ -37,7 +37,7 @@ impl Display for EventInfo {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone)]
 pub enum RpcMessageKind {
     Request {
         id: u64,
@@ -48,6 +48,20 @@ pub enum RpcMessageKind {
         id: u64,
         content: RpcResult<Vec<u8>>,
     },
+}
+
+impl Hash for RpcMessageKind {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            RpcMessageKind::Request { tag, content, .. } => {
+                tag.hash(state);
+                content.hash(state);
+            }
+            RpcMessageKind::Response { content, .. } => {
+                content.hash(state);
+            }
+        }
+    }
 }
 
 impl Display for RpcMessageKind {
@@ -262,12 +276,14 @@ pub struct Timer {
     pub timer_id: usize,
     pub with_sleep: bool,
     pub proc: ProcessHandle,
-    pub duration: Duration,
+    pub min_duration: Duration,
+    pub max_duration: Duration,
 }
 
 impl Hash for Timer {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.duration.hash(state);
+        self.min_duration.hash(state);
+        self.max_duration.hash(state);
     }
 }
 
@@ -275,7 +291,8 @@ impl Display for Timer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "id: {}, ", self.timer_id)?;
         write!(f, "proc: '{}', ", self.proc.address())?;
-        write!(f, "duraction: {:?}", self.duration)
+        write!(f, "min_duration: {:?}", self.min_duration)?;
+        write!(f, "max_duration: {:?}", self.max_duration)
     }
 }
 

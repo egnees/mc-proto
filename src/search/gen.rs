@@ -1,12 +1,17 @@
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    hash::{DefaultHasher, Hasher},
+    time::Duration,
+    usize,
+};
 
 use crate::{
     event::{
         driver::EventDriver,
         info::{EventInfo, RpcEventKind, RpcMessageKind, TcpEventKind},
-        time::Time,
         Event,
     },
+    tracker::{EventTracker, MooreEventTracker},
     SystemHandle,
 };
 
@@ -16,7 +21,6 @@ use super::{
     rpc::{ReadyRpcRequestsFilter, RpcMessageInfo},
     step::{FsEvent, RpcEvent, RpcMessage, StateTraceStep, TcpEvent, TcpPacket, Timer, UdpMessage},
     tcp::{ReadyTcpPacketFilter, TcpPacketKind},
-    tracker::Tracker,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,14 +37,32 @@ enum EventKind {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Default)]
 pub struct Generator {
-    tracker: Tracker<Duration>,
+    tracker: Option<MooreEventTracker<i64>>,
     event_info: HashMap<usize, EventKind>,
+    last_selected: Option<usize>,
+}
+
+impl Generator {
+    fn last_event_vertex(&self) -> usize {
+        self.last_selected.map(|e| e + 1).unwrap_or(0)
+    }
 }
 
 impl EventDriver for Generator {
-    fn register_event(&mut self, event: &Event) {
+    fn hash_pending(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.tracker.as_ref().unwrap().hash_pending(&mut hasher);
+        hasher.finish()
+    }
+
+    fn register_event(&mut self, event: &Event, min_delay: Duration, max_delay: Duration) {
+        let prev = self.last_event_vertex();
+        self.tracker.as_mut().unwrap().add_event(
+            prev,
+            min_delay.as_millis() as i64,
+            max_delay.as_millis() as i64,
+        );
         let kind =
             match &event.info {
                 EventInfo::UdpMessage(msg) => EventKind::UdpMessage(msg.udp_msg_id),
@@ -67,46 +89,46 @@ impl EventDriver for Generator {
             };
         let prev_value = self.event_info.insert(event.id, kind);
         assert!(prev_value.is_none());
-        match event.time {
-            Time::Point(_duration) => panic!("only time segments supported for generator"),
-            Time::Segment(time_segment) => {
-                self.tracker
-                    .add(time_segment.from, time_segment.to, event.id)
-            }
-        }
     }
 
     fn cancel_event(&mut self, event: &Event) {
-        let removed = self.tracker.remove_by_event_id(event.id);
-        assert!(removed.is_some());
+        self.tracker.as_mut().unwrap().cancel_event(event.id + 1);
         let removed = self.event_info.remove(&event.id);
         assert!(removed.is_some());
     }
+}
 
-    fn start_time(&self) -> Time {
-        Time::default_range()
+impl Default for Generator {
+    fn default() -> Self {
+        Self {
+            tracker: Some(Default::default()),
+            event_info: Default::default(),
+            last_selected: Default::default(),
+        }
     }
 }
 
 impl Generator {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
-    pub fn select_ready_event(&mut self, i: usize) {
-        self.tracker.remove_ready(i);
+    pub fn select_ready_event(&mut self, id: usize) {
+        let tracker = self.tracker.take().unwrap();
+        self.tracker = Some(tracker.event_happen(id + 1).unwrap());
+        self.last_selected = Some(id);
     }
 
     pub fn steps(&self, system: SystemHandle, cfg: &SearchConfig) -> Vec<StateTraceStep> {
-        let pending = self.tracker.ready_count();
         let mut res = Vec::new();
         let mut tcp_filter = ReadyTcpPacketFilter::new();
         let mut rpc_filter = ReadyRpcRequestsFilter::new();
-        for i in 0..pending {
-            let e = self.tracker.get_ready(i).unwrap();
-            let time = Time::new_segment(e.from, e.to);
-            let event_id = e.event_id;
-            let kind = self.event_info.get(&e.event_id).unwrap();
+        for (e, _) in self.tracker.as_ref().unwrap().next_events() {
+            let time = self.tracker.as_ref().unwrap().event_time(e);
+            assert!(time >= 0);
+            let time = Duration::from_millis(time as u64);
+            let event_id = e - 1;
+            let kind = self.event_info.get(&event_id).unwrap();
             match kind {
                 EventKind::UdpMessage(udp_msg_id) => {
                     let udp_msg_id = *udp_msg_id;
@@ -116,7 +138,7 @@ impl Generator {
                         drop: false,
                         time,
                     };
-                    let no_drop_step = StateTraceStep::SelectUdp(i, udp_no_drop);
+                    let no_drop_step = StateTraceStep::SelectUdp(event_id, udp_no_drop);
                     res.push(no_drop_step);
 
                     // inject msg drop
@@ -127,7 +149,7 @@ impl Generator {
                             time,
                             drop: true,
                         };
-                        let drop_step = StateTraceStep::SelectUdp(i, udp_drop);
+                        let drop_step = StateTraceStep::SelectUdp(event_id, udp_drop);
                         res.push(drop_step);
                     }
                 }
@@ -138,7 +160,7 @@ impl Generator {
                         time,
                         timer_id,
                     };
-                    let step = StateTraceStep::SelectTimer(i, timer);
+                    let step = StateTraceStep::SelectTimer(event_id, timer);
                     res.push(step);
                 }
                 EventKind::TcpPacket(tcp) => {
@@ -147,12 +169,12 @@ impl Generator {
                         time,
                         tcp_msg_id: tcp.tcp_packet_id,
                     };
-                    let step = StateTraceStep::SelectTcpPacket(i, packet);
+                    let step = StateTraceStep::SelectTcpPacket(event_id, packet);
                     tcp_filter.add(tcp, step);
                 }
                 EventKind::TcpEvent(kind) => {
                     let step = StateTraceStep::SelectTcpEvent(
-                        i,
+                        event_id,
                         TcpEvent {
                             event_id,
                             time,
@@ -167,12 +189,12 @@ impl Generator {
                         time,
                         rpc_request_id: rpc.id,
                     };
-                    let step = StateTraceStep::SelectRpcMessage(i, rpc_msg);
+                    let step = StateTraceStep::SelectRpcMessage(event_id, rpc_msg);
                     rpc_filter.add(rpc, step);
                 }
                 EventKind::RpcEvent(kind) => {
                     let step = StateTraceStep::SelectRpcEvent(
-                        i,
+                        event_id,
                         RpcEvent {
                             event_id,
                             time,
@@ -183,7 +205,7 @@ impl Generator {
                 }
                 EventKind::FsEvent(kind) => {
                     let step = StateTraceStep::SelectFsEvent(
-                        i,
+                        event_id,
                         FsEvent {
                             event_id,
                             time,
@@ -211,6 +233,14 @@ impl Generator {
         if system.stat().nodes_crashed < cfg.max_node_faults.unwrap_or(usize::MAX) {
             for i in 0..system.nodes_count() {
                 res.push(StateTraceStep::CrashNode(i));
+            }
+        }
+
+        if system.stat().nodes_shutdown < cfg.max_node_shutdown.unwrap_or(usize::MAX) {
+            for i in 0..system.nodes_count() {
+                if system.node_available_index(i) {
+                    res.push(StateTraceStep::ShutdownNode(i));
+                }
             }
         }
 

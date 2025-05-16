@@ -1,7 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, time::Duration};
 
 use crate::{
-    event::time::Time,
     sim::log::{
         CreateFileRequested, DeleteFileRequested, OpenFileRequested, ReadFileCompleted,
         ReadFileInitiated, WriteFileCompleted, WriteFileInitiated,
@@ -60,7 +59,6 @@ pub type FsEventOutcome = Result<(), FsError>;
 
 #[derive(Clone, Debug)]
 pub struct FsEvent {
-    pub delay: Time,
     pub initiated_by: Address,
     pub kind: FsEventKind,
     pub outcome: FsEventOutcome,
@@ -69,7 +67,7 @@ pub struct FsEvent {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl FsEvent {
-    pub fn make_log_entry_on_init(self, time: Time) -> LogEntry {
+    pub fn make_log_entry_on_init(self, time: Duration) -> LogEntry {
         match self.kind {
             FsEventKind::Create { file } => {
                 let entry = CreateFileRequested {
@@ -117,7 +115,7 @@ impl FsEvent {
         }
     }
 
-    pub fn make_log_entry_on_complete(self, time: Time) -> LogEntry {
+    pub fn make_log_entry_on_complete(self, time: Duration) -> LogEntry {
         match self.kind {
             FsEventKind::Read { file, .. } => {
                 let entry = ReadFileCompleted {

@@ -1,7 +1,4 @@
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    time::Duration,
-};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::{
     event::{info::EventInfo, Event},
@@ -27,8 +24,7 @@ impl<'a> HashContext<'a> {
 
     fn hash_address(&self, a: &Address) -> u64 {
         let mut hasher = DefaultHasher::new();
-        let node = self.node_repr(&a.node);
-        node.hash(&mut hasher);
+        self.node_repr(&a.node).hash(&mut hasher);
         a.process.hash(&mut hasher);
         hasher.finish()
     }
@@ -46,9 +42,8 @@ impl<'a> HashContext<'a> {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    fn hash_event(&self, time_shift: Duration, event: &'a Event) -> u64 {
+    fn hash_event(&self, event: &'a Event) -> u64 {
         let mut hasher = DefaultHasher::new();
-        event.time.shift_neg(time_shift).hash(&mut hasher);
         match &event.info {
             EventInfo::UdpMessage(udp) => {
                 udp.content.hash(&mut hasher);
@@ -61,16 +56,17 @@ impl<'a> HashContext<'a> {
                 self.hash_address(&tcp.to.address()).hash(&mut hasher);
             }
             EventInfo::Timer(timer) => {
-                timer.duration.hash(&mut hasher);
-                self.hash_address(&timer.proc.address());
+                timer.min_duration.hash(&mut hasher);
+                timer.max_duration.hash(&mut hasher);
+                self.hash_address(&timer.proc.address()).hash(&mut hasher);
             }
             EventInfo::TcpEvent(event) => {
                 event.kind.hash(&mut hasher);
-                self.hash_address(&event.to.address());
+                self.hash_address(&event.to.address()).hash(&mut hasher);
             }
             EventInfo::FsEvent(event) => {
                 event.kind.hash(&mut hasher);
-                self.hash_address(&event.proc);
+                self.hash_address(&event.proc).hash(&mut hasher);
             }
             EventInfo::RpcMessage(rpc) => {
                 rpc.kind.hash(&mut hasher);
@@ -86,11 +82,6 @@ impl<'a> HashContext<'a> {
     }
 
     pub fn hash_events(&self, events: impl Iterator<Item = &'a Event> + Clone) -> u64 {
-        let min_time = events
-            .clone()
-            .map(|e| e.time.min())
-            .min()
-            .unwrap_or(Duration::ZERO);
-        util::hash::hash_multiset(events.map(|e| self.hash_event(min_time, e)))
+        util::hash::hash_multiset(events.map(|e| self.hash_event(e)))
     }
 }

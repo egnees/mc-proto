@@ -28,14 +28,18 @@ pub struct Timer {
 
 impl Timer {
     pub(crate) fn new(
-        duration: Duration,
+        min_duration: Duration,
+        max_duration: Duration,
         reg: Rc<RefCell<dyn TimerRegistry>>,
         with_sleep: bool,
         address: Address,
     ) -> Self {
-        let (id, recv) = reg
-            .borrow_mut()
-            .register_timer(duration, with_sleep, address.clone());
+        let (id, recv) = reg.borrow_mut().register_timer(
+            min_duration,
+            max_duration,
+            with_sleep,
+            address.clone(),
+        );
         Self {
             recv,
             reg,
@@ -70,7 +74,7 @@ impl Drop for Timer {
 pub fn sleep(duration: Duration) -> Timer {
     let cx = crate::sim::context::Context::current();
     let reg = cx.event_manager.timer_registry();
-    Timer::new(duration, reg, true, cx.proc.address())
+    Timer::new(duration, duration, reg, true, cx.proc.address())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +82,15 @@ pub fn sleep(duration: Duration) -> Timer {
 pub fn set_timer(duration: Duration) -> Timer {
     let cx = crate::sim::context::Context::current();
     let reg = cx.event_manager.timer_registry();
-    Timer::new(duration, reg, false, cx.proc.address())
+    Timer::new(duration, duration, reg, false, cx.proc.address())
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn set_random_timer(min_duration: Duration, max_duration: Duration) -> Timer {
+    let cx = crate::sim::context::Context::current();
+    let reg = cx.event_manager.timer_registry();
+    Timer::new(min_duration, max_duration, reg, false, cx.proc.address())
 }
 
 ////////////////////////////////////////////////////////////////////////////////

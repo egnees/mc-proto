@@ -1,4 +1,6 @@
-use crate::event::{driver::EventDriver, time::Time, Event};
+use std::time::Duration;
+
+use crate::event::{driver::EventDriver, Event};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8,7 +10,7 @@ pub struct TestEventDriver {
 }
 
 impl EventDriver for TestEventDriver {
-    fn register_event(&mut self, event: &Event) {
+    fn register_event(&mut self, event: &Event, _min_delay: Duration, _max_delay: Duration) {
         self.events.push(event.clone());
     }
 
@@ -23,8 +25,8 @@ impl EventDriver for TestEventDriver {
         self.events.remove(index);
     }
 
-    fn start_time(&self) -> Time {
-        Time::default_range()
+    fn hash_pending(&self) -> u64 {
+        0
     }
 }
 

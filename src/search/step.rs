@@ -1,13 +1,13 @@
 use std::{
     fmt::{Debug, Display},
     panic::AssertUnwindSafe,
+    time::Duration,
 };
 
 use crate::{
     event::{
         info::{RpcEventKind, TcpEventKind},
         outcome::{EventOutcome, EventOutcomeKind},
-        time::Time,
     },
     fs::event::FsEventOutcome,
     SearchErrorKind,
@@ -22,7 +22,7 @@ pub struct UdpMessage {
     pub event_id: usize,
     pub udp_msg_id: usize,
     pub drop: bool,
-    pub time: Time,
+    pub time: Duration,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@ pub struct UdpMessage {
 pub struct Timer {
     pub event_id: usize,
     pub timer_id: usize,
-    pub time: Time,
+    pub time: Duration,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ pub struct Timer {
 pub struct TcpPacket {
     pub event_id: usize,
     pub tcp_msg_id: usize,
-    pub time: Time,
+    pub time: Duration,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,8 +48,8 @@ pub struct TcpPacket {
 #[derive(Clone, Debug)]
 pub struct TcpEvent {
     pub event_id: usize,
-    pub time: Time,
     pub kind: TcpEventKind,
+    pub time: Duration,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,8 +57,8 @@ pub struct TcpEvent {
 #[derive(Clone, Debug)]
 pub struct FsEvent {
     pub event_id: usize,
-    pub time: Time,
     pub outcome: FsEventOutcome,
+    pub time: Duration,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ pub struct FsEvent {
 pub struct RpcMessage {
     pub event_id: usize,
     pub rpc_request_id: u64,
-    pub time: Time,
+    pub time: Duration,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,8 +75,8 @@ pub struct RpcMessage {
 #[derive(Clone, Debug)]
 pub struct RpcEvent {
     pub event_id: usize,
-    pub time: Time,
     pub kind: RpcEventKind,
+    pub time: Duration,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,8 @@ pub enum StateTraceStep {
     SelectRpcMessage(usize, RpcMessage),
     SelectRpcEvent(usize, RpcEvent),
     SelectFsEvent(usize, FsEvent),
-    CrashNode(usize), // id of node
+    CrashNode(usize),    // id of node
+    ShutdownNode(usize), // id of node
     Apply(Box<dyn ApplyFunctor>),
 }
 
@@ -182,6 +183,10 @@ impl StateTraceStep {
                 state.system.handle().crash_node_index(*node);
                 Ok(())
             }
+            StateTraceStep::ShutdownNode(node) => {
+                state.system.handle().shutdown_node_index(*node);
+                Ok(())
+            }
             StateTraceStep::SelectFsEvent(i, e) => {
                 let outcome = EventOutcome {
                     event_id: e.event_id,
@@ -234,6 +239,7 @@ impl Debug for StateTraceStep {
                 .field(arg0)
                 .field(arg1)
                 .finish(),
+            Self::ShutdownNode(arg0) => f.debug_tuple("SelectShutdownNode").field(arg0).finish(),
         }
     }
 }
@@ -278,6 +284,9 @@ impl Display for StateTraceStep {
             }
             StateTraceStep::CrashNode(node) => {
                 write!(f, "Crash node {}", node)
+            }
+            StateTraceStep::ShutdownNode(node) => {
+                write!(f, "Shutdown node {}", node)
             }
             StateTraceStep::SelectFsEvent(i, _) => {
                 write!(f, "Select {}: Fs event", *i)

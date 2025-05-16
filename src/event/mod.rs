@@ -1,10 +1,10 @@
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
+    time::Duration,
 };
 
 use info::EventInfo;
-use time::Time;
 
 use crate::util::trigger::Trigger;
 
@@ -15,13 +15,12 @@ pub mod info;
 pub mod manager;
 pub mod outcome;
 pub mod stat;
-pub mod time;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Event {
     pub id: usize,
-    pub time: Time,
+    pub time: Duration,
     pub info: EventInfo,
     pub on_happen: Option<Trigger>,
 }
@@ -57,7 +56,7 @@ impl Hash for Event {
 impl Display for Event {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "id: {}, ", self.id)?;
-        write!(f, "time: {}, ", self.time)?;
+        write!(f, "time: {:?}, ", self.time)?;
         write!(f, "info: [{}]", self.info)
     }
 }

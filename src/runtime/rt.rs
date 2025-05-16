@@ -23,7 +23,17 @@ pub struct RuntimeState {
 }
 
 impl RuntimeState {
-    fn next_task_owner(&self) -> Option<ProcessHandle> {
+    fn clear_pending(&mut self) {
+        while let Some(h) = self.pending.pop_front() {
+            if self.tasks.contains_key(&h) {
+                self.pending.push_front(h);
+                break;
+            }
+        }
+    }
+
+    fn next_task_owner(&mut self) -> Option<ProcessHandle> {
+        self.clear_pending();
         self.pending
             .front()
             .and_then(|t| self.tasks.get(t))
@@ -39,7 +49,7 @@ pub struct RuntimeHandle(Weak<RefCell<RuntimeState>>);
 ////////////////////////////////////////////////////////////////////////////////
 
 impl RuntimeHandle {
-    fn is_runtime_destroyed(&self) -> bool {
+    fn is_runtime_dropped(&self) -> bool {
         self.0.strong_count() == 0
     }
 
@@ -48,7 +58,7 @@ impl RuntimeHandle {
     }
 
     pub fn schedule(&self, task: TaskId) {
-        if !self.is_runtime_destroyed() {
+        if !self.is_runtime_dropped() {
             self.state().borrow_mut().pending.push_back(task);
         }
     }
@@ -77,36 +87,66 @@ impl RuntimeHandle {
         );
         state.pending.push_back(task_id);
 
-        JoinHandle::new(task_id, receiver)
+        JoinHandle::new(task_id, receiver, self.clone())
+    }
+
+    pub fn cancel_task(&self, task_id: TaskId) {
+        if self.is_runtime_dropped() {
+            return;
+        }
+        let task = self.state().borrow_mut().tasks.remove(&task_id);
+        let is_some = task.is_some();
+        if is_some {
+            drop(task);
+
+            let state = self.state();
+            let mut state = state.borrow_mut();
+
+            // remove tasks from pending
+            let mut v = Default::default();
+            std::mem::swap(&mut v, &mut state.pending);
+            state.pending = v.into_iter().filter(|id| *id != task_id).collect();
+        }
     }
 
     pub fn cancel_tasks(&self, pred: impl Fn(&ProcessHandle) -> bool) {
-        let to_cancel = {
+        if self.is_runtime_dropped() {
+            return;
+        }
+        loop {
+            let to_cancel = {
+                let state = self.state();
+                let state = state.borrow();
+                state
+                    .tasks
+                    .iter()
+                    .filter(|(_id, t)| pred(&t.owner))
+                    .map(|(id, _)| *id)
+                    .collect::<BTreeSet<_>>()
+            };
+
+            if to_cancel.is_empty() {
+                break;
+            }
+
+            to_cancel.iter().for_each(|task| {
+                // task will be dropped after state borrow is released
+                // which is important, because task drop can lead
+                // to scheduling of another tasks (in the current runtime)
+                let task = self.state().borrow_mut().tasks.remove(task);
+
+                // can be none if drop of revious task canceled this one
+                drop(task);
+            });
+
             let state = self.state();
-            let state = state.borrow_mut();
-            state
-                .tasks
-                .iter()
-                .filter(|(_id, t)| pred(&t.owner))
-                .map(|(id, _)| *id)
-                .collect::<BTreeSet<_>>()
-        };
+            let mut state = state.borrow_mut();
 
-        to_cancel.iter().for_each(|task| {
-            // task will be dropped after state borrow is released
-            // which is important, because task drop can lead
-            // to scheduling of another tasks (in the current runtime)
-            let task = self.state().borrow_mut().tasks.remove(task).unwrap();
-            drop(task);
-        });
-
-        let state = self.state();
-        let mut state = state.borrow_mut();
-
-        // remove tasks from pending
-        let mut v = Default::default();
-        std::mem::swap(&mut v, &mut state.pending);
-        state.pending = v.into_iter().filter(|id| !to_cancel.contains(id)).collect();
+            // remove tasks from pending
+            let mut v = Default::default();
+            std::mem::swap(&mut v, &mut state.pending);
+            state.pending = v.into_iter().filter(|id| !to_cancel.contains(id)).collect();
+        }
     }
 }
 
@@ -125,6 +165,8 @@ impl Runtime {
     pub fn process_next_task(&self) -> bool {
         let (task_id, mut task) = {
             let mut state = self.0.borrow_mut();
+            state.clear_pending();
+
             let Some(task_id) = state.pending.pop_front() else {
                 return false;
             };
@@ -159,6 +201,6 @@ impl Runtime {
     }
 
     pub fn next_task_owner(&self) -> Option<ProcessHandle> {
-        self.0.borrow().next_task_owner()
+        self.0.borrow_mut().next_task_owner()
     }
 }

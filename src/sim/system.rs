@@ -3,16 +3,14 @@ use std::{
     cell::RefCell,
     collections::{btree_map::Entry, BTreeMap},
     rc::{Rc, Weak},
+    time::Duration,
 };
 
 use crate::{
-    event::{
-        driver::EventDriver, manager::EventManager, outcome::EventOutcome, stat::EventStat,
-        time::Time,
-    },
+    event::{driver::EventDriver, manager::EventManager, outcome::EventOutcome, stat::EventStat},
     fs::manager::FsManagerHandle,
     runtime::Runtime,
-    util, NetConfig,
+    NetConfig, Process,
 };
 
 use super::{
@@ -61,7 +59,8 @@ impl SystemState {
         let ctx = HashContext::new(&self.roles);
         let nodes_hash = ctx.hash_nodes(self.nodes.values());
         let events_hash = self.event_manager.hash(ctx);
-        util::hash::hash_list([nodes_hash, events_hash].into_iter())
+        nodes_hash ^ events_hash
+        // util::hash::hash_list([nodes_hash, events_hash].into_iter())
     }
 }
 
@@ -222,7 +221,8 @@ impl SystemHandle {
     pub fn setup_fs(
         &self,
         node: impl Into<String>,
-        delays: Time,
+        min_delay: Duration,
+        max_delay: Duration,
         capacity: usize,
     ) -> Result<(), Error> {
         let node = node.into();
@@ -232,7 +232,7 @@ impl SystemHandle {
             .nodes
             .get_mut(&node)
             .ok_or(Error::NotFound)?
-            .setup_fs(reg, delays, capacity)
+            .setup_fs(reg, min_delay, max_delay, capacity)
     }
 
     pub fn crash_fs(&self, node: impl Into<String>) -> Result<(), Error> {
@@ -256,30 +256,6 @@ impl SystemHandle {
             .shutdown_fs()
     }
 
-    pub fn shutdown_node(&self, node: impl Into<String>) -> Result<(), Error> {
-        let node = node.into();
-
-        self.state()
-            .borrow()
-            .event_manager
-            .handle()
-            .on_node_crash(node.as_str());
-
-        let rt = self.state().borrow().rt.handle();
-        rt.cancel_tasks(|p| p.address().node == node);
-
-        self.state()
-            .borrow_mut()
-            .nodes
-            .get_mut(node.as_str())
-            .ok_or(Error::NotFound)?
-            .shutdown();
-
-        self.run_async_tasks();
-
-        Ok(())
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn log(&self) -> Log {
@@ -288,7 +264,7 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub fn time(&self) -> Time {
+    pub fn time(&self) -> Duration {
         self.state().borrow().event_manager.handle().time()
     }
 
@@ -327,8 +303,23 @@ impl SystemHandle {
         self.crash_node(key).unwrap();
     }
 
+    pub(crate) fn node_available_index(&self, i: usize) -> bool {
+        let key = self.state().borrow().nodes.keys().nth(i).cloned().unwrap();
+        let result = self.state().borrow().nodes.get(&key).unwrap().shutdown;
+        !result
+    }
+
     pub fn crash_node(&self, node: impl Into<String>) -> Result<(), Error> {
         let node = node.into();
+
+        self.state().borrow_mut().roles.remove(&node);
+
+        let n = self
+            .state()
+            .borrow_mut()
+            .nodes
+            .remove(node.as_str())
+            .ok_or(Error::NotFound)?;
 
         self.state()
             .borrow()
@@ -339,18 +330,99 @@ impl SystemHandle {
         let rt = self.state().borrow().rt.handle();
         rt.cancel_tasks(|p| p.try_address().map(|a| a.node == node).unwrap_or(false));
 
-        let node = self
+        self.run_async_tasks();
+
+        drop(n);
+
+        // after that no async tasks connected
+        // with node processes should be
+
+        Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn shutdown_node_index(&self, id: usize) {
+        let node = self.state().borrow().nodes.keys().nth(id).cloned().unwrap();
+        self.shutdown_node(node).unwrap()
+    }
+
+    pub fn shutdown_node(&self, node: impl Into<String>) -> Result<(), Error> {
+        let node = node.into();
+
+        let role = self.state().borrow_mut().roles.remove(&node);
+
+        let mut n = self
             .state()
             .borrow_mut()
             .nodes
             .remove(node.as_str())
             .ok_or(Error::NotFound)?;
 
-        drop(node);
+        let _ = n.shutdown_fs();
+        let fs = n.fs.take();
 
-        self.run_async_tasks();
+        self.state()
+            .borrow()
+            .event_manager
+            .handle()
+            .on_node_shutdown(node.as_str());
+
+        let rt = self.state().borrow().rt.handle();
+        rt.cancel_tasks(|p| p.try_address().map(|a| a.node == node).unwrap_or(false));
+
+        // after that no async tasks connected
+        // with node processes should be
+
+        let mut name = String::new();
+        std::mem::swap(&mut name, &mut n.name);
+
+        drop(n);
+
+        let mut n = Node::new(name);
+        n.shutdown = true;
+        n.fs = fs;
+
+        if let Some(role) = role {
+            self.add_node_with_role(n, role).unwrap();
+        } else {
+            self.add_node(n).unwrap();
+        }
 
         Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn restart_node(&self, node: impl Into<String>) -> Result<(), Error> {
+        let node = node.into();
+        let state = self.state();
+        let mut state = state.borrow_mut();
+        let node = state.nodes.get_mut(&node).ok_or(Error::NotFound)?;
+        node.shutdown = false;
+        if let Some(fs) = node.fs.as_ref() {
+            fs.handle().raise();
+        }
+        Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn add_proc_on_node(
+        &self,
+        node_name: impl Into<String>,
+        proc_name: impl Into<String>,
+        proc: impl Process,
+    ) -> Result<ProcessHandle, Error> {
+        let node = node_name.into();
+        let state = self.state();
+        let mut state = state.borrow_mut();
+        let node = state.nodes.get_mut(&node).ok_or(Error::NotFound)?;
+        if node.shutdown {
+            Err(Error::NodeUnavailable)
+        } else {
+            node.add_proc(proc_name, proc)
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////

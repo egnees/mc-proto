@@ -2,7 +2,7 @@ use std::{fmt::Display, time::Duration};
 
 use colored::Colorize;
 
-use crate::{event::time::Time, fs::event::FsEventOutcome, tcp::packet::TcpPacket};
+use crate::{fs::event::FsEventOutcome, tcp::packet::TcpPacket};
 
 use super::proc::Address;
 
@@ -10,7 +10,7 @@ use super::proc::Address;
 
 #[derive(Debug, Clone)]
 pub struct OpenFileRequested {
-    pub time: Time,
+    pub time: Duration,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -22,7 +22,7 @@ impl Display for OpenFileRequested {
             write!(
                 f,
                 "{} {:>12}   O  {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -32,7 +32,7 @@ impl Display for OpenFileRequested {
                 "{}",
                 format!(
                     "{} {:>12}   O  {:<12} <--- failed",
-                    self.time,
+                    self.time.as_millis(),
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -46,7 +46,7 @@ impl Display for OpenFileRequested {
 
 #[derive(Debug, Clone)]
 pub struct CreateFileRequested {
-    pub time: Time,
+    pub time: Duration,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -58,7 +58,7 @@ impl Display for CreateFileRequested {
             write!(
                 f,
                 "{} {:>12}   C  {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -68,7 +68,7 @@ impl Display for CreateFileRequested {
                 "{}",
                 format!(
                     "{} {:>12}   C  {:<12} <--- failed",
-                    self.time,
+                    self.time.as_millis(),
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -82,7 +82,7 @@ impl Display for CreateFileRequested {
 
 #[derive(Debug, Clone)]
 pub struct DeleteFileRequested {
-    pub time: Time,
+    pub time: Duration,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -94,7 +94,7 @@ impl Display for DeleteFileRequested {
             write!(
                 f,
                 "{} {:>12}   D  {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -104,7 +104,7 @@ impl Display for DeleteFileRequested {
                 "{}",
                 format!(
                     "{} {:>12}   D  {:<12} <--- failed",
-                    self.time,
+                    self.time.as_millis(),
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -118,7 +118,7 @@ impl Display for DeleteFileRequested {
 
 #[derive(Debug, Clone)]
 pub struct ReadFileInitiated {
-    pub time: Time,
+    pub time: Duration,
     pub proc: Address,
     pub file: String,
 }
@@ -128,7 +128,7 @@ impl Display for ReadFileInitiated {
         write!(
             f,
             "{} {:>12} R 🚀 {:<12}",
-            self.time,
+            self.time.as_millis(),
             self.proc.to_string(),
             self.file.to_string()
         )
@@ -139,7 +139,7 @@ impl Display for ReadFileInitiated {
 
 #[derive(Debug, Clone)]
 pub struct ReadFileCompleted {
-    pub time: Time,
+    pub time: Duration,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -151,7 +151,7 @@ impl Display for ReadFileCompleted {
             write!(
                 f,
                 "{} {:>12} R 🚩 {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -161,7 +161,7 @@ impl Display for ReadFileCompleted {
                 "{}",
                 format!(
                     "{} {:>12} R 🚩 {:<12} <--- failed",
-                    self.time,
+                    self.time.as_millis(),
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -175,7 +175,7 @@ impl Display for ReadFileCompleted {
 
 #[derive(Debug, Clone)]
 pub struct WriteFileInitiated {
-    pub time: Time,
+    pub time: Duration,
     pub proc: Address,
     pub file: String,
 }
@@ -185,7 +185,7 @@ impl Display for WriteFileInitiated {
         write!(
             f,
             "{} {:>12} W 🚀 {:<12}",
-            self.time,
+            self.time.as_millis(),
             self.proc.to_string(),
             self.file.to_string()
         )
@@ -196,7 +196,7 @@ impl Display for WriteFileInitiated {
 
 #[derive(Debug, Clone)]
 pub struct WriteFileCompleted {
-    pub time: Time,
+    pub time: Duration,
     pub proc: Address,
     pub file: String,
     pub outcome: FsEventOutcome,
@@ -208,7 +208,7 @@ impl Display for WriteFileCompleted {
             write!(
                 f,
                 "{} {:>12} W 🚩 {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -218,7 +218,7 @@ impl Display for WriteFileCompleted {
                 "{}",
                 format!(
                     "{} {:>12} W 🚩 {:<12} <--- failed",
-                    self.time,
+                    self.time.as_millis(),
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -235,7 +235,7 @@ pub struct TcpMessageSent {
     pub from: Address,
     pub to: Address,
     pub packet: TcpPacket,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for TcpMessageSent {
@@ -243,7 +243,7 @@ impl Display for TcpMessageSent {
         write!(
             f,
             "{} {:>12} ---> {:<12} {:?}",
-            self.time,
+            self.time.as_millis(),
             self.from.to_string(),
             self.to.to_string(),
             self.packet.to_string()
@@ -258,7 +258,7 @@ pub struct TcpMessageReceived {
     pub from: Address,
     pub to: Address,
     pub packet: TcpPacket,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for TcpMessageReceived {
@@ -266,7 +266,7 @@ impl Display for TcpMessageReceived {
         write!(
             f,
             "{} {:>12} <--- {:<12} {:?}",
-            self.time,
+            self.time.as_millis(),
             self.to.to_string(),
             self.from.to_string(),
             self.packet.to_string()
@@ -281,7 +281,7 @@ pub struct TcpMessageDropped {
     pub from: Address,
     pub to: Address,
     pub packet: TcpPacket,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for TcpMessageDropped {
@@ -291,7 +291,7 @@ impl Display for TcpMessageDropped {
             "{}",
             format!(
                 "{} {:>12} ---x {:<12} {:?} <-- message dropped",
-                self.time,
+                self.time.as_millis(),
                 self.from.to_string(),
                 self.to.to_string(),
                 self.packet.to_string()
@@ -308,7 +308,7 @@ pub struct RpcMessageSent {
     pub from: Address,
     pub to: Address,
     pub content: Vec<u8>,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for RpcMessageSent {
@@ -316,7 +316,7 @@ impl Display for RpcMessageSent {
         write!(
             f,
             "{} {:>12} ---> {:<12} {:?}",
-            self.time,
+            self.time.as_millis(),
             self.from.to_string(),
             self.to.to_string(),
             String::from_utf8(self.content.clone()).unwrap()
@@ -331,7 +331,7 @@ pub struct RpcMessageReceived {
     pub from: Address,
     pub to: Address,
     pub content: Vec<u8>,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for RpcMessageReceived {
@@ -339,7 +339,7 @@ impl Display for RpcMessageReceived {
         write!(
             f,
             "{} {:>12} <--- {:<12} {:?}",
-            self.time,
+            self.time.as_millis(),
             self.to.to_string(),
             self.from.to_string(),
             String::from_utf8(self.content.clone()).unwrap()
@@ -354,7 +354,7 @@ pub struct RpcMessageDropped {
     pub from: Address,
     pub to: Address,
     pub content: Vec<u8>,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for RpcMessageDropped {
@@ -362,7 +362,7 @@ impl Display for RpcMessageDropped {
         write!(
             f,
             "{} {:>12} ---x {:<12} {:?} <-- message dropped",
-            self.time,
+            self.time.as_millis(),
             self.from.to_string(),
             self.to.to_string(),
             String::from_utf8(self.content.clone()).unwrap()
@@ -377,7 +377,7 @@ pub struct UdpMessageSent {
     pub from: Address,
     pub to: Address,
     pub content: String,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for UdpMessageSent {
@@ -385,7 +385,7 @@ impl Display for UdpMessageSent {
         write!(
             f,
             "{} {:>12} ---> {:<12} {:?}",
-            self.time,
+            self.time.as_millis(),
             self.from.to_string(),
             self.to.to_string(),
             self.content
@@ -400,7 +400,7 @@ pub struct UdpMessageReceived {
     pub from: Address,
     pub to: Address,
     pub content: String,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for UdpMessageReceived {
@@ -408,7 +408,7 @@ impl Display for UdpMessageReceived {
         write!(
             f,
             "{} {:>12} <--- {:<12} {:?}",
-            self.time,
+            self.time.as_millis(),
             self.to.to_string(),
             self.from.to_string(),
             self.content
@@ -423,7 +423,7 @@ pub struct UdpMessageDropped {
     pub from: Address,
     pub to: Address,
     pub content: String,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for UdpMessageDropped {
@@ -433,7 +433,7 @@ impl Display for UdpMessageDropped {
             "{}",
             format!(
                 "{} {:>12} ---x {:<12} {:?} <-- message dropped",
-                self.time,
+                self.time.as_millis(),
                 self.from.to_string(),
                 self.to.to_string(),
                 self.content
@@ -449,8 +449,9 @@ impl Display for UdpMessageDropped {
 pub struct FutureFellAsleep {
     pub tag: usize,
     pub proc: Address,
-    pub duration: Duration,
-    pub time: Time,
+    pub min_duration: Duration,
+    pub max_duration: Duration,
+    pub time: Duration,
 }
 
 impl Display for FutureFellAsleep {
@@ -459,11 +460,12 @@ impl Display for FutureFellAsleep {
             f,
             "{}",
             format!(
-                "{} {:>12}  😴  {:<12} {:.3}",
-                self.time,
+                "{} {:>12}  😴  {:<12} [{:.3}-{:.3}]",
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.tag.to_string(),
-                self.duration.as_secs_f64()
+                self.min_duration.as_secs_f64(),
+                self.max_duration.as_secs_f64()
             )
             .bright_blue()
         )
@@ -476,7 +478,7 @@ impl Display for FutureFellAsleep {
 pub struct FutureWokeUp {
     pub tag: usize,
     pub proc: Address,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for FutureWokeUp {
@@ -486,7 +488,7 @@ impl Display for FutureWokeUp {
             "{}",
             format!(
                 "{} {:>12}  ⏰  {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.tag.to_string()
             )
@@ -501,8 +503,9 @@ impl Display for FutureWokeUp {
 pub struct TimerSet {
     pub id: usize,
     pub proc: Address,
-    pub time: Time,
-    pub duration: Duration,
+    pub time: Duration,
+    pub min_duration: Duration,
+    pub max_duration: Duration,
 }
 
 impl Display for TimerSet {
@@ -511,11 +514,12 @@ impl Display for TimerSet {
             f,
             "{}",
             format!(
-                "{} {:>12}  ⏳  {:<12} {:.3}",
-                self.time,
+                "{} {:>12}  ⏳  {:<12} [{:.3}-{:.3}]",
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.id.to_string(),
-                self.duration.as_secs_f64()
+                self.min_duration.as_secs_f64(),
+                self.max_duration.as_secs_f64()
             )
             .bright_blue()
         )
@@ -525,20 +529,20 @@ impl Display for TimerSet {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
-pub struct TimerCanceled {
+pub struct TimerCancelled {
     pub id: usize,
     pub proc: Address,
-    pub time: Time,
+    pub time: Duration,
 }
 
-impl Display for TimerCanceled {
+impl Display for TimerCancelled {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             format!(
                 "{} {:>12}  ❌  {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.id.to_string(),
             )
@@ -553,7 +557,7 @@ impl Display for TimerCanceled {
 pub struct TimerFired {
     pub id: usize,
     pub proc: Address,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for TimerFired {
@@ -563,7 +567,7 @@ impl Display for TimerFired {
             "{}",
             format!(
                 "{} {:>12}  🔥  {:<12}",
-                self.time,
+                self.time.as_millis(),
                 self.proc.to_string(),
                 self.id.to_string(),
             )
@@ -578,7 +582,7 @@ impl Display for TimerFired {
 pub struct ProcessSentLocalMessage {
     pub process: Address,
     pub content: String,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for ProcessSentLocalMessage {
@@ -588,7 +592,7 @@ impl Display for ProcessSentLocalMessage {
             "{}",
             format!(
                 "{} {:>12} >>>> {:<12} {:?}",
-                self.time,
+                self.time.as_millis(),
                 self.process.to_string(),
                 "local",
                 self.content
@@ -604,7 +608,7 @@ impl Display for ProcessSentLocalMessage {
 pub struct ProcessReceivedLocalMessage {
     pub process: Address,
     pub content: String,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for ProcessReceivedLocalMessage {
@@ -614,7 +618,7 @@ impl Display for ProcessReceivedLocalMessage {
             "{}",
             format!(
                 "{} {:>12} <<<< {:<12} {:?}",
-                self.time,
+                self.time.as_millis(),
                 self.process.to_string(),
                 "local",
                 self.content
@@ -629,7 +633,7 @@ impl Display for ProcessReceivedLocalMessage {
 #[derive(Debug, Clone)]
 pub struct ProcessInfo {
     pub process: Address,
-    pub time: Time,
+    pub time: Duration,
     pub content: String,
 }
 
@@ -640,7 +644,7 @@ impl Display for ProcessInfo {
             "{}",
             format!(
                 "{} {:>12} ==== {:<12?}",
-                self.time,
+                self.time.as_millis(),
                 self.process.to_string(),
                 self.content
             )
@@ -654,12 +658,26 @@ impl Display for ProcessInfo {
 #[derive(Debug, Clone)]
 pub struct NodeCrashed {
     pub node: String,
-    pub time: Time,
+    pub time: Duration,
 }
 
 impl Display for NodeCrashed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {:>12}  💥", self.time, self.node)
+        write!(f, "{} {:>12}  💥", self.time.as_millis(), self.node)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub struct NodeShutdown {
+    pub node: String,
+    pub time: Duration,
+}
+
+impl Display for NodeShutdown {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {:>12}  SD", self.time, self.node)
     }
 }
 
@@ -679,6 +697,7 @@ pub enum LogEntry {
     FutureWokeUp(FutureWokeUp),
     ProcessInfo(ProcessInfo),
     NodeCrashed(NodeCrashed),
+    NodeShutdown(NodeShutdown),
     CreateFileRequested(CreateFileRequested),
     DeleteFileRequested(DeleteFileRequested),
     ReadFileInitiated(ReadFileInitiated),
@@ -691,7 +710,7 @@ pub enum LogEntry {
     RpcMessageDropped(RpcMessageDropped),
     TimerFired(TimerFired),
     TimerSet(TimerSet),
-    TimerCanceled(TimerCanceled),
+    TimerCancelled(TimerCancelled),
 }
 
 impl Display for LogEntry {
@@ -721,7 +740,8 @@ impl Display for LogEntry {
             LogEntry::RpcMessageDropped(e) => write!(f, "{}", e),
             LogEntry::TimerFired(e) => write!(f, "{}", e),
             LogEntry::TimerSet(e) => write!(f, "{}", e),
-            LogEntry::TimerCanceled(e) => write!(f, "{}", e),
+            LogEntry::TimerCancelled(e) => write!(f, "{}", e),
+            LogEntry::NodeShutdown(e) => write!(f, "{}", e),
         }
     }
 }

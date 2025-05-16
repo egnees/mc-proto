@@ -97,6 +97,7 @@ impl<T> Drop for Receiver<T> {
             &mut self.queue.borrow_mut().state,
             &mut ChannelState::ReceiverDropped,
         );
+        self.queue.borrow_mut().queue.clear();
     }
 }
 

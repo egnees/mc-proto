@@ -2,10 +2,10 @@ use std::{
     cell::RefCell,
     collections::{BTreeMap, HashMap},
     rc::Rc,
+    time::Duration,
 };
 
 use crate::{
-    event::time::Time,
     fs::{manager::FsManager, registry::FsEventRegistry},
     Address,
 };
@@ -22,6 +22,7 @@ pub struct Node {
     pub(crate) proc: BTreeMap<String, Rc<RefCell<ProcessState>>>,
     pub(crate) fs: Option<FsManager>,
     pub(crate) name: String,
+    pub(crate) shutdown: bool,
 }
 
 impl Node {
@@ -30,19 +31,21 @@ impl Node {
             proc: Default::default(),
             name: name.into(),
             fs: None,
+            shutdown: false,
         }
     }
 
     pub(crate) fn setup_fs(
         &mut self,
         reg: Rc<RefCell<dyn FsEventRegistry>>,
-        delays: Time,
+        min_delay: Duration,
+        max_delay: Duration,
         capacity: usize,
     ) -> Result<(), Error> {
         if self.fs.is_some() {
             Err(Error::FsAlreadySetup)
         } else {
-            let fs = FsManager::new(reg, self.name.clone(), delays, capacity);
+            let fs = FsManager::new(reg, self.name.clone(), min_delay, max_delay, capacity);
             let _ = self.fs.insert(fs);
             Ok(())
         }
@@ -59,13 +62,6 @@ impl Node {
             .handle()
             .shutdown();
         Ok(())
-    }
-
-    pub(crate) fn shutdown(&mut self) {
-        if let Some(fs) = self.fs.as_ref() {
-            fs.handle().shutdown();
-        }
-        self.proc.clear();
     }
 
     pub fn add_proc_by_ref(
@@ -121,6 +117,11 @@ impl NodeRoleRegister {
     pub fn add(&mut self, node: impl Into<String>, role: impl Into<String>) {
         let prev = self.roles.insert(node.into(), role.into());
         assert!(prev.is_none());
+    }
+
+    pub fn remove(&mut self, node: impl Into<String>) -> Option<String> {
+        self.roles.remove(node.into().as_str())
+        // assert!(prev.is_some());
     }
 
     pub fn role(&self, node: &str) -> Option<&str> {

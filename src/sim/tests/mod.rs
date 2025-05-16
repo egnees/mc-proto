@@ -11,3 +11,6 @@ mod rpc;
 
 #[cfg(test)]
 mod rpc_fails;
+
+#[cfg(test)]
+mod node;

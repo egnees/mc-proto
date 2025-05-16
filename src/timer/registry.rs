@@ -7,7 +7,8 @@ use crate::{util::oneshot, Address};
 pub trait TimerRegistry {
     fn register_timer(
         &mut self,
-        duration: Duration,
+        min_duration: Duration,
+        max_duration: Duration,
         with_sleep: bool,
         proc: Address,
     ) -> (usize, oneshot::Receiver<()>);

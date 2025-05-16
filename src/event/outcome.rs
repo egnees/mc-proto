@@ -1,6 +1,6 @@
-use crate::{fs::event::FsEventOutcome, rpc::RpcResult, TcpError};
+use std::time::Duration;
 
-use super::time::Time;
+use crate::{fs::event::FsEventOutcome, rpc::RpcResult, TcpError};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -20,5 +20,5 @@ pub enum EventOutcomeKind {
 pub struct EventOutcome {
     pub event_id: usize,
     pub kind: EventOutcomeKind,
-    pub time: Time,
+    pub time: Duration,
 }
