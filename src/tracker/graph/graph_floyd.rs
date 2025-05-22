@@ -105,7 +105,7 @@ mod tests {
     use rand::SeedableRng;
     use rand::{rngs::StdRng, Rng};
 
-    use crate::tracker::graph::graph::{Graph, GraphFloyd, GraphFloydSmart};
+    use crate::tracker::graph::graph_floyd::{Graph, GraphFloyd, GraphFloydSmart};
 
     #[test]
     fn graph_floyd() {

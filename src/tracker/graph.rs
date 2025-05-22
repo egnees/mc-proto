@@ -1,7 +1,7 @@
 #[allow(unused)]
 mod floyd;
 
-mod graph;
+mod graph_floyd;
 
 mod matrix;
 
@@ -9,6 +9,6 @@ mod moore;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub use graph::{Graph, GraphFloydSmart};
+pub use graph_floyd::{Graph, GraphFloydSmart};
 
 pub use moore::MooreGraph;

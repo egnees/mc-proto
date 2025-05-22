@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hasher},
     time::Duration,
-    usize,
 };
 
 use crate::{

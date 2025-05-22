@@ -20,27 +20,25 @@ impl RepliactedU64 {
                 value: Cell::new(value),
                 file: Some(file),
             }
+        } else if let Ok(file) = mc::File::create(name) {
+            let r = Self {
+                value: Cell::new(0),
+                file: Some(file),
+            };
+            r.update(0).await.unwrap();
+            r
         } else {
-            if let Ok(file) = mc::File::create(name) {
-                let r = Self {
-                    value: Cell::new(0),
-                    file: Some(file),
-                };
-                r.update(0).await.unwrap();
-                r
-            } else {
-                // fs unavailable
-                Self {
-                    value: Cell::new(0),
-                    file: None,
-                }
+            // fs unavailable
+            Self {
+                value: Cell::new(0),
+                file: None,
             }
         }
     }
 
     pub fn value_to_string(value: u64) -> String {
         let s = value.to_string();
-        let result = vec!['0' as u8; 10 - s.len()];
+        let result = vec![b'0'; 10 - s.len()];
         let mut result = String::from_utf8(result).unwrap();
         result.push_str(s.as_str());
         result
@@ -51,7 +49,7 @@ impl RepliactedU64 {
             0
         } else {
             let str = std::str::from_utf8(buf).unwrap();
-            u64::from_str_radix(str, 10).unwrap()
+            str.parse::<u64>().unwrap()
         }
     }
 

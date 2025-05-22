@@ -84,7 +84,7 @@ pub async fn make_election_timeout(
             Err(None)
         }
         r = make_election(nodes, me, rpc.clone()) => {
-            r.map_err(|t| Some(t))
+            r.map_err(Some)
         }
     }
 }

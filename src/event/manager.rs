@@ -442,10 +442,7 @@ impl EventManagerHandle {
 
             // get event
             let event_id = outcome.event_id;
-            let event = state.events[event_id].cloned();
-
-            // return event
-            event
+            state.events[event_id].cloned()
         };
         match &outcome.kind {
             EventOutcomeKind::UdpMessageDropped() => self.handle_udp_message_dropped(&event),

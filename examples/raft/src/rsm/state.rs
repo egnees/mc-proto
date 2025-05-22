@@ -189,12 +189,12 @@ impl StateHandle {
         req: AppendEntriesRPC,
     ) -> AppendEntriesResult {
         if self.current_term() <= req.term {
-            self.transit_to_follower(req.term, Some(leader_id as u64), Some(leader_id as u64))
+            self.transit_to_follower(req.term, Some(leader_id), Some(leader_id))
                 .await;
         }
 
         let current_term = self.current_term();
-        let success = if req.term < current_term { false } else { true };
+        let success = req.term >= current_term;
         AppendEntriesResult {
             term: current_term,
             success,
@@ -321,7 +321,7 @@ impl StateHandle {
         let state = self.inner.borrow();
         match &*state.role.borrow() {
             Role::Idle => None,
-            Role::Follower { current_leader, .. } => current_leader.clone(),
+            Role::Follower { current_leader, .. } => *current_leader,
             Role::Candidate { .. } => None,
             Role::Leader(_) => Some(state.common.me as u64),
         }
@@ -329,18 +329,12 @@ impl StateHandle {
 
     pub fn is_candidate(&self) -> bool {
         let state = self.inner.borrow();
-        match &*state.role.borrow() {
-            Role::Candidate { .. } => true,
-            _ => false,
-        }
+        matches!(&*state.role.borrow(), Role::Candidate { .. })
     }
 
     pub fn is_leader(&self) -> bool {
         let state = self.inner.borrow();
-        match &*state.role.borrow() {
-            Role::Leader { .. } => true,
-            _ => false,
-        }
+        matches!(&*state.role.borrow(), Role::Leader { .. })
     }
 
     pub fn set_voted_for(&self, voted_for: Option<u64>) -> mc::JoinHandle<()> {

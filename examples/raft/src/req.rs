@@ -7,9 +7,9 @@ pub enum Request {
     Init { nodes: usize, me: usize },
 }
 
-impl Into<String> for Request {
-    fn into(self) -> String {
-        serde_json::to_string(&self).unwrap()
+impl From<Request> for String {
+    fn from(value: Request) -> Self {
+        serde_json::to_string(&value).unwrap()
     }
 }
 

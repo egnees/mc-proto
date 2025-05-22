@@ -28,8 +28,8 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Run linter
-      run: cargo clippy --all -- -D warnings
+      run: cargo clippy --all --workspace -- -D warnings
     - name: Run tests
-      run: cargo test --all --verbose
+      run: cargo test --all --verbose --workspace
     - name: Run tests in release
-      run: cargo test --all --verbose --release
+      run: cargo test --all --verbose --workspace --release

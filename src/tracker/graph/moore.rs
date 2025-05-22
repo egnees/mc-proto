@@ -79,7 +79,7 @@ mod tests {
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use rstest::rstest;
 
-    use crate::tracker::graph::{graph::GraphFloyd, Graph};
+    use crate::tracker::graph::{graph_floyd::GraphFloyd, Graph};
 
     use super::MooreGraph;
 
