@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{addr::iter_others, cmd::Command};
+use crate::cmd::Command;
 
 use super::StateHandle;
 
@@ -80,6 +80,7 @@ impl Log {
     }
 
     pub fn append_from_user(&mut self, entry: LogEntry) -> mc::JoinHandle<()> {
+        mc::log("append from user");
         self.entries.push(entry);
         let content = serde_json::to_vec(&self.entries).unwrap();
         mc::spawn(async move {
@@ -112,7 +113,7 @@ impl Log {
 
     pub fn entries(&self, from: usize, to: usize) -> &[LogEntry] {
         assert!(from > 0 && to > 0);
-        &self.entries[from - 1..to - 1]
+        &self.entries[from - 1..to]
     }
 }
 
@@ -120,7 +121,9 @@ impl Log {
 
 pub async fn replicate_log_for(state: StateHandle, i: usize) -> Result<bool, u64> {
     if i == state.me() {
-        let req = state.make_append_request_for_follower(i).unwrap();
+        let Some(req) = state.make_append_request_for_follower(i) else {
+            return Ok(false);
+        };
         let last_index = req.prev_log_index + req.entries.len();
         state.upd_follower_info(i, last_index + 1, last_index);
         let result = state.upd_commit_index_and_apply_log();
@@ -184,7 +187,7 @@ pub async fn replicate_log(state: StateHandle) -> Result<(), u64> {
         };
         // for myself
         let counter = Rc::new(RefCell::new(counter));
-        let cancel_set = iter_others(state.nodes(), state.me()).map(|i| {
+        let cancel_set = (0..state.nodes()).map(|i| {
             mc::spawn({
                 let counter = counter.clone();
                 let state = state.clone();

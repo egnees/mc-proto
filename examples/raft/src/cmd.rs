@@ -76,6 +76,12 @@ impl From<Response> for String {
     }
 }
 
+impl From<String> for Response {
+    fn from(value: String) -> Self {
+        serde_json::from_str(&value).unwrap()
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]

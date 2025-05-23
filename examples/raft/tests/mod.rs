@@ -1,4 +1,7 @@
 #[cfg(test)]
 mod election;
 
-pub mod util;
+#[cfg(test)]
+mod replication;
+
+mod util;

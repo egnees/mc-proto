@@ -25,11 +25,14 @@ pub struct Driver {
     rng: SmallRng,
     last_tcp: BTreeMap<(usize, bool), Duration>,
     last_rpc: BTreeMap<(Address, Address), Duration>,
+    time: Duration,
 }
 
 impl EventDriver for Driver {
     fn register_event(&mut self, event: &Event, min_offset: Duration, max_offset: Duration) {
         assert!(min_offset <= max_offset);
+        let min = self.time + min_offset;
+        let max = self.time + max_offset;
         let t = {
             let from = match &event.info {
                 EventInfo::RpcMessage(m) => self
@@ -37,16 +40,16 @@ impl EventDriver for Driver {
                     .get(&(m.from.address(), m.to.address()))
                     .cloned()
                     .unwrap_or(Duration::ZERO)
-                    .max(min_offset),
+                    .max(min),
                 EventInfo::TcpMessage(m) => self
                     .last_tcp
                     .get(&(m.packet.tcp_stream_id, m.from.address() < m.to.address()))
                     .cloned()
                     .unwrap_or(Duration::ZERO)
-                    .max(min_offset),
-                _ => min_offset,
+                    .max(min),
+                _ => min,
             };
-            self.rng.random_range(from..max_offset)
+            self.rng.random_range(from..=max)
         };
 
         match &event.info {
@@ -88,6 +91,7 @@ impl Driver {
             info: Default::default(),
             queue: Default::default(),
             rng: SmallRng::seed_from_u64(seed),
+            time: Duration::ZERO,
         }
     }
 
@@ -120,6 +124,7 @@ impl Driver {
                 kind,
                 time,
             };
+            self.time = t;
             Some(outcome)
         } else {
             None

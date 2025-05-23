@@ -4,8 +4,7 @@ use raft::{addr::make_addr, proc::Raft, rsm::StateHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn leader(s: mc::StateView, nodes: usize) -> Result<Option<u64>, String> {
-    let s = s.system();
+pub fn leader(s: mc::SystemHandle, nodes: usize) -> Result<Option<u64>, String> {
     let mut leader = None;
     for n in 0..nodes {
         let proc = make_addr(n);
@@ -27,14 +26,14 @@ pub fn leader(s: mc::StateView, nodes: usize) -> Result<Option<u64>, String> {
     Ok(leader)
 }
 
-pub fn agree_about_leader(s: mc::StateView, nodes: usize) -> Result<(), String> {
+pub fn agree_about_leader(s: mc::SystemHandle, nodes: usize) -> Result<(), String> {
     leader(s, nodes).map(|_| ())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn some_node_shutdown(s: mc::StateView) -> Result<(), String> {
-    if s.system().stat().nodes_shutdown > 0 {
+pub fn some_node_shutdown(s: mc::SystemHandle) -> Result<(), String> {
+    if s.stat().nodes_shutdown > 0 {
         Ok(())
     } else {
         Err("no nodes shutdown".into())
@@ -44,14 +43,14 @@ pub fn some_node_shutdown(s: mc::StateView) -> Result<(), String> {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn concurrent_candidates_appear_count(
-    s: mc::StateView,
+    s: mc::SystemHandle,
     max_candidates: usize,
     window: u64,
 ) -> usize {
     let mut cnt = 0;
     let mut candidate_timers: HashSet<usize> = HashSet::default();
     let mut counts: HashMap<u64, usize> = HashMap::default();
-    for e in s.system().log().iter() {
+    for e in s.log().iter() {
         match e {
             mc::LogEntry::TimerFired(timer) => {
                 if candidate_timers.get(&timer.id).is_some() {
@@ -90,8 +89,7 @@ pub fn concurrent_candidates_appear_count(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn no_two_leaders_in_one_term(s: mc::StateView, nodes: usize) -> Result<(), String> {
-    let s = s.system();
+pub fn no_two_leaders_in_one_term(s: mc::SystemHandle, nodes: usize) -> Result<(), String> {
     let mut terms = HashSet::new();
     for n in 0..nodes {
         let Some(state) = s.proc_state::<Raft>(make_addr(n)) else {
@@ -125,5 +123,5 @@ pub fn restrict_depth(s: mc::StateView, max_depth: usize) -> Result<(), String> 
 
 pub fn raft_invariants(s: mc::StateView, nodes: usize, max_depth: usize) -> Result<(), String> {
     restrict_depth(s.clone(), max_depth)?;
-    no_two_leaders_in_one_term(s, nodes)
+    no_two_leaders_in_one_term(s.system(), nodes)
 }

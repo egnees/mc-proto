@@ -271,7 +271,11 @@ impl StateHandle {
 
         {
             let mut state = self.inner.borrow_mut();
-            state.common.commit_index = state.common.commit_index.max(req.leader_commit);
+            state.common.commit_index = state
+                .common
+                .commit_index
+                .max(req.leader_commit)
+                .min(state.common.log.last_log_index());
             state.common.apply_log();
         }
 
@@ -288,7 +292,6 @@ impl StateHandle {
     pub fn on_user_command(&self, cmd: Command) -> Option<Response> {
         let leader = self.who_is_leader().map(|leader| leader as usize);
         let mut state = self.inner.borrow_mut();
-        let me = state.common.me;
         let term = state.common.current_term.get();
         if !matches!(*state.role.borrow(), Role::Leader(_)) {
             return Some(Response::new_error(
@@ -306,11 +309,8 @@ impl StateHandle {
                 let mut replication = mc::spawn(replicate_log_with_result(state.clone()));
                 {
                     let state = state.inner.borrow();
-                    let index = state.common.log.last_log_index();
                     match &mut *state.role.borrow_mut() {
                         Role::Leader(leader) => {
-                            leader.match_index[me] = leader.match_index[me].max(index);
-                            leader.next_index[me] = leader.next_index[me].max(index + 1);
                             std::mem::swap(&mut leader.replication, &mut replication);
                             replication.abort();
                         }

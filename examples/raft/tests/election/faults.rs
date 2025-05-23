@@ -74,8 +74,8 @@ fn three_nodes_with_faults_no_fs_mc() {
     let log = checker
         .check(
             move |s| raft_invariants(s, nodes, 40),
-            |s| concurrent_candidates_appear_count(s, 2, 10) > 2,
-            move |s| agree_about_leader(s, nodes),
+            |s| concurrent_candidates_appear_count(s.system(), 2, 10) > 2,
+            move |s| agree_about_leader(s.system(), nodes),
             searcher,
         )
         .unwrap();
@@ -95,8 +95,8 @@ fn three_nodes_with_faults_mc() {
     let log = checker
         .check(
             move |s| raft_invariants(s, nodes, 40),
-            |s| concurrent_candidates_appear_count(s, 2, 10) > 0,
-            move |s| agree_about_leader(s, nodes),
+            |s| concurrent_candidates_appear_count(s.system(), 2, 10) > 0,
+            move |s| agree_about_leader(s.system(), nodes),
             searcher,
         )
         .unwrap();
@@ -134,10 +134,10 @@ fn three_nodes_with_node_restart_no_fs_mc() {
             move |s| raft_invariants(s, nodes, 31),
             |s| {
                 s.depth() >= 30
-                    || concurrent_candidates_appear_count(s.clone(), 2, 10) > 1
-                    || concurrent_candidates_appear_count(s, 3, 10) > 0
+                    || concurrent_candidates_appear_count(s.system(), 2, 10) > 1
+                    || concurrent_candidates_appear_count(s.system(), 3, 10) > 0
             },
-            some_node_shutdown,
+            |s| some_node_shutdown(s.system()),
             searcher,
         )
         .unwrap();
@@ -164,8 +164,8 @@ fn three_nodes_with_node_restart_no_fs_mc() {
     let searcher = mc::BfsSearcher::new(mc::SearchConfig::no_faults_no_drops());
     let result = checker.check(
         move |s| raft_invariants(s, nodes, 60),
-        move |s| concurrent_candidates_appear_count(s, 2, 100) > 1,
-        move |s| agree_about_leader(s, nodes),
+        move |s| concurrent_candidates_appear_count(s.system(), 2, 100) > 1,
+        move |s| agree_about_leader(s.system(), nodes),
         searcher,
     );
     assert!(result.is_err());
@@ -193,12 +193,12 @@ fn three_nodes_with_node_restart_mc() {
             move |s| raft_invariants(s, nodes, 31),
             |s| {
                 s.depth() >= 30
-                    || concurrent_candidates_appear_count(s.clone(), 2, 100) > 1
-                    || concurrent_candidates_appear_count(s, 3, 100) > 0
+                    || concurrent_candidates_appear_count(s.system(), 2, 100) > 1
+                    || concurrent_candidates_appear_count(s.system(), 3, 100) > 0
             },
             |s| {
-                some_node_shutdown(s.clone())?;
-                agree_about_leader(s, 3)
+                some_node_shutdown(s.system())?;
+                agree_about_leader(s.system(), 3)
             },
             searcher,
         )
@@ -228,10 +228,10 @@ fn three_nodes_with_node_restart_mc() {
         .check(
             move |s| raft_invariants(s, nodes, 60),
             move |s| {
-                concurrent_candidates_appear_count(s.clone(), 2, 100) > 1
-                    || concurrent_candidates_appear_count(s, 3, 100) > 0
+                concurrent_candidates_appear_count(s.system(), 2, 100) > 1
+                    || concurrent_candidates_appear_count(s.system(), 3, 100) > 0
             },
-            move |s| agree_about_leader(s, nodes),
+            move |s| agree_about_leader(s.system(), nodes),
             searcher,
         )
         .unwrap();

@@ -72,7 +72,7 @@ fn one_node_basic_mc() {
         .check(
             |_| Ok(()),
             |_| false,
-            |s| agree_about_leader(s, 1),
+            |s| agree_about_leader(s.system(), 1),
             searcher,
         )
         .unwrap();
@@ -83,14 +83,14 @@ fn one_node_basic_mc() {
 
 #[test]
 fn two_nodes_basic_no_fs_mc() {
-    let nodes = 3;
+    let nodes = 2;
     let checker = mc::ModelChecker::new_with_build(move |s| build_without_fs(s, nodes));
     let searcher = mc::BfsSearcher::new(mc::SearchConfig::no_faults_no_drops());
     let log = checker
         .check(
-            move |s| no_two_leaders_in_one_term(s, nodes),
-            move |s| concurrent_candidates_appear_count(s, nodes, 10) > 2,
-            move |s| agree_about_leader(s, nodes),
+            move |s| no_two_leaders_in_one_term(s.system(), nodes),
+            move |s| concurrent_candidates_appear_count(s.system(), nodes, 10) > 2,
+            move |s| agree_about_leader(s.system(), nodes),
             searcher,
         )
         .unwrap();
@@ -101,14 +101,14 @@ fn two_nodes_basic_no_fs_mc() {
 
 #[test]
 fn two_nodes_basic_mc() {
-    let nodes = 3;
+    let nodes = 2;
     let checker = mc::ModelChecker::new_with_build(move |s| build_with_fs(s, nodes));
     let searcher = mc::BfsSearcher::new(mc::SearchConfig::no_faults_no_drops());
     let log = checker
         .check(
-            move |s| no_two_leaders_in_one_term(s, nodes),
-            move |s| concurrent_candidates_appear_count(s, nodes, 100) > 0,
-            move |s| agree_about_leader(s, nodes),
+            move |s| no_two_leaders_in_one_term(s.system(), nodes),
+            move |s| concurrent_candidates_appear_count(s.system(), nodes, 100) > 0,
+            move |s| agree_about_leader(s.system(), nodes),
             searcher,
         )
         .unwrap();
@@ -125,8 +125,8 @@ fn three_nodes_basic_no_fs_mc() {
     let log = checker
         .check(
             move |s| raft_invariants(s, nodes, 30),
-            move |s| concurrent_candidates_appear_count(s.clone(), nodes, 10) > 1,
-            move |s| agree_about_leader(s, nodes),
+            move |s| concurrent_candidates_appear_count(s.system(), nodes, 10) > 1,
+            move |s| agree_about_leader(s.system(), nodes),
             searcher,
         )
         .unwrap();
@@ -143,8 +143,8 @@ fn three_nodes_basic_mc() {
     let log = checker
         .check(
             move |s| raft_invariants(s, nodes, 40),
-            move |s| concurrent_candidates_appear_count(s, 2, 100) > 1,
-            move |s| agree_about_leader(s, nodes),
+            move |s| concurrent_candidates_appear_count(s.system(), 2, 100) > 1,
+            move |s| agree_about_leader(s.system(), nodes),
             searcher,
         )
         .unwrap();

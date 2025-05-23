@@ -151,8 +151,8 @@ fn request_not_responsed() {
             if r.to.node == "n1" {
                 assert!(!found);
                 found = true;
-                assert!(r.time > Duration::from_millis(100));
-                assert!(r.time < Duration::from_millis(103));
+                assert!(r.time > Duration::from_millis(200));
+                assert!(r.time < Duration::from_millis(203));
             }
         }
     }
@@ -245,8 +245,8 @@ fn on_node_crash() {
                 assert!(!found);
                 found = true;
                 println!("{:?}", r.time);
-                assert!(r.time > Duration::from_millis(100));
-                assert!(r.time < Duration::from_millis(103));
+                assert!(r.time > Duration::from_millis(200));
+                assert!(r.time < Duration::from_millis(203));
             }
         }
     }
