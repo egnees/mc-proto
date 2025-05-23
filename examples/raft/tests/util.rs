@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet, hash_map::Entry};
 
-use raft::{addr::make_addr, proc::Raft, rsm::StateHandle};
+use raft::{addr::make_addr, cmd::Command, proc::Raft, rsm::StateHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -107,6 +107,28 @@ pub fn no_two_leaders_in_one_term(s: mc::SystemHandle, nodes: usize) -> Result<(
         }
     }
     Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn log_equals(s: mc::SystemHandle, nodes: usize) -> Result<Option<Vec<Command>>, String> {
+    let mut log = None;
+    for node in 0..nodes {
+        let Some(state) = s.proc_state::<Raft>(make_addr(node)) else {
+            continue;
+        };
+        let Some(state) = state.borrow().handle() else {
+            continue;
+        };
+        let cur_log = state.log();
+        if let Some(log) = log {
+            if cur_log != log {
+                return Err(format!("logs do not match: {log:?} vs {cur_log:?}"));
+            }
+        }
+        log = Some(cur_log);
+    }
+    Ok(log.map(|v| v.into_iter().map(|e| e.cmd).collect()))
 }
 
 ////////////////////////////////////////////////////////////////////////////////

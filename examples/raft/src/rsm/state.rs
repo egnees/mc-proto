@@ -208,6 +208,14 @@ impl StateHandle {
         handle
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn log(&self) -> Vec<LogEntry> {
+        self.inner.borrow().common.log.clone().into()
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
     pub async fn on_vote_request(
         &self,
         candidate_id: u64,
@@ -269,17 +277,15 @@ impl StateHandle {
             };
         };
 
-        {
-            let mut state = self.inner.borrow_mut();
-            state.common.commit_index = state
-                .common
-                .commit_index
-                .max(req.leader_commit)
-                .min(state.common.log.last_log_index());
-            state.common.apply_log();
-        }
-
         handle.await.unwrap();
+
+        let mut state = self.inner.borrow_mut();
+        state.common.commit_index = state
+            .common
+            .commit_index
+            .max(req.leader_commit)
+            .min(state.common.log.last_log_index());
+        state.common.apply_log();
 
         AppendEntriesResult {
             term: current_term,
@@ -309,12 +315,9 @@ impl StateHandle {
                 let mut replication = mc::spawn(replicate_log_with_result(state.clone()));
                 {
                     let state = state.inner.borrow();
-                    match &mut *state.role.borrow_mut() {
-                        Role::Leader(leader) => {
-                            std::mem::swap(&mut leader.replication, &mut replication);
-                            replication.abort();
-                        }
-                        _ => {}
+                    if let Role::Leader(leader) = &mut *state.role.borrow_mut() {
+                        std::mem::swap(&mut leader.replication, &mut replication);
+                        replication.abort();
                     }
                 }
             }
@@ -499,23 +502,21 @@ impl StateHandle {
 
     pub fn dec_next_index(&self, i: usize) {
         let state = self.inner.borrow();
-        match &mut *state.role.borrow_mut() {
-            Role::Leader(leader) => {
-                leader.next_index[i] -= 1;
-            }
-            _ => {}
+        if let Role::Leader(leader) = &mut *state.role.borrow_mut() {
+            leader.next_index[i] -= 1;
         }
     }
 
     pub fn upd_follower_info(&self, i: usize, next_index: usize, match_index: usize) {
         let state = self.inner.borrow();
-        match &mut *state.role.borrow_mut() {
-            Role::Leader(leader) => {
-                leader.next_index[i] = next_index;
-                leader.match_index[i] = match_index;
-            }
-            _ => {}
+        if let Role::Leader(leader) = &mut *state.role.borrow_mut() {
+            leader.next_index[i] = next_index;
+            leader.match_index[i] = match_index;
         }
+    }
+
+    pub fn last_log_index(&self) -> usize {
+        self.inner.borrow().common.log.last_log_index()
     }
 
     pub fn upd_commit_index_and_apply_log(&self) -> bool {

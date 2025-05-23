@@ -6,9 +6,12 @@ use raft::{
     req::Request,
 };
 
-use crate::util::{
-    agree_about_leader, concurrent_candidates_appear_count, no_two_leaders_in_one_term,
-    raft_invariants,
+use crate::{
+    util::{
+        agree_about_leader, concurrent_candidates_appear_count, no_two_leaders_in_one_term,
+        raft_invariants,
+    },
+    wrapper::RaftWrapper,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,4 +152,15 @@ fn three_nodes_basic_mc() {
         )
         .unwrap();
     println!("{log}");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn five_nodes_election_chaos() {
+    let nodes = 5;
+    for seed in 0..250 {
+        let raft = RaftWrapper::new(seed, nodes);
+        raft.step_until_leader_found();
+    }
 }

@@ -4,4 +4,6 @@ mod election;
 #[cfg(test)]
 mod replication;
 
-mod util;
+pub mod util;
+
+pub mod wrapper;

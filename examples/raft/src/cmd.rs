@@ -44,6 +44,48 @@ impl Command {
             }),
         }
     }
+
+    pub fn read(id: usize, leader: usize, key: impl Into<String>) -> Self {
+        Self {
+            id,
+            leader,
+            kind: CommandKind::Read { key: key.into() },
+        }
+    }
+
+    pub fn insert(
+        id: usize,
+        leader: usize,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Self {
+        Self {
+            id,
+            leader,
+            kind: CommandKind::Insert {
+                key: key.into(),
+                value: value.into(),
+            },
+        }
+    }
+
+    pub fn cas(
+        id: usize,
+        leader: usize,
+        key: impl Into<String>,
+        old: impl Into<String>,
+        new: impl Into<String>,
+    ) -> Self {
+        Self {
+            id,
+            leader,
+            kind: CommandKind::CAS {
+                key: key.into(),
+                old: old.into(),
+                new: new.into(),
+            },
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

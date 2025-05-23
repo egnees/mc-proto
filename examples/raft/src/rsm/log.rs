@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +16,7 @@ pub struct LogEntry {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Hash)]
+#[derive(Hash, Clone)]
 pub struct Log {
     entries: Vec<LogEntry>,
 }
@@ -54,28 +54,37 @@ impl Log {
             return None;
         }
         let mut equals = true;
-        assert!(entries.len() >= self.entries.len() - prev_index);
-        let len = self.entries.len() - prev_index;
-        for i in 0..len {
-            if entries[i] != self.entries[prev_index + i] {
+        let len = (self.entries.len() - prev_index).min(entries.len());
+        for (i, entry) in entries.iter().enumerate().take(len) {
+            if *entry != self.entries[prev_index + i] {
                 equals = false;
                 break;
             }
         }
+
         // not need to change something
-        if equals {
-            return Some(mc::spawn(async {}));
-        }
-        while self.entries.len() > prev_index {
-            self.entries.pop().unwrap();
-        }
-        self.entries.append(&mut entries);
-        let content = serde_json::to_vec(&self.entries).unwrap();
-        let handle = mc::spawn(async move {
-            if let Ok(file) = mc::File::open("log.txt") {
-                file.write(&mut content.as_slice(), 0).await.unwrap();
+        let wrote_new = if !equals {
+            while self.entries.len() > prev_index {
+                self.entries.pop().unwrap();
             }
-        });
+            self.entries.append(&mut entries);
+            true
+        } else {
+            for entry in &entries[len..] {
+                self.entries.push(entry.clone());
+            }
+            len < entries.len()
+        };
+        let handle = if wrote_new {
+            let content = serde_json::to_vec(&self.entries).unwrap();
+            mc::spawn(async move {
+                if let Ok(file) = mc::File::open("log.txt") {
+                    file.write(content.as_slice(), 0).await.unwrap();
+                }
+            })
+        } else {
+            mc::spawn(async {})
+        };
         Some(handle)
     }
 
@@ -85,7 +94,7 @@ impl Log {
         let content = serde_json::to_vec(&self.entries).unwrap();
         mc::spawn(async move {
             if let Ok(file) = mc::File::open("log.txt") {
-                file.write(&mut content.as_slice(), 0).await.unwrap();
+                file.write(content.as_slice(), 0).await.unwrap();
             }
         })
     }
@@ -117,6 +126,12 @@ impl Log {
     }
 }
 
+impl From<Log> for Vec<LogEntry> {
+    fn from(value: Log) -> Self {
+        value.entries
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 pub async fn replicate_log_for(state: StateHandle, i: usize) -> Result<bool, u64> {
@@ -142,6 +157,8 @@ pub async fn replicate_log_for(state: StateHandle, i: usize) -> Result<bool, u64
                 let result = state.upd_commit_index_and_apply_log();
                 return Ok(result);
             }
+        } else {
+            mc::sleep(Duration::from_millis(100)).await;
         }
     }
     Ok(false)
