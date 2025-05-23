@@ -2,10 +2,16 @@ use std::{cell::RefCell, hash::Hash, rc::Rc};
 
 use mc::JoinHandle;
 
+use crate::{
+    cmd::{Command, Error, Response},
+    db::DataBase,
+};
+
 use super::{
     append::{AppendEntriesRPC, AppendEntriesResult},
     election::{election_timeout, make_election_timeout},
     heartbeat::send_heartbeats,
+    log::{Log, LogEntry, replicate_log_with_result},
     term::Term,
     vote::{RequestVoteRPC, RequestVoteResult, VotedFor},
 };
@@ -15,10 +21,12 @@ use super::{
 pub struct Common {
     current_term: Term,
     voted_for: VotedFor,
-    commit_index: u64,
-    last_applied: u64,
+    commit_index: usize,
+    last_applied: usize,
     nodes: usize,
     me: usize,
+    db: DataBase,
+    log: Log,
 }
 
 impl Common {
@@ -30,6 +38,20 @@ impl Common {
             last_applied: 0,
             nodes,
             me,
+            db: DataBase::default(),
+            log: Log::new().await,
+        }
+    }
+
+    fn apply_log(&mut self) {
+        while self.commit_index > self.last_applied {
+            self.last_applied += 1;
+            let cmd = &self.log.entry(self.last_applied).cmd;
+            let resp = self.db.apply(&cmd.kind);
+            let resp = cmd.response(resp);
+            if cmd.leader == self.me {
+                mc::send_local(resp);
+            }
         }
     }
 }
@@ -40,24 +62,54 @@ impl Hash for Common {
         self.voted_for.get().hash(state);
         self.commit_index.hash(state);
         self.last_applied.hash(state);
+        self.log.hash(state);
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Leader {
-    next_index: Vec<u64>,
-    match_index: Vec<u64>,
+    next_index: Vec<usize>,
+    match_index: Vec<usize>,
     heartbeat: JoinHandle<()>,
+    replication: JoinHandle<()>,
 }
 
 impl Leader {
-    pub fn new(nodes: usize, last_log_index: u64, heartbeat: JoinHandle<()>) -> Self {
+    pub fn new(
+        nodes: usize,
+        last_log_index: usize,
+        heartbeat: JoinHandle<()>,
+        replication: JoinHandle<()>,
+    ) -> Self {
         Self {
             next_index: vec![last_log_index + 1; nodes],
             match_index: vec![0; nodes],
             heartbeat,
+            replication,
         }
+    }
+
+    pub fn commit_index(
+        &mut self,
+        mut prev_index: usize,
+        log: &Log,
+        term: u64,
+        need: usize,
+    ) -> usize {
+        while prev_index < log.last_log_index() {
+            let idx = prev_index + 1;
+            if log.entry(idx).term != term {
+                break;
+            }
+            let match_cnt = self.match_index.iter().filter(|i| **i >= idx).count();
+            if match_cnt >= need {
+                prev_index += 1;
+            } else {
+                break;
+            }
+        }
+        prev_index
     }
 }
 
@@ -88,7 +140,10 @@ impl Role {
             Role::Idle => {}
             Role::Follower { election, .. } => election.abort(),
             Role::Candidate { election } => election.abort(),
-            Role::Leader(leader) => leader.heartbeat.abort(),
+            Role::Leader(leader) => {
+                leader.heartbeat.abort();
+                leader.replication.abort();
+            }
         }
     }
 }
@@ -194,18 +249,84 @@ impl StateHandle {
         }
 
         let current_term = self.current_term();
-        let success = req.term >= current_term;
+        if req.term < current_term {
+            return AppendEntriesResult {
+                term: current_term,
+                success: false,
+            };
+        }
+
+        let handle = self.inner.borrow_mut().common.log.append_from_leader(
+            req.prev_log_index,
+            req.prev_log_term,
+            req.entries,
+        );
+
+        let Some(handle) = handle else {
+            return AppendEntriesResult {
+                term: current_term,
+                success: false,
+            };
+        };
+
+        {
+            let mut state = self.inner.borrow_mut();
+            state.common.commit_index = state.common.commit_index.max(req.leader_commit);
+            state.common.apply_log();
+        }
+
+        handle.await.unwrap();
+
         AppendEntriesResult {
             term: current_term,
-            success,
+            success: true,
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn on_user_command(&self, cmd: Command) -> Option<Response> {
+        let leader = self.who_is_leader().map(|leader| leader as usize);
+        let mut state = self.inner.borrow_mut();
+        let me = state.common.me;
+        let term = state.common.current_term.get();
+        if !matches!(*state.role.borrow(), Role::Leader(_)) {
+            return Some(Response::new_error(
+                cmd.id,
+                Error::NotLeader {
+                    redirected_to: leader,
+                },
+            ));
+        }
+        let handle = state.common.log.append_from_user(LogEntry { term, cmd });
+        mc::spawn({
+            let state = self.clone();
+            async move {
+                handle.await.unwrap();
+                let mut replication = mc::spawn(replicate_log_with_result(state.clone()));
+                {
+                    let state = state.inner.borrow();
+                    let index = state.common.log.last_log_index();
+                    match &mut *state.role.borrow_mut() {
+                        Role::Leader(leader) => {
+                            leader.match_index[me] = leader.match_index[me].max(index);
+                            leader.next_index[me] = leader.next_index[me].max(index + 1);
+                            std::mem::swap(&mut leader.replication, &mut replication);
+                            replication.abort();
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        });
+        None
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
     /// Transit from leader or candidate to follower
     /// when request with greater term received
-    async fn transit_to_follower(
+    pub async fn transit_to_follower(
         &self,
         new_term: u64,
         new_leader: Option<u64>,
@@ -276,7 +397,13 @@ impl StateHandle {
     fn transit_to_leader(&self) {
         mc::log("transit to leader");
         let hb = mc::spawn(send_heartbeats(self.clone()));
-        let leader = Leader::new(self.nodes(), 0, hb);
+        let replication = mc::spawn(replicate_log_with_result(self.clone()));
+        let leader = Leader::new(
+            self.nodes(),
+            self.inner.borrow().common.log.last_log_index(),
+            hb,
+            replication,
+        );
         self.set_role(Role::Leader(leader));
     }
 
@@ -289,7 +416,7 @@ impl StateHandle {
 
     pub fn make_heartbeat(&self) -> AppendEntriesRPC {
         let state = self.inner.borrow();
-        AppendEntriesRPC::new(
+        AppendEntriesRPC::new_hb(
             state.common.current_term.get(),
             0,
             0,
@@ -343,6 +470,79 @@ impl StateHandle {
 
     pub fn voted_for(&self) -> Option<u64> {
         self.inner.borrow().common.voted_for.get()
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    pub fn make_append_request_for_follower(&self, i: usize) -> Option<AppendEntriesRPC> {
+        let state = self.inner.borrow();
+        let last_log_index = state.common.log.last_log_index();
+        match &*state.role.borrow() {
+            Role::Leader(Leader { next_index, .. }) => {
+                let idx = next_index[i];
+                if last_log_index >= idx {
+                    let entries = state.common.log.entries(idx, last_log_index).to_vec();
+                    Some(AppendEntriesRPC {
+                        term: state.common.current_term.get(),
+                        prev_log_index: idx - 1,
+                        prev_log_term: state.common.log.log_term(idx - 1),
+                        entries,
+                        leader_commit: state.common.commit_index,
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn dec_next_index(&self, i: usize) {
+        let state = self.inner.borrow();
+        match &mut *state.role.borrow_mut() {
+            Role::Leader(leader) => {
+                leader.next_index[i] -= 1;
+            }
+            _ => {}
+        }
+    }
+
+    pub fn upd_follower_info(&self, i: usize, next_index: usize, match_index: usize) {
+        let state = self.inner.borrow();
+        match &mut *state.role.borrow_mut() {
+            Role::Leader(leader) => {
+                leader.next_index[i] = next_index;
+                leader.match_index[i] = match_index;
+            }
+            _ => {}
+        }
+    }
+
+    pub fn upd_commit_index_and_apply_log(&self) -> bool {
+        let index = {
+            let state = self.inner.borrow();
+            match &mut *state.role.borrow_mut() {
+                Role::Leader(leader) => {
+                    let commit_index = leader.commit_index(
+                        state.common.commit_index,
+                        &state.common.log,
+                        state.common.current_term.get(),
+                        state.common.nodes / 2 + 1,
+                    );
+                    assert!(commit_index >= state.common.commit_index);
+                    commit_index
+                }
+                _ => state.common.commit_index,
+            }
+        };
+        let mut state = self.inner.borrow_mut();
+        if state.common.commit_index < index {
+            state.common.commit_index = index;
+            state.common.apply_log();
+            true
+        } else {
+            false
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////

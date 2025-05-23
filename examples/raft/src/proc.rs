@@ -19,6 +19,31 @@ impl Raft {
     }
 }
 
+async fn on_init(state: Rc<RefCell<Option<rsm::StateHandle>>>, nodes: usize, me: usize) {
+    let s = rsm::StateHandle::new(nodes, me).await;
+    let state = state.borrow_mut().insert(s).clone();
+
+    let mut listener = mc::RpcListener::register().unwrap();
+    loop {
+        let request = listener.listen().await;
+        match request.tag {
+            rsm::AppendEntriesRPC::TAG => {
+                let res = state
+                    .on_append_request(addr::id(request.from()), (&request).into())
+                    .await;
+                let _ = request.reply(&res);
+            }
+            rsm::RequestVoteRPC::TAG => {
+                let res = state
+                    .on_vote_request(addr::id(request.from()), (&request).into())
+                    .await;
+                let _ = request.reply(&res);
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl mc::Process for Raft {
     fn on_message(&mut self, _from: mc::Address, _content: String) {
         unreachable!()
@@ -27,41 +52,20 @@ impl mc::Process for Raft {
     fn on_local_message(&mut self, content: String) {
         let req: req::Request = content.into();
         match req {
-            req::Request::Init { nodes, me } => mc::spawn({
-                let state = self.state.clone();
-                async move {
-                    let s = rsm::StateHandle::new(nodes, me).await;
-                    let state = state.borrow_mut().insert(s).clone();
-
-                    let mut listener = mc::RpcListener::register().unwrap();
-                    mc::spawn(async move {
-                        loop {
-                            let request = listener.listen().await;
-                            match request.tag {
-                                rsm::AppendEntriesRPC::TAG => {
-                                    let res = state
-                                        .on_append_request(
-                                            addr::id(request.from()),
-                                            (&request).into(),
-                                        )
-                                        .await;
-                                    let _ = request.reply(&res);
-                                }
-                                rsm::RequestVoteRPC::TAG => {
-                                    let res = state
-                                        .on_vote_request(
-                                            addr::id(request.from()),
-                                            (&request).into(),
-                                        )
-                                        .await;
-                                    let _ = request.reply(&res);
-                                }
-                                _ => unreachable!(),
-                            }
-                        }
-                    });
+            req::Request::Init { nodes, me } => {
+                mc::spawn(on_init(self.state.clone(), nodes, me));
+            }
+            req::Request::Command(cmd) => {
+                let resp = self
+                    .state
+                    .borrow_mut()
+                    .as_mut()
+                    .unwrap()
+                    .on_user_command(cmd);
+                if let Some(resp) = resp {
+                    mc::send_local(resp);
                 }
-            }),
+            }
         };
     }
 

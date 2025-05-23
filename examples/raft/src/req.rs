@@ -1,10 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+use crate::cmd::Command;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Serialize, Deserialize)]
 pub enum Request {
     Init { nodes: usize, me: usize },
+    Command(Command),
 }
 
 impl From<Request> for String {

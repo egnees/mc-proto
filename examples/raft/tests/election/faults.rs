@@ -226,7 +226,7 @@ fn three_nodes_with_node_restart_mc() {
     let searcher = mc::BfsSearcher::new(mc::SearchConfig::no_faults_no_drops());
     let log = checker
         .check(
-            move |s| raft_invariants(s, nodes, 55),
+            move |s| raft_invariants(s, nodes, 60),
             move |s| {
                 concurrent_candidates_appear_count(s.clone(), 2, 100) > 1
                     || concurrent_candidates_appear_count(s, 3, 100) > 0

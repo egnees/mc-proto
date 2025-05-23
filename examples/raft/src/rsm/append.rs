@@ -2,13 +2,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::addr;
 
+use super::log::LogEntry;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppendEntriesRPC {
     pub term: u64,
-    pub prev_log_index: u64,
+    pub prev_log_index: usize,
     pub prev_log_term: u64,
-    // pub entries: Vec<_>,
-    pub leader_commit: u64,
+    pub entries: Vec<LogEntry>,
+    pub leader_commit: usize,
 }
 
 impl From<&mc::RpcRequest> for AppendEntriesRPC {
@@ -27,11 +29,33 @@ impl AppendEntriesRPC {
             .map(mc::RpcResponse::into)
     }
 
-    pub fn new(term: u64, prev_log_index: u64, prev_log_term: u64, leader_commit: u64) -> Self {
+    pub fn new_hb(
+        term: u64,
+        prev_log_index: usize,
+        prev_log_term: u64,
+        leader_commit: usize,
+    ) -> Self {
         Self {
             term,
             prev_log_index,
             prev_log_term,
+            entries: Vec::default(),
+            leader_commit,
+        }
+    }
+
+    pub fn new(
+        term: u64,
+        prev_log_index: usize,
+        prev_log_term: u64,
+        entries: Vec<LogEntry>,
+        leader_commit: usize,
+    ) -> Self {
+        Self {
+            term,
+            prev_log_index,
+            prev_log_term,
+            entries,
             leader_commit,
         }
     }
