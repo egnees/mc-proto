@@ -46,8 +46,8 @@ impl File {
 
     pub async fn create(name: impl Into<String>) -> FsResult<Self> {
         let mount_dir = Context::current().mount_dir();
-        let path = PathBuf::from(mount_dir);
-        let path = path.with_file_name(name.into());
+        let mut path = PathBuf::from(mount_dir);
+        path.push(name.into());
         let file_path = path.clone().to_string_lossy().to_string();
         let file = tokio::fs::File::create_new(path)
             .await
@@ -60,8 +60,8 @@ impl File {
 
     pub async fn open(name: impl Into<String>) -> FsResult<Self> {
         let mount_dir = Context::current().mount_dir();
-        let path = PathBuf::from(mount_dir);
-        let path = path.with_file_name(name.into());
+        let mut path = PathBuf::from(mount_dir);
+        path.push(name.into());
         let file_path = path.clone().into_os_string().into_string().unwrap();
         let file = tokio::fs::OpenOptions::new()
             .create(false)
@@ -76,8 +76,8 @@ impl File {
 
     pub async fn delete(name: impl Into<String>) -> FsResult<()> {
         let mount_dir = Context::current().mount_dir();
-        let path = PathBuf::from(mount_dir);
-        let path = path.with_file_name(name.into());
+        let mut path = PathBuf::from(mount_dir);
+        path.push(name.into());
         let file_path = path.clone().into_os_string().into_string().unwrap();
         tokio::fs::remove_file(&path)
             .await

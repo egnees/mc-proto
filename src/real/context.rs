@@ -21,6 +21,10 @@ impl Context {
     pub(crate) fn new(proc: ProcessHandle) -> Self {
         Self { proc }
     }
+
+    pub(crate) fn proc_addr(&self) -> Address {
+        self.proc.address()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
