@@ -7,12 +7,12 @@ use std::{
 
 use crate::{
     fs::{manager::FsManager, registry::FsEventRegistry},
-    Address,
+    Address, Process,
 };
 
 use super::{
     error::Error,
-    proc::{Process, ProcessHandle, ProcessState},
+    proc::{ProcessHandle, ProcessState},
 };
 
 ////////////////////////////////////////////////////////////////////////////////

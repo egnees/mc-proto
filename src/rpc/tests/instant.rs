@@ -1,11 +1,9 @@
 use crate::rpc::manager::RpcManager;
 use crate::rpc::registry::RpcRegistry;
 
-use crate::{util::oneshot, Address};
+use crate::{util::oneshot, Address, RpcResult};
 
-use crate::rpc::{
-    error::RpcResult, listener::RpcListener, request::RpcRequest, response::RpcResponse,
-};
+use crate::rpc::{listener::RpcListener, request::RpcRequest, response::RpcResponse};
 
 ////////////////////////////////////////////////////////////////////////////////
 

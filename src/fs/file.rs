@@ -3,10 +3,9 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::sim::context::Context;
+use crate::{sim::context::Context, FsError};
 
 use super::{
-    error::FsError,
     event::{FsEventKind, FsEventOutcome},
     manager::FsManagerHandle,
 };
@@ -53,7 +52,7 @@ impl File {
         self.content.upgrade().ok_or(FsError::FileNotAvailable)
     }
 
-    pub async fn read(&self, buf: &mut [u8], offset: usize) -> Result<usize, FsError> {
+    pub async fn read(&mut self, buf: &mut [u8], offset: usize) -> Result<usize, FsError> {
         let content = self.content()?;
         let residual = content.borrow().0.len().saturating_sub(offset);
         let len = buf.len().min(residual);
@@ -79,7 +78,7 @@ impl File {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub async fn write(&self, buf: &[u8], offset: usize) -> Result<usize, FsError> {
+    pub async fn write(&mut self, buf: &[u8], offset: usize) -> Result<usize, FsError> {
         let content = self.content()?;
         let len = buf.len();
         let event = FsEventKind::Write {

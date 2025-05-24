@@ -2,7 +2,8 @@ use std::time::Duration;
 
 use crate::fs::tests::instant::make_shared_instant;
 
-use crate::fs::{error::FsError, file::File, manager::FsManager};
+use crate::fs::{file::File, manager::FsManager};
+use crate::FsError;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -18,7 +19,7 @@ fn shutdown_basic() {
     );
     let handle = manager.handle();
 
-    let file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
     handle.shutdown();
 
     // on create
@@ -53,7 +54,7 @@ fn shutdown_basic() {
 
     File::delete_file("proc".into(), "f1".into(), handle.clone()).unwrap();
 
-    let file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
     let f = rt.run(async move {
         let result = file.write("hello".as_bytes(), 0).await.unwrap();
         assert_eq!(result, 5);

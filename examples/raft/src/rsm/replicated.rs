@@ -2,28 +2,27 @@ use std::cell::Cell;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
 pub struct RepliactedU64 {
     value: Cell<u64>,
-    file: Option<mc::File>,
+    name: String,
 }
 
 impl RepliactedU64 {
     pub async fn new(name: &str) -> Self {
-        let file = mc::File::open(name);
-        if let Ok(file) = file {
+        let file = mc::File::open(name).await;
+        if let Ok(mut file) = file {
             let mut buf = [0u8; 10];
             let bytes = file.read(&mut buf, 0).await.unwrap();
             assert!(bytes == 0 || bytes == 10);
             let value = Self::value_from_string(&buf[..bytes]);
             Self {
                 value: Cell::new(value),
-                file: Some(file),
+                name: name.into(),
             }
-        } else if let Ok(file) = mc::File::create(name) {
+        } else if mc::File::create(name).await.is_ok() {
             let r = Self {
                 value: Cell::new(0),
-                file: Some(file),
+                name: name.into(),
             };
             r.update(0).await.unwrap();
             r
@@ -31,7 +30,7 @@ impl RepliactedU64 {
             // fs unavailable
             Self {
                 value: Cell::new(0),
-                file: None,
+                name: name.into(),
             }
         }
     }
@@ -57,10 +56,12 @@ impl RepliactedU64 {
         if new_value != self.value.get() {
             self.value.set(new_value);
             let s = Self::value_to_string(new_value).into_bytes();
-            let file = self.file.clone();
-            mc::spawn(async move {
-                if let Some(file) = file {
-                    let _ = file.write(s.as_slice(), 0).await;
+            mc::spawn({
+                let name = self.name.clone();
+                async move {
+                    if let Ok(mut file) = mc::File::open(name).await {
+                        let _ = file.write(s.as_slice(), 0).await;
+                    }
                 }
             })
         } else {

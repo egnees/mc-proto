@@ -65,7 +65,6 @@ impl RequestVoteResult {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
 pub struct VotedFor {
     value: RepliactedU64,
 }

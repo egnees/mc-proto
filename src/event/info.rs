@@ -2,10 +2,9 @@ use std::{fmt::Display, hash::Hash, time::Duration};
 
 use crate::{
     fs::event::{FsEventKind, FsEventOutcome},
-    rpc::{RpcError, RpcResult},
     sim::proc::ProcessHandle,
     tcp::packet::TcpPacket,
-    Address, TcpError,
+    Address, RpcError, RpcResult, TcpError,
 };
 
 ////////////////////////////////////////////////////////////////////////////////

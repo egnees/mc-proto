@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::fs::{error::FsError, file::File, manager::FsManager};
+use crate::{
+    fs::{file::File, manager::FsManager},
+    FsError,
+};
 
 use super::instant::make_shared_instant;
 
@@ -18,7 +21,7 @@ fn crash_basic() {
     );
     let handle = manager.handle();
 
-    let file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
     handle.crash();
 
     // on create
@@ -51,7 +54,7 @@ fn crash_basic() {
     let result = File::delete_file("proc".into(), "f1".into(), handle.clone());
     assert!(result.is_err_and(|e| e == FsError::FileNotFound { file: "f1".into() }));
 
-    let file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
     let f = rt.run(async move {
         let result = file.write("hello".as_bytes(), 0).await.unwrap();
         assert_eq!(result, 5);

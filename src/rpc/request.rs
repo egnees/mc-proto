@@ -2,9 +2,9 @@ use std::{cell::RefCell, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{sim::context::Context, Address};
+use crate::{sim::context::Context, Address, RpcError, RpcResult};
 
-use super::{error::RpcResult, registry::RpcRegistry, response::RpcResponse, RpcError};
+use super::{registry::RpcRegistry, response::RpcResponse};
 
 ////////////////////////////////////////////////////////////////////////////////
 

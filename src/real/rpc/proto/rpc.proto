@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package real_rpc;
+
+service Rpc {
+  rpc Send(RpcRequest) returns (RpcResponse) {}
+}
+
+message RpcRequest {
+  string from = 1;
+  uint64 tag = 4;
+  bytes content = 5;
+}
+
+message RpcResponse { bytes content = 2; }

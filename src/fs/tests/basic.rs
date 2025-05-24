@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use crate::{
-    fs::{error::FsError, event::FsEventOutcome, file::File, manager::FsManager},
-    util,
+    fs::{event::FsEventOutcome, file::File, manager::FsManager},
+    util, FsError,
 };
 
 use super::{delayed::make_delayed_register, instant::make_shared_instant};
@@ -20,8 +20,8 @@ fn works() {
         1024,
     );
     let handle = manager.handle();
-    let file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
-    let file1 = file.clone();
+    let mut file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
+    let mut file1 = file.clone();
 
     let rt = smol::LocalExecutor::new();
     let (s, r) = util::oneshot::channel::<i32>();
@@ -57,7 +57,7 @@ fn capacity_exceed() {
         5,
     );
     let handle = manager.handle();
-    let file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("f1".into(), "proc".into(), handle.clone()).unwrap();
 
     let rt = smol::LocalExecutor::new();
     let f = rt.run(async move {
@@ -86,7 +86,7 @@ fn delete_works() {
     );
     let handle = manager.handle();
 
-    let file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
     File::delete_file("proc".into(), "f1".into(), handle.clone()).unwrap();
 
     let rt = smol::LocalExecutor::new();
@@ -153,7 +153,7 @@ fn open() {
     );
     let handle = manager.handle();
 
-    let file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
 
     let rt = smol::LocalExecutor::new();
     let f = rt.run(async move {
@@ -163,7 +163,7 @@ fn open() {
 
     futures::executor::block_on(f);
 
-    let file = File::open_file("proc".into(), "f1".into(), handle).unwrap();
+    let mut file = File::open_file("proc".into(), "f1".into(), handle).unwrap();
 
     let f = rt.run(async move {
         let mut buf = [0u8; 100];
@@ -218,11 +218,11 @@ fn concurrent_events() {
     );
     let handle = manager.handle();
 
-    let file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
+    let mut file = File::create_file("proc".into(), "f1".into(), handle.clone()).unwrap();
 
     let rt = smol::LocalExecutor::new();
     rt.spawn({
-        let file = file.clone();
+        let mut file = file.clone();
         async move {
             file.write("hello".as_bytes(), 0).await.unwrap();
         }
@@ -230,7 +230,7 @@ fn concurrent_events() {
     .detach();
 
     rt.spawn({
-        let file = file.clone();
+        let mut file = file.clone();
         async move {
             file.write("hello1".as_bytes(), 5).await.unwrap();
         }

@@ -6,11 +6,10 @@ use std::{
     time::Duration,
 };
 
-use crate::{util::trigger::Waiter, Address};
+use crate::{util::trigger::Waiter, Address, FsError};
 
 use super::{
     disk::Disk,
-    error::FsError,
     event::{FsEvent, FsEventKind, FsEventOutcome},
     file::{File, FileContent},
     registry::FsEventRegistry,

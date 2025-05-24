@@ -1,6 +1,6 @@
-use crate::{util::oneshot, Address};
+use crate::{common::RpcResult, util::oneshot, Address};
 
-use super::{error::RpcResult, listener::RpcListener, request::RpcRequest, response::RpcResponse};
+use super::{listener::RpcListener, request::RpcRequest, response::RpcResponse};
 
 ////////////////////////////////////////////////////////////////////////////////
 

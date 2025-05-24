@@ -26,7 +26,7 @@ async fn on_init(state: Rc<RefCell<Option<rsm::StateHandle>>>, nodes: usize, me:
     let mut listener = mc::RpcListener::register().unwrap();
     loop {
         let request = listener.listen().await;
-        match request.tag {
+        match request.tag() {
             rsm::AppendEntriesRPC::TAG => {
                 let res = state
                     .on_append_request(addr::id(request.from()), (&request).into())

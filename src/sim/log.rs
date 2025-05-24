@@ -2,9 +2,7 @@ use std::{fmt::Display, time::Duration};
 
 use colored::Colorize;
 
-use crate::{fs::event::FsEventOutcome, tcp::packet::TcpPacket};
-
-use super::proc::Address;
+use crate::{fs::event::FsEventOutcome, tcp::packet::TcpPacket, Address};
 
 ////////////////////////////////////////////////////////////////////////////////
 

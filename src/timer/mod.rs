@@ -71,14 +71,6 @@ impl Drop for Timer {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn sleep(duration: Duration) -> Timer {
-    let cx = crate::sim::context::Context::current();
-    let reg = cx.event_manager.timer_registry();
-    Timer::new(duration, duration, reg, true, cx.proc.address())
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 pub fn set_timer(duration: Duration) -> Timer {
     let cx = crate::sim::context::Context::current();
     let reg = cx.event_manager.timer_registry();
@@ -91,14 +83,6 @@ pub fn set_random_timer(min_duration: Duration, max_duration: Duration) -> Timer
     let cx = crate::sim::context::Context::current();
     let reg = cx.event_manager.timer_registry();
     Timer::new(min_duration, max_duration, reg, false, cx.proc.address())
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-pub fn cancel_timer(timer_id: usize) {
-    let cx = crate::sim::context::Context::current();
-    let reg = cx.event_manager.timer_registry();
-    reg.borrow_mut().cancel_timer(timer_id, cx.proc.address());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

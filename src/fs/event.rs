@@ -5,10 +5,8 @@ use crate::{
         CreateFileRequested, DeleteFileRequested, OpenFileRequested, ReadFileCompleted,
         ReadFileInitiated, WriteFileCompleted, WriteFileInitiated,
     },
-    Address, LogEntry,
+    Address, FsError, LogEntry,
 };
-
-use super::error::FsError;
 
 ////////////////////////////////////////////////////////////////////////////////
 

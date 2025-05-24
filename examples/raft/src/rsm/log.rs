@@ -23,7 +23,7 @@ pub struct Log {
 
 impl Log {
     pub async fn new() -> Self {
-        let entries = if let Ok(file) = mc::File::open("log.txt") {
+        let entries = if let Ok(mut file) = mc::File::open("log.txt").await {
             let mut buf = [0u8; 4096];
             let bytes = file.read(&mut buf, 0).await.unwrap();
             if bytes == 0 {
@@ -32,7 +32,7 @@ impl Log {
                 serde_json::from_slice(&buf[..bytes]).unwrap()
             }
         } else {
-            let _ = mc::File::create("log.txt");
+            let _ = mc::File::create("log.txt").await;
             Vec::default()
         };
         Self { entries }
@@ -78,7 +78,7 @@ impl Log {
         let handle = if wrote_new {
             let content = serde_json::to_vec(&self.entries).unwrap();
             mc::spawn(async move {
-                if let Ok(file) = mc::File::open("log.txt") {
+                if let Ok(mut file) = mc::File::open("log.txt").await {
                     file.write(content.as_slice(), 0).await.unwrap();
                 }
             })
@@ -93,7 +93,7 @@ impl Log {
         self.entries.push(entry);
         let content = serde_json::to_vec(&self.entries).unwrap();
         mc::spawn(async move {
-            if let Ok(file) = mc::File::open("log.txt") {
+            if let Ok(mut file) = mc::File::open("log.txt").await {
                 file.write(content.as_slice(), 0).await.unwrap();
             }
         })

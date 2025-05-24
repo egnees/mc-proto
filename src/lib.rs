@@ -1,6 +1,8 @@
 mod check;
+mod common;
 mod event;
 mod fs;
+mod real;
 mod rpc;
 mod runtime;
 mod search;
@@ -16,9 +18,14 @@ pub use sim::{
     log::{Log, LogEntry},
     net::{send_message, Config as NetConfig},
     node::Node,
-    proc::{log, sleep, spawn, time},
-    proc::{send_local, Address, Process},
+    proc::time,
     system::{HashType, System, SystemHandle},
+};
+
+pub use common::{
+    log, rpc, send_local, set_random_timer, set_timer, sleep, spawn, Address, File, FsError,
+    FsResult, JoinHandle, Process, RpcError, RpcListener, RpcRequest, RpcResponse, RpcResult,
+    Timer,
 };
 
 pub use check::checker::ModelChecker;
@@ -35,14 +42,8 @@ pub use search::{
 
 pub use tcp::{TcpError, TcpListener, TcpReceiver, TcpSender, TcpStream};
 
-pub use util::{cancel::CancelSet, hash::hash_set, oneshot};
-
-pub use fs::{error::FsResult, file::File};
+pub use util::{cancel::CancelSet, hash::hash_set, oneshot, send};
 
 pub use sim::{Simulation, StepConfig};
 
-pub use rpc::{rpc, RpcListener, RpcRequest, RpcResponse, RpcResult};
-
-pub use timer::{cancel_timer, set_random_timer, set_timer, Timer};
-
-pub use runtime::{JoinError, JoinHandle};
+pub use real::{LocalReceiver, LocalSender, RealNode, RouteConfig, RouteConfigBuilder};

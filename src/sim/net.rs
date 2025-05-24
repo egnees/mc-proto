@@ -4,7 +4,8 @@ use std::{
     time::Duration,
 };
 
-use super::{context::Context, error::Error, proc::Address};
+use super::{context::Context, error::Error};
+use crate::Address;
 
 ////////////////////////////////////////////////////////////////////////////////
 

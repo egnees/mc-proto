@@ -1,61 +1,14 @@
 use std::{
     any::{Any, TypeId},
     cell::RefCell,
-    fmt::Display,
-    future::Future,
     hash::Hash,
     rc::{Rc, Weak},
     time::Duration,
 };
 
-use crate::{runtime::JoinHandle, timer};
+use crate::{Address, Process};
 
-use super::{context::Context, system::HashType};
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Address {
-    pub node: String,
-    pub process: String,
-}
-
-impl Address {
-    pub fn new(node: impl Into<String>, process: impl Into<String>) -> Self {
-        Self {
-            node: node.into(),
-            process: process.into(),
-        }
-    }
-}
-
-impl Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.node, self.process)
-    }
-}
-
-impl<T> From<T> for Address
-where
-    T: Into<String>,
-{
-    fn from(value: T) -> Self {
-        let s: String = value.into();
-        let pos = s.find(":").expect("can not find division symbol ':'");
-        let (node, proc) = s.split_at(pos);
-        Address::new(node, &proc[1..])
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-pub trait Process: Any {
-    fn on_message(&mut self, from: Address, content: String);
-
-    fn on_local_message(&mut self, content: String);
-
-    fn hash(&self) -> HashType;
-}
+use super::context::Context;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -162,40 +115,8 @@ impl Hash for ProcessState {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn send_local(content: impl Into<String>) {
-    Context::current().send_local(content.into());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-pub async fn sleep(duration: Duration) {
-    let timer = timer::sleep(duration);
-    timer.await
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-pub fn spawn<F>(task: F) -> JoinHandle<F::Output>
-where
-    F: Future + 'static,
-{
-    Context::current().spawn(task)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 pub fn time() -> Duration {
     Context::current().event_manager.time()
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-pub fn log(content: impl Into<String>) {
-    if Context::installed() {
-        let context = Context::current();
-        let proc = context.proc;
-        context.event_manager.add_log(proc, content.into());
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

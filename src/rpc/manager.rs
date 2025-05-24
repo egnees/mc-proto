@@ -5,15 +5,10 @@ use crate::{
         oneshot,
         unbounded::{make_channel, Sender},
     },
-    Address,
+    Address, RpcError, RpcResult,
 };
 
-use super::{
-    error::{RpcError, RpcResult},
-    listener::RpcListener,
-    request::RpcRequest,
-    RpcResponse,
-};
+use super::{listener::RpcListener, request::RpcRequest, RpcResponse};
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -12,7 +12,7 @@ use crate::{
         info::{RpcMessage, RpcMessageKind, TcpMessage},
     },
     fs::{event::FsEvent, registry::FsEventRegistry},
-    rpc::{RpcListener, RpcManager, RpcRegistry, RpcRequest, RpcResponse, RpcResult},
+    rpc::{RpcListener, RpcManager, RpcRegistry, RpcRequest, RpcResponse},
     runtime::{JoinHandle, RuntimeHandle},
     sim::{
         context::{Context, Guard},
@@ -39,7 +39,7 @@ use crate::{
         oneshot,
         trigger::{self, make_trigger, Trigger},
     },
-    Address, HashType, Process, SystemHandle,
+    Address, HashType, Process, RpcResult, SystemHandle,
 };
 
 use super::{

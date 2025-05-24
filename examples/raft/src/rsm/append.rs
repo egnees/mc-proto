@@ -4,6 +4,8 @@ use crate::addr;
 
 use super::log::LogEntry;
 
+////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppendEntriesRPC {
     pub term: u64,

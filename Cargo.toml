@@ -7,6 +7,7 @@ edition = "2021"
 colored = "3.0.0"
 extract-variant = "1.0.0"
 futures = "0.3.31"
+prost = "0.13.5"
 rand = "0.9.1"
 rstest = "0.25.0"
 rtest = "0.2.2"
@@ -14,7 +15,12 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 smol = "2.0.2"
 thiserror = "2.0.12"
-tokio = { version = "1.44.1", features = ["sync", "macros", "rt"] }
+tokio = { version = "1.44.1", features = ["sync", "macros", "rt", "fs"] }
+tonic = "0.13.1"
+tonic-build = "0.13.1"
+
+[build-dependencies]
+tonic-build = "0.13.1"
 
 [workspace]
 members = ["examples/*", "."]

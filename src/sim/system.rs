@@ -10,7 +10,7 @@ use crate::{
     event::{driver::EventDriver, manager::EventManager, outcome::EventOutcome, stat::EventStat},
     fs::manager::FsManagerHandle,
     runtime::Runtime,
-    NetConfig, Process,
+    Address, NetConfig, Process,
 };
 
 use super::{
@@ -20,7 +20,7 @@ use super::{
     log::Log,
     net::{Network, NetworkHandle},
     node::{Node, NodeRoleRegister},
-    proc::{Address, ProcessHandle},
+    proc::ProcessHandle,
 };
 
 ////////////////////////////////////////////////////////////////////////////////

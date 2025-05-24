@@ -1,10 +1,10 @@
 use std::{cell::RefCell, future::Future};
 
 use crate::{
-    event::manager::EventManagerHandle, fs::manager::FsManagerHandle, runtime::JoinHandle,
+    event::manager::EventManagerHandle, fs::manager::FsManagerHandle, runtime::JoinHandle, Address,
 };
 
-use super::proc::{Address, ProcessHandle};
+pub use super::proc::ProcessHandle;
 
 ////////////////////////////////////////////////////////////////////////////////
 

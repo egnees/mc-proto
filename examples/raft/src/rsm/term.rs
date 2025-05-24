@@ -2,7 +2,6 @@ use super::replicated::RepliactedU64;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
 pub struct Term {
     value: RepliactedU64,
 }

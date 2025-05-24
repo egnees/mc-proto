@@ -3,9 +3,10 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rpc, send_local, spawn, Address, File, HashType, Node, Process, RpcListener, Simulation,
-    StepConfig,
+    rpc, send_local, spawn, Address, HashType, Node, Process, RpcListener, Simulation, StepConfig,
 };
+
+use crate::fs::file::File;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,11 +34,11 @@ impl Process for EchoServer {
     fn on_local_message(&mut self, _content: String) {
         // init
         spawn(async {
-            let file = if let Ok(file) = File::open("file.txt") {
+            let mut file = if let Ok(file) = File::open("file.txt") {
                 send_local("open");
                 file
             } else {
-                let file = File::create("file.txt").unwrap();
+                let mut file = File::create("file.txt").unwrap();
                 send_local("create");
                 file.write("hello".as_bytes(), 0).await.unwrap();
                 file

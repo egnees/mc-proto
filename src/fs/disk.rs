@@ -2,11 +2,10 @@ use std::{cell::RefCell, collections::VecDeque, rc::Rc, time::Duration};
 
 use crate::{
     util::trigger::{make_trigger, Trigger, Waiter},
-    Address,
+    Address, FsError,
 };
 
 use super::{
-    error::FsError,
     event::{FsEvent, FsEventKind, FsEventOutcome},
     registry::FsEventRegistry,
 };

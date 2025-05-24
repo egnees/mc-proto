@@ -1,6 +1,6 @@
-use crate::{sim::context::Context, util::unbounded::Receiver};
+use crate::{sim::context::Context, util::unbounded::Receiver, RpcResult};
 
-use super::{request::RpcRequest, RpcResult};
+use super::request::RpcRequest;
 
 ////////////////////////////////////////////////////////////////////////////////
 

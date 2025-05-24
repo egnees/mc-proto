@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{send_local, send_message, sleep, spawn, Address, File, HashType, Process};
+use crate::{send_local, send_message, sleep, spawn, Address, HashType, Process};
+
+use crate::fs::file::File;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,7 +126,7 @@ impl Process for Store {
             }
             Msg::Read { file, offset, len } => {
                 spawn(async move {
-                    let file = File::open(file).unwrap();
+                    let mut file = File::open(file).unwrap();
                     let mut v = vec![0; len];
                     let bytes = file.read(v.as_mut_slice(), offset).await.unwrap();
                     let result =
@@ -138,7 +140,7 @@ impl Process for Store {
                 content,
             } => {
                 spawn(async move {
-                    let file = File::open(file).unwrap();
+                    let mut file = File::open(file).unwrap();
                     file.write(content.as_bytes(), offset).await.unwrap();
                 });
             }

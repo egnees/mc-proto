@@ -1,4 +1,4 @@
-use crate::runtime::JoinHandle;
+use crate::JoinHandle;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -15,6 +15,6 @@ impl<T> FromIterator<JoinHandle<T>> for CancelSet<T> {
 
 impl<T> Drop for CancelSet<T> {
     fn drop(&mut self) {
-        self.handles.iter().for_each(|h| h.abort());
+        self.handles.iter_mut().for_each(|h| h.abort());
     }
 }
