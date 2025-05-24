@@ -6,7 +6,7 @@ use raft::{proc::Raft, real, req::Request};
 ////////////////////////////////////////////////////////////////////////////////
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let Some(cfg) = std::env::args().skip(1).next() else {
+    let Some(cfg) = std::env::args().nth(1) else {
         return Err("config path not specified".into());
     };
     let Some(cfg) = real::cfg::Config::from_file(cfg) else {
