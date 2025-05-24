@@ -27,10 +27,10 @@ impl File {
                 println!("{e:?}");
                 FsError::FileNotAvailable
             })?;
-        self.file.read(buf).await.map_err(|e| {
-            println!("{e:?}");
-            FsError::FileNotAvailable
-        })
+        self.file
+            .read(buf)
+            .await
+            .map_err(|_| FsError::FileNotAvailable)
     }
 
     pub async fn write(&mut self, buf: &[u8], offset: usize) -> FsResult<usize> {
@@ -39,15 +39,20 @@ impl File {
             .await
             .map_err(|_| FsError::FileNotAvailable)?;
         self.file
-            .write(buf)
+            .write_all(buf)
             .await
-            .map_err(|_| FsError::FileNotAvailable)
+            .map_err(|_| FsError::FileNotAvailable)?;
+        self.file
+            .shutdown()
+            .await
+            .map_err(|_| FsError::FileNotAvailable)?;
+        Ok(buf.len())
     }
 
     pub async fn create(name: impl Into<String>) -> FsResult<Self> {
         let mount_dir = Context::current().mount_dir();
-        let path = PathBuf::from(mount_dir);
-        let path = path.with_file_name(name.into());
+        let mut path = PathBuf::from(mount_dir);
+        path.push(name.into());
         let file_path = path.clone().to_string_lossy().to_string();
         let file = tokio::fs::File::create_new(path)
             .await
@@ -60,12 +65,14 @@ impl File {
 
     pub async fn open(name: impl Into<String>) -> FsResult<Self> {
         let mount_dir = Context::current().mount_dir();
-        let path = PathBuf::from(mount_dir);
-        let path = path.with_file_name(name.into());
+        let mut path = PathBuf::from(mount_dir);
+        path.push(name.into());
         let file_path = path.clone().into_os_string().into_string().unwrap();
         let file = tokio::fs::OpenOptions::new()
-            .create(false)
-            .open(&path)
+            .read(true)
+            .write(true)
+            .create_new(false)
+            .open(path)
             .await
             .map_err(|e| match e.kind() {
                 std::io::ErrorKind::NotFound => FsError::FileNotFound { file: file_path },
@@ -76,8 +83,8 @@ impl File {
 
     pub async fn delete(name: impl Into<String>) -> FsResult<()> {
         let mount_dir = Context::current().mount_dir();
-        let path = PathBuf::from(mount_dir);
-        let path = path.with_file_name(name.into());
+        let mut path = PathBuf::from(mount_dir);
+        path.push(name.into());
         let file_path = path.clone().into_os_string().into_string().unwrap();
         tokio::fs::remove_file(&path)
             .await

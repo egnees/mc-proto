@@ -35,10 +35,7 @@ impl RpcRequest {
 
     pub fn reply<T: Serialize>(self, value: &T) -> RpcResult<()> {
         match self {
-            RpcRequest::Real(real) => {
-                real.reply(value);
-                Ok(())
-            }
+            RpcRequest::Real(real) => real.reply(value),
             RpcRequest::Sim(sim) => sim.reply(value),
         }
     }

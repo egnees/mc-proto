@@ -30,9 +30,11 @@ impl RpcRequest {
         serde_json::from_slice(self.content.as_slice()).ok()
     }
 
-    pub fn reply<T: Serialize>(self, value: &T) {
+    pub fn reply<T: Serialize>(self, value: &T) -> RpcResult<()> {
         let content = serde_json::to_vec(value).unwrap();
-        self.resp.send(content).unwrap()
+        self.resp
+            .send(content)
+            .map_err(|_| RpcError::ConnectionRefused)
     }
 }
 

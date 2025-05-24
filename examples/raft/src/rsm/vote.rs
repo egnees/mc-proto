@@ -43,7 +43,7 @@ impl RequestVoteRPC {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RequestVoteResult {
     /// current term of receiver,
     /// for candidate to update itself

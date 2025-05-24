@@ -130,4 +130,6 @@ impl From<String> for Response {
 pub enum Error {
     #[error("not leader; redirected_to: {:?}", redirected_to.map(make_addr))]
     NotLeader { redirected_to: Option<usize> },
+    #[error("incorrect command")]
+    IncorrectCommand,
 }

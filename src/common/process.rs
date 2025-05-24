@@ -85,6 +85,9 @@ pub fn log(content: impl Into<String>) {
         let context = sim::context::Context::current();
         let proc = context.proc;
         context.event_manager.add_log(proc, content.into());
+    } else if is_real() {
+        let proc = real::context::Context::current().proc_addr();
+        println!("{proc} === {:?}", content.into());
     }
 }
 

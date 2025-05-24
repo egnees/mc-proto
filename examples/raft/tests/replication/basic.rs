@@ -181,6 +181,7 @@ fn two_nodes_send_to_not_leader() {
         raft::cmd::Error::NotLeader { redirected_to } => {
             assert_eq!(redirected_to, Some(not_leader ^ 1))
         }
+        _ => unreachable!(),
     }
 
     let log = log_equals(sys.clone(), nodes).unwrap().unwrap();
@@ -282,6 +283,7 @@ fn three_nodes_send_to_not_leader() {
         raft::cmd::Error::NotLeader { redirected_to } => {
             assert_eq!(redirected_to, Some(not_leader ^ 1))
         }
+        _ => unreachable!(),
     }
 }
 

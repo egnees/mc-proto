@@ -141,7 +141,7 @@ impl RealNodeHandle {
         self.0
             .upgrade()
             .unwrap()
-            .borrow_mut()
+            .borrow()
             .set_random_timer(min_duration, max_duration)
     }
 

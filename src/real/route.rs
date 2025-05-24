@@ -4,7 +4,7 @@ use crate::Address;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct RouteConfig {
     addrs: HashMap<Address, SocketAddr>,
 }
