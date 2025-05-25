@@ -2,11 +2,13 @@ use std::future::Future;
 
 use smol::future::FutureExt;
 
+use crate::{model, real};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 pub enum Timer {
-    Sim(crate::timer::Timer),
-    Real(crate::real::Timer),
+    Sim(model::Timer),
+    Real(real::Timer),
 }
 
 impl Future for Timer {

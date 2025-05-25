@@ -17,11 +17,11 @@ impl Term {
         self.value.read()
     }
 
-    pub fn set(&self, value: u64) -> mc::JoinHandle<()> {
+    pub fn set(&self, value: u64) -> dsbuild::JoinHandle<()> {
         self.value.update(value)
     }
 
-    pub fn increment(&self) -> (u64, mc::JoinHandle<()>) {
+    pub fn increment(&self) -> (u64, dsbuild::JoinHandle<()>) {
         self.value.increment()
     }
 }

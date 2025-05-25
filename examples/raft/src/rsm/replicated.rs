@@ -9,7 +9,7 @@ pub struct RepliactedU64 {
 
 impl RepliactedU64 {
     pub async fn new(name: &str) -> Self {
-        let file = mc::File::open(name).await;
+        let file = dsbuild::File::open(name).await;
         if let Ok(mut file) = file {
             let mut buf = [0u8; 10];
             let bytes = file.read(&mut buf, 0).await.unwrap();
@@ -19,7 +19,7 @@ impl RepliactedU64 {
                 value: Cell::new(value),
                 name: name.into(),
             }
-        } else if mc::File::create(name).await.is_ok() {
+        } else if dsbuild::File::create(name).await.is_ok() {
             let r = Self {
                 value: Cell::new(0),
                 name: name.into(),
@@ -52,20 +52,20 @@ impl RepliactedU64 {
         }
     }
 
-    pub fn update(&self, new_value: u64) -> mc::JoinHandle<()> {
+    pub fn update(&self, new_value: u64) -> dsbuild::JoinHandle<()> {
         if new_value != self.value.get() {
             self.value.set(new_value);
             let s = Self::value_to_string(new_value).into_bytes();
-            mc::spawn({
+            dsbuild::spawn({
                 let name = self.name.clone();
                 async move {
-                    if let Ok(mut file) = mc::File::open(name).await {
+                    if let Ok(mut file) = dsbuild::File::open(name).await {
                         let _ = file.write(s.as_slice(), 0).await;
                     }
                 }
             })
         } else {
-            mc::spawn(async {})
+            dsbuild::spawn(async {})
         }
     }
 
@@ -73,7 +73,7 @@ impl RepliactedU64 {
         self.value.get()
     }
 
-    pub fn increment(&self) -> (u64, mc::JoinHandle<()>) {
+    pub fn increment(&self) -> (u64, dsbuild::JoinHandle<()>) {
         let mut value = self.read();
         value += 1;
         (value, self.update(value))

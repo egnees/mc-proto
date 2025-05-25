@@ -23,7 +23,7 @@ async fn on_init(state: Rc<RefCell<Option<rsm::StateHandle>>>, nodes: usize, me:
     let s = rsm::StateHandle::new(nodes, me).await;
     let state = state.borrow_mut().insert(s).clone();
 
-    let mut listener = mc::RpcListener::register().unwrap();
+    let mut listener = dsbuild::RpcListener::register().unwrap();
     loop {
         let request = listener.listen().await;
         match request.tag() {
@@ -44,8 +44,8 @@ async fn on_init(state: Rc<RefCell<Option<rsm::StateHandle>>>, nodes: usize, me:
     }
 }
 
-impl mc::Process for Raft {
-    fn on_message(&mut self, _from: mc::Address, _content: String) {
+impl dsbuild::Process for Raft {
+    fn on_message(&mut self, _from: dsbuild::Address, _content: String) {
         unreachable!()
     }
 
@@ -53,7 +53,7 @@ impl mc::Process for Raft {
         let req: req::Request = content.into();
         match req {
             req::Request::Init { nodes, me } => {
-                mc::spawn(on_init(self.state.clone(), nodes, me));
+                dsbuild::spawn(on_init(self.state.clone(), nodes, me));
             }
             req::Request::Command(cmd) => {
                 let resp = self
@@ -63,13 +63,13 @@ impl mc::Process for Raft {
                     .unwrap()
                     .on_user_command(cmd);
                 if let Some(resp) = resp {
-                    mc::send_local(resp);
+                    dsbuild::send_local(resp);
                 }
             }
         };
     }
 
-    fn hash(&self) -> mc::HashType {
+    fn hash(&self) -> dsbuild::HashType {
         let mut h = DefaultHasher::new();
         match &*self.state.borrow() {
             Some(state) => state.hash(&mut h),

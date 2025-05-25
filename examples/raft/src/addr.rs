@@ -9,8 +9,8 @@ pub fn node(id: usize) -> String {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn make_addr(id: usize) -> mc::Address {
-    mc::Address::new(node(id), PROCESS_NAME)
+pub fn make_addr(id: usize) -> dsbuild::Address {
+    dsbuild::Address::new(node(id), PROCESS_NAME)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -21,6 +21,6 @@ pub fn iter_others(nodes: usize, me: usize) -> impl Iterator<Item = usize> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn id(a: &mc::Address) -> u64 {
+pub fn id(a: &dsbuild::Address) -> u64 {
     a.node[1..].parse::<u64>().unwrap()
 }

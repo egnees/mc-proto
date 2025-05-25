@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
+use dsbuild::util::oneshot::Sender;
 use serde::{Deserialize, Serialize};
 
 use crate::cmd::Command;
@@ -23,7 +24,7 @@ pub struct Log {
 
 impl Log {
     pub async fn new() -> Self {
-        let entries = if let Ok(mut file) = mc::File::open("log.txt").await {
+        let entries = if let Ok(mut file) = dsbuild::File::open("log.txt").await {
             let mut buf = [0u8; 4096];
             let bytes = file.read(&mut buf, 0).await.unwrap();
             if bytes == 0 {
@@ -32,7 +33,7 @@ impl Log {
                 serde_json::from_slice(&buf[..bytes]).unwrap()
             }
         } else {
-            let _ = mc::File::create("log.txt").await;
+            let _ = dsbuild::File::create("log.txt").await;
             Vec::default()
         };
         Self { entries }
@@ -43,7 +44,7 @@ impl Log {
         prev_index: usize,
         prev_term: u64,
         mut entries: Vec<LogEntry>,
-    ) -> Option<mc::JoinHandle<()>> {
+    ) -> Option<dsbuild::JoinHandle<()>> {
         if prev_index == 0 && prev_term != 0 {
             return None;
         }
@@ -77,23 +78,23 @@ impl Log {
         };
         let handle = if wrote_new {
             let content = serde_json::to_vec(&self.entries).unwrap();
-            mc::spawn(async move {
-                if let Ok(mut file) = mc::File::open("log.txt").await {
+            dsbuild::spawn(async move {
+                if let Ok(mut file) = dsbuild::File::open("log.txt").await {
                     file.write(content.as_slice(), 0).await.unwrap();
                 }
             })
         } else {
-            mc::spawn(async {})
+            dsbuild::spawn(async {})
         };
         Some(handle)
     }
 
-    pub fn append_from_user(&mut self, entry: LogEntry) -> mc::JoinHandle<()> {
-        mc::log("append from user");
+    pub fn append_from_user(&mut self, entry: LogEntry) -> dsbuild::JoinHandle<()> {
+        dsbuild::log("append from user");
         self.entries.push(entry);
         let content = serde_json::to_vec(&self.entries).unwrap();
-        mc::spawn(async move {
-            if let Ok(mut file) = mc::File::open("log.txt").await {
+        dsbuild::spawn(async move {
+            if let Ok(mut file) = dsbuild::File::open("log.txt").await {
                 file.write(content.as_slice(), 0).await.unwrap();
             }
         })
@@ -158,7 +159,7 @@ pub async fn replicate_log_for(state: StateHandle, i: usize) -> Result<bool, u64
                 return Ok(result);
             }
         } else {
-            mc::sleep(Duration::from_millis(100)).await;
+            dsbuild::sleep(Duration::from_millis(100)).await;
         }
     }
     Ok(false)
@@ -168,7 +169,7 @@ pub async fn replicate_log_for(state: StateHandle, i: usize) -> Result<bool, u64
 
 struct Counter {
     rem: usize,
-    sender: Option<mc::oneshot::Sender<Result<bool, u64>>>,
+    sender: Option<Sender<Result<bool, u64>>>,
 }
 
 impl Counter {
@@ -197,7 +198,7 @@ impl Counter {
 
 pub async fn replicate_log(state: StateHandle) -> Result<(), u64> {
     loop {
-        let (sender, receiver) = mc::oneshot::channel();
+        let (sender, receiver) = dsbuild::util::oneshot::channel();
         let counter = Counter {
             rem: state.nodes(),
             sender: Some(sender),
@@ -205,7 +206,7 @@ pub async fn replicate_log(state: StateHandle) -> Result<(), u64> {
         // for myself
         let counter = Rc::new(RefCell::new(counter));
         let cancel_set = (0..state.nodes()).map(|i| {
-            mc::spawn({
+            dsbuild::spawn({
                 let counter = counter.clone();
                 let state = state.clone();
                 async move {
@@ -214,7 +215,7 @@ pub async fn replicate_log(state: StateHandle) -> Result<(), u64> {
                 }
             })
         });
-        let _cancel_set = mc::CancelSet::from_iter(cancel_set);
+        let _cancel_set = dsbuild::util::cancel::CancelSet::from_iter(cancel_set);
         let result = receiver.await.unwrap();
         match result {
             Ok(true) => continue,

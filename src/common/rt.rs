@@ -2,11 +2,13 @@ use std::future::Future;
 
 use smol::future::FutureExt;
 
+use crate::{model, real};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 pub enum JoinHandle<T> {
-    Sim(crate::runtime::JoinHandle<T>),
-    Real(crate::real::JoinHandle<T>),
+    Sim(model::JoinHandle<T>),
+    Real(real::JoinHandle<T>),
 }
 
 impl<T> JoinHandle<T> {

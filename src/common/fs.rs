@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::model;
 use crate::real;
 
 use super::mode::is_real;
@@ -30,7 +31,7 @@ pub type FsResult<T> = Result<T, FsError>;
 
 pub enum File {
     Real(real::File),
-    Model(crate::fs::file::File),
+    Model(model::File),
 }
 
 impl From<real::File> for File {
@@ -39,8 +40,8 @@ impl From<real::File> for File {
     }
 }
 
-impl From<crate::fs::file::File> for File {
-    fn from(value: crate::fs::file::File) -> Self {
+impl From<model::File> for File {
+    fn from(value: model::File) -> Self {
         Self::Model(value)
     }
 }
@@ -71,7 +72,7 @@ impl File {
         if is_real() {
             real::File::open(name).await.map(File::from)
         } else {
-            crate::fs::file::File::open(name).map(File::from)
+            model::File::open(name).map(File::from)
         }
     }
 
@@ -79,7 +80,7 @@ impl File {
         if is_real() {
             real::File::create(name).await.map(File::from)
         } else {
-            crate::fs::file::File::create(name).map(File::from)
+            model::File::create(name).map(File::from)
         }
     }
 
@@ -87,7 +88,7 @@ impl File {
         if is_real() {
             real::File::delete(name).await
         } else {
-            crate::fs::file::File::delete(name)
+            model::File::delete(name)
         }
     }
 }

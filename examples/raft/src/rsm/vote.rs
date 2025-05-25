@@ -16,8 +16,8 @@ pub struct RequestVoteRPC {
     pub last_log_term: u64,
 }
 
-impl From<&mc::RpcRequest> for RequestVoteRPC {
-    fn from(value: &mc::RpcRequest) -> Self {
+impl From<&dsbuild::RpcRequest> for RequestVoteRPC {
+    fn from(value: &dsbuild::RpcRequest) -> Self {
         value.unpack().unwrap()
     }
 }
@@ -25,11 +25,11 @@ impl From<&mc::RpcRequest> for RequestVoteRPC {
 impl RequestVoteRPC {
     pub const TAG: u64 = 1;
 
-    pub async fn send(&self, to: usize) -> mc::RpcResult<RequestVoteResult> {
+    pub async fn send(&self, to: usize) -> dsbuild::RpcResult<RequestVoteResult> {
         let to = addr::make_addr(to);
-        mc::rpc(to, Self::TAG, self)
+        dsbuild::rpc(to, Self::TAG, self)
             .await
-            .map(mc::RpcResponse::into)
+            .map(dsbuild::RpcResponse::into)
     }
 
     pub fn new(term: u64, last_log_index: u64, last_log_term: u64) -> Self {
@@ -51,8 +51,8 @@ pub struct RequestVoteResult {
     pub vote_granted: bool,
 }
 
-impl From<mc::RpcResponse> for RequestVoteResult {
-    fn from(value: mc::RpcResponse) -> Self {
+impl From<dsbuild::RpcResponse> for RequestVoteResult {
+    fn from(value: dsbuild::RpcResponse) -> Self {
         value.unpack().unwrap()
     }
 }
@@ -81,7 +81,7 @@ impl VotedFor {
         if v == 0 { None } else { Some(v - 1) }
     }
 
-    pub fn set(&self, value: Option<u64>) -> mc::JoinHandle<()> {
+    pub fn set(&self, value: Option<u64>) -> dsbuild::JoinHandle<()> {
         self.value.update(value.map(|v| v + 1).unwrap_or(0))
     }
 }

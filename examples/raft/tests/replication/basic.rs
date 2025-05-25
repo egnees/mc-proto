@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use mc::StepConfig;
+use dsbuild::{detsim, mc};
 use raft::{
     addr::{PROCESS_NAME, RAFT_ROLE, make_addr, node},
     cmd::{Command, CommandKind, Response, ResponseKind},
@@ -17,14 +17,14 @@ use crate::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn build_with_fs(sys: mc::SystemHandle, nodes: usize) {
+fn build_with_fs(sys: dsbuild::model::SystemHandle, nodes: usize) {
     sys.network()
         .set_delays(Duration::from_millis(1), Duration::from_millis(5))
         .unwrap();
 
     for n in 0..nodes {
         let node_name = node(n);
-        let mut node = mc::Node::new(&node_name);
+        let mut node = dsbuild::model::Node::new(&node_name);
         let proc = node.add_proc(PROCESS_NAME, Raft::default()).unwrap();
         sys.add_node_with_role(node, RAFT_ROLE).unwrap();
         sys.setup_fs(
@@ -45,11 +45,11 @@ fn build_with_fs(sys: mc::SystemHandle, nodes: usize) {
 fn one_node() {
     let nodes = 1;
 
-    let sim = mc::Simulation::new(123);
+    let sim = detsim::Simulation::new(123);
     let sys = sim.system();
     build_with_fs(sys.clone(), nodes);
 
-    let cfg = StepConfig::no_drops();
+    let cfg = detsim::StepConfig::no_drops();
     sim.step_unti(|s| leader(s, nodes).is_ok(), &cfg);
 
     // initialized
@@ -92,11 +92,11 @@ fn one_node() {
 fn two_nodes_send_to_leader() {
     let nodes = 2;
 
-    let sim = mc::Simulation::new(123);
+    let sim = detsim::Simulation::new(123);
     let sys = sim.system();
     build_with_fs(sys.clone(), nodes);
 
-    let cfg = StepConfig::no_drops();
+    let cfg = detsim::StepConfig::no_drops();
     sim.step_unti(|s| leader(s, nodes).is_ok_and(|l| l.is_some()), &cfg);
 
     let leader = leader(sys.clone(), nodes).unwrap().unwrap() as usize;
@@ -141,11 +141,11 @@ fn two_nodes_send_to_leader() {
 fn two_nodes_send_to_not_leader() {
     let nodes = 2;
 
-    let sim = mc::Simulation::new(123);
+    let sim = detsim::Simulation::new(123);
     let sys = sim.system();
     build_with_fs(sys.clone(), nodes);
 
-    let cfg = StepConfig::no_drops();
+    let cfg = detsim::StepConfig::no_drops();
     sim.step_unti(|s| leader(s, nodes).is_ok_and(|l| l.is_some()), &cfg);
 
     let not_leader = leader(sys.clone(), nodes).unwrap().unwrap() ^ 1;
@@ -194,11 +194,11 @@ fn two_nodes_send_to_not_leader() {
 fn three_nodes_send_to_leader() {
     let nodes = 3;
 
-    let sim = mc::Simulation::new(123);
+    let sim = detsim::Simulation::new(123);
     let sys = sim.system();
     build_with_fs(sys.clone(), nodes);
 
-    let cfg = StepConfig::no_drops();
+    let cfg = detsim::StepConfig::no_drops();
     sim.step_unti(|s| leader(s, nodes).is_ok_and(|l| l.is_some()), &cfg);
 
     let leader = leader(sys.clone(), nodes).unwrap().unwrap() as usize;
@@ -243,11 +243,11 @@ fn three_nodes_send_to_leader() {
 fn three_nodes_send_to_not_leader() {
     let nodes = 3;
 
-    let sim = mc::Simulation::new(123);
+    let sim = detsim::Simulation::new(123);
     let sys = sim.system();
     build_with_fs(sys.clone(), nodes);
 
-    let cfg = StepConfig::no_drops();
+    let cfg = detsim::StepConfig::no_drops();
     sim.step_unti(|s| leader(s, nodes).is_ok_and(|l| l.is_some()), &cfg);
 
     let not_leader = leader(sys.clone(), nodes).unwrap().unwrap() ^ 1;

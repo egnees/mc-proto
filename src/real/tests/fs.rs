@@ -1,4 +1,4 @@
-use crate::{send_local, spawn, Address, File, HashType, Process, RealNode};
+use crate::{model::HashType, real::RealNode, send_local, spawn, Address, File, Process};
 
 ////////////////////////////////////////////////////////////////////////////////
 

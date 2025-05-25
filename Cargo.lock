@@ -423,6 +423,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
+name = "dsbuild"
+version = "0.1.0"
+dependencies = [
+ "colored 3.0.0",
+ "extract-variant",
+ "futures",
+ "prost",
+ "rand",
+ "rstest",
+ "rtest",
+ "serde",
+ "serde_json",
+ "smol",
+ "thiserror 2.0.12",
+ "tokio",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -858,26 +878,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
-name = "mc"
-version = "0.1.0"
-dependencies = [
- "colored 3.0.0",
- "extract-variant",
- "futures",
- "prost",
- "rand",
- "rstest",
- "rtest",
- "serde",
- "serde_json",
- "smol",
- "thiserror 2.0.12",
- "tokio",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1141,7 +1141,7 @@ name = "raft"
 version = "0.1.0"
 dependencies = [
  "axum",
- "mc",
+ "dsbuild",
  "serde",
  "serde_json",
  "thiserror 2.0.12",

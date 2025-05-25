@@ -15,8 +15,8 @@ pub struct AppendEntriesRPC {
     pub leader_commit: usize,
 }
 
-impl From<&mc::RpcRequest> for AppendEntriesRPC {
-    fn from(value: &mc::RpcRequest) -> Self {
+impl From<&dsbuild::RpcRequest> for AppendEntriesRPC {
+    fn from(value: &dsbuild::RpcRequest) -> Self {
         value.unpack().unwrap()
     }
 }
@@ -24,11 +24,11 @@ impl From<&mc::RpcRequest> for AppendEntriesRPC {
 impl AppendEntriesRPC {
     pub const TAG: u64 = 2;
 
-    pub async fn send(&self, to: usize) -> mc::RpcResult<AppendEntriesResult> {
+    pub async fn send(&self, to: usize) -> dsbuild::RpcResult<AppendEntriesResult> {
         let to = addr::make_addr(to);
-        mc::rpc(to, Self::TAG, self)
+        dsbuild::rpc(to, Self::TAG, self)
             .await
-            .map(mc::RpcResponse::into)
+            .map(dsbuild::RpcResponse::into)
     }
 
     pub fn new_hb(
@@ -71,8 +71,8 @@ pub struct AppendEntriesResult {
     pub success: bool,
 }
 
-impl From<mc::RpcResponse> for AppendEntriesResult {
-    fn from(value: mc::RpcResponse) -> Self {
+impl From<dsbuild::RpcResponse> for AppendEntriesResult {
+    fn from(value: dsbuild::RpcResponse) -> Self {
         value.unpack().unwrap()
     }
 }

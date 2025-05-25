@@ -21,14 +21,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let me = cfg.me;
     let nodes = cfg.routes.len();
 
-    let mut route = mc::RouteConfigBuilder::new();
+    let mut route = dsbuild::real::RouteConfigBuilder::new();
     for (addr, sock) in cfg.routes.into_iter() {
         route = route.add(addr, sock);
     }
     let route = route.build();
 
     // Create node and init raft process
-    let mut node = mc::RealNode::new(me.node, cfg.my_id as u64, route, cfg.dir);
+    let mut node = dsbuild::real::RealNode::new(me.node, cfg.my_id as u64, route, cfg.dir);
     let (sender, mut receiver) = node.add_proc(me.process, Raft::default()).unwrap();
     sender.send(Request::Init {
         nodes,

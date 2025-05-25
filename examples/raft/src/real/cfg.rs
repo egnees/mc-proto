@@ -4,7 +4,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use mc::Address;
 use serde::{Deserialize, Serialize};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,8 +39,8 @@ impl RawConfig {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Config {
-    pub routes: HashMap<Address, SocketAddr>,
-    pub me: Address,
+    pub routes: HashMap<dsbuild::Address, SocketAddr>,
+    pub me: dsbuild::Address,
     pub my_id: usize,
     pub dir: String,
     pub listen: SocketAddr,
@@ -52,11 +51,11 @@ impl From<RawConfig> for Option<Config> {
         let mut routes: HashMap<_, _> = Default::default();
         let my_id = value.me;
         for (addr, sock) in value.routes.iter() {
-            let addr: Address = addr.into();
+            let addr: dsbuild::Address = addr.into();
             let sock = sock.to_socket_addrs().ok()?.next()?;
             routes.insert(addr, sock);
         }
-        let me: Address = value.routes[value.me].0.clone().into();
+        let me: dsbuild::Address = value.routes[value.me].0.clone().into();
         Some(Config {
             routes,
             my_id,
@@ -138,7 +137,7 @@ mod tests {
 
         assert_eq!(
             cfg.routes
-                .get(&mc::Address::new("n0", "rsm"))
+                .get(&dsbuild::Address::new("n0", "rsm"))
                 .unwrap()
                 .to_string(),
             "127.0.0.1:10094"
@@ -146,7 +145,7 @@ mod tests {
 
         assert_eq!(
             cfg.routes
-                .get(&mc::Address::new("n1", "rsm"))
+                .get(&dsbuild::Address::new("n1", "rsm"))
                 .unwrap()
                 .to_string(),
             "127.0.0.1:10095"
@@ -154,7 +153,7 @@ mod tests {
 
         assert_eq!(
             cfg.routes
-                .get(&mc::Address::new("n2", "rsm"))
+                .get(&dsbuild::Address::new("n2", "rsm"))
                 .unwrap()
                 .to_string(),
             "127.0.0.1:10096"

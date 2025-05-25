@@ -1,6 +1,6 @@
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 
-use mc::JoinHandle;
+use dsbuild::JoinHandle;
 
 use crate::{
     cmd::{Command, Error, Response},
@@ -50,7 +50,7 @@ impl Common {
             let resp = self.db.apply(&cmd.kind);
             let resp = cmd.response(resp);
             if cmd.leader == self.me {
-                mc::send_local(resp);
+                dsbuild::send_local(resp);
             }
         }
     }
@@ -125,11 +125,11 @@ impl Hash for Leader {
 pub enum Role {
     Idle,
     Follower {
-        election: mc::JoinHandle<()>,
+        election: JoinHandle<()>,
         current_leader: Option<u64>,
     },
     Candidate {
-        election: mc::JoinHandle<()>,
+        election: JoinHandle<()>,
     },
     Leader(Leader),
 }
@@ -308,11 +308,11 @@ impl StateHandle {
             ));
         }
         let handle = state.common.log.append_from_user(LogEntry { term, cmd });
-        mc::spawn({
+        dsbuild::spawn({
             let state = self.clone();
             async move {
                 handle.await.unwrap();
-                let mut replication = mc::spawn(replicate_log_with_result(state.clone()));
+                let mut replication = dsbuild::spawn(replicate_log_with_result(state.clone()));
                 {
                     let state = state.inner.borrow();
                     if let Role::Leader(leader) = &mut *state.role.borrow_mut() {
@@ -335,12 +335,12 @@ impl StateHandle {
         new_leader: Option<u64>,
         new_vote_for: Option<u64>,
     ) {
-        mc::log("transit to follower");
+        dsbuild::log("transit to follower");
 
         let vf = self.set_voted_for(new_vote_for);
         let term = self.set_current_term(new_term);
 
-        let election = mc::spawn({
+        let election = dsbuild::spawn({
             let state = self.clone();
             async move {
                 let _ = election_timeout().await;
@@ -358,14 +358,14 @@ impl StateHandle {
 
     /// Transit from follower to candidate on election timeout
     fn transit_to_candidate(&self) {
-        mc::log("transit to candidate");
+        dsbuild::log("transit to candidate");
 
         let nodes = self.nodes();
         let me = self.me();
 
         let vf = self.set_voted_for(Some(me as u64));
 
-        let election = mc::spawn({
+        let election = dsbuild::spawn({
             let state = self.clone();
             async move {
                 vf.await.unwrap();
@@ -398,9 +398,9 @@ impl StateHandle {
 
     /// Transit from candidate to leader on majority of votes received
     fn transit_to_leader(&self) {
-        mc::log("transit to leader");
-        let hb = mc::spawn(send_heartbeats(self.clone()));
-        let replication = mc::spawn(replicate_log_with_result(self.clone()));
+        dsbuild::log("transit to leader");
+        let hb = dsbuild::spawn(send_heartbeats(self.clone()));
+        let replication = dsbuild::spawn(replicate_log_with_result(self.clone()));
         let leader = Leader::new(
             self.nodes(),
             self.inner.borrow().common.log.last_log_index(),
@@ -427,7 +427,7 @@ impl StateHandle {
         )
     }
 
-    fn increment_term(&self) -> (u64, mc::JoinHandle<()>) {
+    fn increment_term(&self) -> (u64, JoinHandle<()>) {
         self.inner.borrow().common.current_term.increment()
     }
 
@@ -443,7 +443,7 @@ impl StateHandle {
         self.inner.borrow().common.current_term.get()
     }
 
-    pub fn set_current_term(&self, new_term: u64) -> mc::JoinHandle<()> {
+    pub fn set_current_term(&self, new_term: u64) -> dsbuild::JoinHandle<()> {
         self.inner.borrow().common.current_term.set(new_term)
     }
 
@@ -467,7 +467,7 @@ impl StateHandle {
         matches!(&*state.role.borrow(), Role::Leader { .. })
     }
 
-    pub fn set_voted_for(&self, voted_for: Option<u64>) -> mc::JoinHandle<()> {
+    pub fn set_voted_for(&self, voted_for: Option<u64>) -> dsbuild::JoinHandle<()> {
         self.inner.borrow().common.voted_for.set(voted_for)
     }
 

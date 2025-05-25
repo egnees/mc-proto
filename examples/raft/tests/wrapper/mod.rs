@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use dsbuild::detsim;
 use raft::{
     addr::{PROCESS_NAME, RAFT_ROLE, make_addr, node},
     cmd::{Command, Response},
@@ -12,14 +13,14 @@ use crate::util::{leader, log_equals};
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct RaftWrapper {
-    sim: mc::Simulation,
+    sim: detsim::Simulation,
     nodes: usize,
 }
 
 impl RaftWrapper {
     pub fn new(seed: u64, nodes: usize) -> Self {
         let wrapper = Self {
-            sim: mc::Simulation::new(seed),
+            sim: detsim::Simulation::new(seed),
             nodes,
         };
         for n in 0..nodes {
@@ -32,7 +33,7 @@ impl RaftWrapper {
 impl RaftWrapper {
     fn add_node(&self, n: usize) {
         let node_name = node(n);
-        let mut node = mc::Node::new(&node_name);
+        let mut node = dsbuild::model::Node::new(&node_name);
         let proc = node.add_proc(PROCESS_NAME, Raft::default()).unwrap();
         let s = self.sim.system();
         s.add_node_with_role(node, RAFT_ROLE).unwrap();
@@ -53,7 +54,7 @@ impl RaftWrapper {
         .unwrap();
     }
 
-    pub fn system(&self) -> mc::SystemHandle {
+    pub fn system(&self) -> dsbuild::model::SystemHandle {
         self.sim.system()
     }
 
@@ -63,7 +64,7 @@ impl RaftWrapper {
             if let Some(leader) = leader {
                 return leader;
             }
-            self.sim.step(&mc::StepConfig::no_drops());
+            self.sim.step(&detsim::StepConfig::no_drops());
         }
     }
 
@@ -80,7 +81,7 @@ impl RaftWrapper {
             .system()
             .send_local(&addr, raft::req::Request::Command(cmd))
             .unwrap();
-        let cfg = mc::StepConfig::no_drops();
+        let cfg = detsim::StepConfig::no_drops();
         self.sim.step_unti(
             |s| {
                 let locals = s.read_locals(&addr.node, &addr.process).unwrap();
@@ -113,7 +114,7 @@ impl RaftWrapper {
     pub fn step_until_log_equals(&self) -> Vec<Command> {
         self.sim.step_unti(
             |s| log_equals(s, self.nodes).is_ok(),
-            &mc::StepConfig::no_drops(),
+            &detsim::StepConfig::no_drops(),
         );
         log_equals(self.sim.system(), self.nodes).unwrap().unwrap()
     }
@@ -143,7 +144,7 @@ impl RaftWrapper {
 
     pub fn make_many_steps(&self) {
         for _ in 0..100 {
-            self.sim.step(&mc::StepConfig::no_drops());
+            self.sim.step(&detsim::StepConfig::no_drops());
         }
     }
 }

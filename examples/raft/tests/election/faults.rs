@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use dsbuild::mc;
 use raft::{
     addr::{PROCESS_NAME, RAFT_ROLE, make_addr, node},
     proc,
@@ -12,12 +13,12 @@ use crate::util::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn build_without_fs(s: mc::SystemHandle, nodes: usize) {
+fn build_without_fs(s: dsbuild::model::SystemHandle, nodes: usize) {
     s.network()
         .set_delays(Duration::from_millis(1), Duration::from_millis(10))
         .unwrap();
     (0..nodes).for_each(|n| {
-        let mut nd = mc::Node::new(node(n));
+        let mut nd = dsbuild::model::Node::new(node(n));
 
         // add proc
         let proc = nd.add_proc(PROCESS_NAME, proc::Raft::default()).unwrap();
@@ -33,12 +34,12 @@ fn build_without_fs(s: mc::SystemHandle, nodes: usize) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn build_with_fs(s: mc::SystemHandle, nodes: usize) {
+fn build_with_fs(s: dsbuild::model::SystemHandle, nodes: usize) {
     s.network()
         .set_delays(Duration::from_millis(1), Duration::from_millis(10))
         .unwrap();
     (0..nodes).for_each(|n| {
-        let mut nd = mc::Node::new(node(n));
+        let mut nd = dsbuild::model::Node::new(node(n));
 
         // add proc
         let proc = nd.add_proc(PROCESS_NAME, proc::Raft::default()).unwrap();

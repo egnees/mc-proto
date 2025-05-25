@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use dsbuild::mc;
 use raft::{
     addr::{PROCESS_NAME, RAFT_ROLE, make_addr, node},
     cmd::Command,
@@ -17,14 +18,14 @@ use crate::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn build_with_fs(sys: mc::SystemHandle, nodes: usize) {
+fn build_with_fs(sys: dsbuild::model::SystemHandle, nodes: usize) {
     sys.network()
         .set_delays(Duration::from_millis(1), Duration::from_millis(5))
         .unwrap();
 
     for n in 0..nodes {
         let node_name = node(n);
-        let mut node = mc::Node::new(&node_name);
+        let mut node = dsbuild::model::Node::new(&node_name);
         let proc = node.add_proc(PROCESS_NAME, Raft::default()).unwrap();
         sys.add_node_with_role(node, RAFT_ROLE).unwrap();
         sys.setup_fs(

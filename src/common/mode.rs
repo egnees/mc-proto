@@ -1,9 +1,13 @@
+use crate::{model, real};
+
+////////////////////////////////////////////////////////////////////////////////
+
 pub(crate) fn is_real() -> bool {
-    crate::real::context::Context::installed()
+    real::context::Context::installed()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub(crate) fn is_sim() -> bool {
-    crate::sim::context::Context::installed()
+    model::context::Context::installed()
 }

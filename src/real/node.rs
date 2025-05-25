@@ -10,7 +10,7 @@ use std::{
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use tokio::sync::mpsc::unbounded_channel;
 
-use crate::{send::SendSyncWrapper, Address, Process, RpcError, RpcResult};
+use crate::{util::send::SendSyncWrapper, Address, Process, RpcError, RpcResult};
 
 use super::{
     context::{Context, Guard},

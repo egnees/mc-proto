@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet, hash_map::Entry};
 
+use dsbuild::mc;
 use raft::{addr::make_addr, cmd::Command, proc::Raft, rsm::StateHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn leader(s: mc::SystemHandle, nodes: usize) -> Result<Option<u64>, String> {
+pub fn leader(s: dsbuild::model::SystemHandle, nodes: usize) -> Result<Option<u64>, String> {
     let mut leader = None;
     for n in 0..nodes {
         let proc = make_addr(n);
@@ -26,13 +27,13 @@ pub fn leader(s: mc::SystemHandle, nodes: usize) -> Result<Option<u64>, String> 
     Ok(leader)
 }
 
-pub fn agree_about_leader(s: mc::SystemHandle, nodes: usize) -> Result<(), String> {
+pub fn agree_about_leader(s: dsbuild::model::SystemHandle, nodes: usize) -> Result<(), String> {
     leader(s, nodes).map(|_| ())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn some_node_shutdown(s: mc::SystemHandle) -> Result<(), String> {
+pub fn some_node_shutdown(s: dsbuild::model::SystemHandle) -> Result<(), String> {
     if s.stat().nodes_shutdown > 0 {
         Ok(())
     } else {
@@ -43,7 +44,7 @@ pub fn some_node_shutdown(s: mc::SystemHandle) -> Result<(), String> {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn concurrent_candidates_appear_count(
-    s: mc::SystemHandle,
+    s: dsbuild::model::SystemHandle,
     max_candidates: usize,
     window: u64,
 ) -> usize {
@@ -52,7 +53,7 @@ pub fn concurrent_candidates_appear_count(
     let mut counts: HashMap<u64, usize> = HashMap::default();
     for e in s.log().iter() {
         match e {
-            mc::LogEntry::TimerFired(timer) => {
+            dsbuild::model::LogEntry::TimerFired(timer) => {
                 if candidate_timers.get(&timer.id).is_some() {
                     let time = {
                         let mut x = timer.time.as_millis() as u64;
@@ -75,7 +76,7 @@ pub fn concurrent_candidates_appear_count(
                     }
                 }
             }
-            mc::LogEntry::TimerSet(timer) => {
+            dsbuild::model::LogEntry::TimerSet(timer) => {
                 if timer.min_duration.as_millis() == 250 && timer.max_duration.as_millis() == 750 {
                     let result = candidate_timers.insert(timer.id);
                     assert!(result);
@@ -89,7 +90,10 @@ pub fn concurrent_candidates_appear_count(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn no_two_leaders_in_one_term(s: mc::SystemHandle, nodes: usize) -> Result<(), String> {
+pub fn no_two_leaders_in_one_term(
+    s: dsbuild::model::SystemHandle,
+    nodes: usize,
+) -> Result<(), String> {
     let mut terms = HashSet::new();
     for n in 0..nodes {
         let Some(state) = s.proc_state::<Raft>(make_addr(n)) else {
@@ -111,7 +115,10 @@ pub fn no_two_leaders_in_one_term(s: mc::SystemHandle, nodes: usize) -> Result<(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn log_equals(s: mc::SystemHandle, nodes: usize) -> Result<Option<Vec<Command>>, String> {
+pub fn log_equals(
+    s: dsbuild::model::SystemHandle,
+    nodes: usize,
+) -> Result<Option<Vec<Command>>, String> {
     let mut log = None;
     for node in 0..nodes {
         let Some(state) = s.proc_state::<Raft>(make_addr(node)) else {

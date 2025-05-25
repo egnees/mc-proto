@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
-use mc::oneshot::Sender;
+use dsbuild::util::oneshot::Sender;
 
 use crate::addr;
 
@@ -37,22 +37,22 @@ impl Counter {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn election_timeout() -> mc::Timer {
+pub fn election_timeout() -> dsbuild::Timer {
     // from raft article
     let min_duration = Duration::from_millis(250);
     let max_duration = Duration::from_millis(750);
-    mc::set_random_timer(min_duration, max_duration)
+    dsbuild::set_random_timer(min_duration, max_duration)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 async fn make_election(nodes: usize, me: usize, r: RequestVoteRPC) -> Result<(), u64> {
     let term = r.term;
-    let (sender, recv) = mc::oneshot::channel();
+    let (sender, recv) = dsbuild::util::oneshot::channel();
     let counter = Counter::new(sender, nodes / 2 + 1);
     let counter = Rc::new(RefCell::new(counter));
     let handles = addr::iter_others(nodes, me).map(|n| {
-        mc::spawn({
+        dsbuild::spawn({
             let r = r.clone();
             let counter = counter.clone();
             async move {
@@ -67,7 +67,7 @@ async fn make_election(nodes: usize, me: usize, r: RequestVoteRPC) -> Result<(),
             }
         })
     });
-    let _s = mc::CancelSet::from_iter(handles);
+    let _s = dsbuild::util::cancel::CancelSet::from_iter(handles);
     counter.borrow_mut().inc(); // for myself
     recv.await.unwrap()
 }

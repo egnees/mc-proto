@@ -1,6 +1,9 @@
 use std::{any::Any, fmt::Display, future::Future, time::Duration};
 
-use crate::{real, sim, timer, HashType, Timer};
+use crate::{
+    model::{self, timer},
+    real, HashType, Timer,
+};
 
 use super::{
     mode::{is_real, is_sim},
@@ -63,7 +66,7 @@ where
         let h = real::context::Context::current().spawn(f);
         JoinHandle::Real(h)
     } else {
-        let h = sim::context::Context::current().spawn(f);
+        let h = model::context::Context::current().spawn(f);
         JoinHandle::Sim(h)
     }
 }
@@ -74,7 +77,7 @@ pub fn send_local(msg: impl Into<String>) {
     if is_real() {
         real::context::Context::current().send_local(msg.into());
     } else {
-        sim::context::Context::current().send_local(msg.into());
+        model::context::Context::current().send_local(msg.into());
     }
 }
 
@@ -82,7 +85,7 @@ pub fn send_local(msg: impl Into<String>) {
 
 pub fn log(content: impl Into<String>) {
     if is_sim() {
-        let context = sim::context::Context::current();
+        let context = model::context::Context::current();
         let proc = context.proc;
         context.event_manager.add_log(proc, content.into());
     } else if is_real() {

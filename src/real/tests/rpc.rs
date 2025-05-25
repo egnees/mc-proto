@@ -1,8 +1,9 @@
 use std::{net::IpAddr, time::Duration};
 
 use crate::{
+    model::HashType,
     real::{node::RealNode, rpc, RouteConfig, RouteConfigBuilder},
-    send_local, sleep, spawn, Address, HashType, Process, RpcListener,
+    send_local, sleep, spawn, Address, Process, RpcListener,
 };
 
 ////////////////////////////////////////////////////////////////////////////////

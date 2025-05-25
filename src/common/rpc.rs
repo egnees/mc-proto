@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::real;
+use crate::{model, real};
 
 use thiserror::Error;
 
@@ -10,7 +10,7 @@ use super::{mode::is_real, Address};
 
 pub enum RpcRequest {
     Real(real::RpcRequest),
-    Sim(crate::rpc::RpcRequest),
+    Sim(model::RpcRequest),
 }
 
 impl From<real::RpcRequest> for RpcRequest {
@@ -19,8 +19,8 @@ impl From<real::RpcRequest> for RpcRequest {
     }
 }
 
-impl From<crate::rpc::RpcRequest> for RpcRequest {
-    fn from(value: crate::rpc::RpcRequest) -> Self {
+impl From<model::RpcRequest> for RpcRequest {
+    fn from(value: model::RpcRequest) -> Self {
         Self::Sim(value)
     }
 }
@@ -59,7 +59,7 @@ impl RpcRequest {
 
 pub enum RpcResponse {
     Real(real::RpcResponse),
-    Sim(crate::rpc::RpcResponse),
+    Sim(model::RpcResponse),
 }
 
 impl From<real::RpcResponse> for RpcResponse {
@@ -68,8 +68,8 @@ impl From<real::RpcResponse> for RpcResponse {
     }
 }
 
-impl From<crate::rpc::RpcResponse> for RpcResponse {
-    fn from(value: crate::rpc::RpcResponse) -> Self {
+impl From<model::RpcResponse> for RpcResponse {
+    fn from(value: model::RpcResponse) -> Self {
         Self::Sim(value)
     }
 }
@@ -117,7 +117,7 @@ pub async fn rpc<T: Serialize>(to: Address, tag: u64, value: &T) -> RpcResult<Rp
     if is_real() {
         real::rpc(to, tag, value).await.map(RpcResponse::from)
     } else {
-        crate::rpc::rpc(to, tag, value).await.map(RpcResponse::from)
+        model::rpc(to, tag, value).await.map(RpcResponse::from)
     }
 }
 
@@ -125,7 +125,7 @@ pub async fn rpc<T: Serialize>(to: Address, tag: u64, value: &T) -> RpcResult<Rp
 
 pub enum RpcListener {
     Real(real::RpcListener),
-    Sim(crate::rpc::RpcListener),
+    Sim(model::RpcListener),
 }
 
 impl From<real::RpcListener> for RpcListener {
@@ -134,8 +134,8 @@ impl From<real::RpcListener> for RpcListener {
     }
 }
 
-impl From<crate::rpc::RpcListener> for RpcListener {
-    fn from(value: crate::rpc::RpcListener) -> Self {
+impl From<model::RpcListener> for RpcListener {
+    fn from(value: model::RpcListener) -> Self {
         Self::Sim(value)
     }
 }
@@ -154,7 +154,7 @@ impl RpcListener {
                 .register_rpc_listener()
                 .map(RpcListener::from)
         } else {
-            crate::rpc::RpcListener::register().map(RpcListener::from)
+            model::RpcListener::register().map(RpcListener::from)
         }
     }
 }

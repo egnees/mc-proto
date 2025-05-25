@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use dsbuild::mc;
 use raft::{
     addr::{PROCESS_NAME, RAFT_ROLE, node},
     proc::{self},
@@ -16,12 +17,12 @@ use crate::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn build_with_fs(s: mc::SystemHandle, nodes: usize) {
+fn build_with_fs(s: dsbuild::model::SystemHandle, nodes: usize) {
     s.network()
         .set_delays(Duration::from_millis(1), Duration::from_millis(5))
         .unwrap();
     (0..nodes).for_each(|n| {
-        let mut nd = mc::Node::new(node(n));
+        let mut nd = dsbuild::model::Node::new(node(n));
 
         // add proc
         let proc = nd.add_proc(PROCESS_NAME, proc::Raft::default()).unwrap();
@@ -46,12 +47,12 @@ fn build_with_fs(s: mc::SystemHandle, nodes: usize) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-fn build_without_fs(s: mc::SystemHandle, nodes: usize) {
+fn build_without_fs(s: dsbuild::model::SystemHandle, nodes: usize) {
     s.network()
         .set_delays(Duration::from_millis(1), Duration::from_millis(5))
         .unwrap();
     (0..nodes).for_each(|n| {
-        let mut nd = mc::Node::new(node(n));
+        let mut nd = dsbuild::model::Node::new(node(n));
 
         // add proc
         let proc = nd.add_proc(PROCESS_NAME, proc::Raft::default()).unwrap();
@@ -69,8 +70,8 @@ fn build_without_fs(s: mc::SystemHandle, nodes: usize) {
 
 #[test]
 fn one_node_basic_mc() {
-    let checker = mc::ModelChecker::new_with_build(|s| build_with_fs(s, 1));
-    let searcher = mc::BfsSearcher::new(mc::SearchConfig::no_faults_no_drops());
+    let checker = dsbuild::mc::ModelChecker::new_with_build(|s| build_with_fs(s, 1));
+    let searcher = dsbuild::mc::BfsSearcher::new(dsbuild::mc::SearchConfig::no_faults_no_drops());
     let log = checker
         .check(
             |_| Ok(()),
@@ -87,8 +88,8 @@ fn one_node_basic_mc() {
 #[test]
 fn two_nodes_basic_no_fs_mc() {
     let nodes = 2;
-    let checker = mc::ModelChecker::new_with_build(move |s| build_without_fs(s, nodes));
-    let searcher = mc::BfsSearcher::new(mc::SearchConfig::no_faults_no_drops());
+    let checker = dsbuild::mc::ModelChecker::new_with_build(move |s| build_without_fs(s, nodes));
+    let searcher = dsbuild::mc::BfsSearcher::new(dsbuild::mc::SearchConfig::no_faults_no_drops());
     let log = checker
         .check(
             move |s| no_two_leaders_in_one_term(s.system(), nodes),
