@@ -1,9 +1,13 @@
+//! Provides single threaded async oneshot channel abstraction.
+
 use std::{cell::RefCell, future::Future, rc::Rc};
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents receive error.
 #[derive(Debug, Eq, PartialEq)]
 pub enum RecvError {
+    /// Sender was dropped
     SenderDropped,
 }
 
@@ -19,11 +23,13 @@ enum SharedState<T> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents oneshot sender.
 pub struct Sender<T> {
     shared: Rc<RefCell<SharedState<T>>>,
 }
 
 impl<T> Sender<T> {
+    /// Allows to send into channel
     pub fn send(self, value: T) -> Result<(), T> {
         if let SharedState::ReceiverDropped = *self.shared.borrow() {
             return Err(value);
@@ -40,6 +46,7 @@ impl<T> Sender<T> {
         }
     }
 
+    /// Check if receiver is alive.
     pub fn has_receiver(&self) -> bool {
         let state = self.shared.borrow();
         !matches!(*state, SharedState::<T>::ReceiverDropped)
@@ -57,6 +64,7 @@ impl<T> Drop for Sender<T> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents oneshot receiver
 pub struct Receiver<T> {
     shared: Rc<RefCell<SharedState<T>>>,
 }
@@ -89,6 +97,7 @@ impl<T> Drop for Receiver<T> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to make oneshot channel.
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let shared = Rc::new(RefCell::new(SharedState::Initial));
     let sender = Sender {

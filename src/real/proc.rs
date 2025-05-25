@@ -77,11 +77,14 @@ impl ProcessHandle {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to send local messages to process.
+/// Returned on adding process to the system (see [crate::real::RealNode::add_proc]).
 pub struct LocalSender {
     pub(crate) handle: ProcessHandle,
 }
 
 impl LocalSender {
+    /// Send local message to process
     pub fn send(&self, msg: impl Into<String>) {
         self.handle.send_local(msg);
     }
@@ -89,11 +92,14 @@ impl LocalSender {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to receive local messages from process.
+/// Returned on adding process to the system (see [crate::real::RealNode::add_proc]).
 pub struct LocalReceiver {
     pub(crate) receiver: UnboundedReceiver<String>,
 }
 
 impl LocalReceiver {
+    /// Block until local message is not received from process.
     pub async fn recv<T>(&mut self) -> Option<T>
     where
         T: From<String>,
@@ -101,6 +107,7 @@ impl LocalReceiver {
         self.receiver.recv().await.map(T::from)
     }
 
+    /// Block current thread until local message is not received.
     pub fn blocking_recv<T>(&mut self) -> Option<T>
     where
         T: From<String>,

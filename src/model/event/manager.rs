@@ -334,6 +334,7 @@ impl EventManagerHandle {
         self.state().borrow().stat.clone()
     }
 
+    #[allow(unused)]
     pub fn pending_events(&self) -> usize {
         self.state().borrow().unhandled_events.len()
     }

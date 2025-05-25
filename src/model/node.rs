@@ -16,6 +16,7 @@ use super::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents model of the node.
 #[derive(Default)]
 pub struct Node {
     pub(crate) proc: BTreeMap<String, Rc<RefCell<ProcessState>>>,
@@ -25,6 +26,8 @@ pub struct Node {
 }
 
 impl Node {
+    /// Create new node with the provided name.
+    /// All node names must be unique.
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             proc: Default::default(),
@@ -63,7 +66,7 @@ impl Node {
         Ok(())
     }
 
-    pub fn add_proc_by_ref(
+    pub(crate) fn add_proc_by_ref(
         &mut self,
         name: impl Into<String>,
         proc: Rc<RefCell<dyn Process>>,
@@ -79,6 +82,7 @@ impl Node {
         Ok(handle)
     }
 
+    /// Allows to add process on node.
     pub fn add_proc(
         &mut self,
         name: impl Into<String>,

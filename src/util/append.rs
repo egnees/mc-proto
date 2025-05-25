@@ -1,3 +1,5 @@
+//! Provides append channel
+
 use std::{
     cell::RefCell,
     collections::VecDeque,
@@ -18,11 +20,16 @@ struct SharedState {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to send bytes into append channel.
 pub struct Sender {
     shared: Rc<RefCell<SharedState>>,
 }
 
 impl Sender {
+    /// Send bytes in channel.
+    ///
+    /// Return `false` if receiver [Receiver] dropped
+    /// and `true` else.
     pub fn send(&self, buf: &[u8]) -> bool {
         if !self.shared.borrow().receiver_alive {
             return false;
@@ -50,11 +57,15 @@ impl Drop for Sender {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to receive bytes from channel.
 pub struct Receiver {
     shared: Rc<RefCell<SharedState>>,
 }
 
 impl Receiver {
+    /// Receive bytes from channel in the buffer.
+    ///
+    /// Blocks until there are pending bytes in the channel or sender is dropped.
     pub async fn recv(&mut self, buf: &mut [u8]) -> Option<usize> {
         poll_fn(|cx| {
             let mut state = self.shared.borrow_mut();
@@ -83,6 +94,7 @@ impl Drop for Receiver {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to make channel.
 pub fn mpsc_channel() -> (Sender, Receiver) {
     let shared = SharedState {
         buffer: VecDeque::new(),

@@ -16,6 +16,7 @@ use super::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents TCP stream.
 pub struct TcpStream {
     pub(crate) sender: TcpSender,
     pub(crate) receiver: TcpReceiver,
@@ -44,6 +45,7 @@ async fn send_and_wait_delivery(
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// TCP stream sender.
 pub struct TcpSender {
     pub(crate) stream_id: usize,
     registry: Rc<RefCell<dyn TcpRegistry>>,
@@ -118,6 +120,7 @@ impl TcpSender {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Send bytes and wait for the ACK.
     pub async fn send(&self, bytes: &[u8]) -> Result<usize, TcpError> {
         let packet = TcpPacketKind::Data(bytes.to_vec());
         let send_result = self
@@ -131,6 +134,7 @@ impl TcpSender {
         Ok(send_result)
     }
 
+    /// Send bytes sync without waiting for ACK.
     pub fn send_sync(&self, bytes: &[u8]) -> Result<usize, TcpError> {
         let packet = self.packet(TcpPacketKind::Data(bytes.to_vec()));
         let from = self.me.clone();
@@ -145,6 +149,7 @@ impl TcpSender {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents TCP receiver.
 pub struct TcpReceiver {
     receiver: util::append::Receiver,
 }
@@ -156,6 +161,7 @@ impl TcpReceiver {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Receive bytes from stream.
     pub async fn recv(&mut self, bytes: &mut [u8]) -> Result<usize, TcpError> {
         self.receiver
             .recv(bytes)
@@ -182,10 +188,12 @@ impl TcpStream {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Get sendering part of the stream.
     pub fn from(&self) -> &Address {
         &self.sender.me
     }
 
+    /// Get receiving part.
     pub fn to(&self) -> &Address {
         &self.sender.other
     }
@@ -202,18 +210,21 @@ impl TcpStream {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Send bytes.
     pub async fn send(&self, bytes: &[u8]) -> Result<usize, TcpError> {
         self.sender.send(bytes).await
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Send bytes sync (see [`TcpSender::send_sync`]).
     pub fn send_sync(&self, bytes: &[u8]) -> Result<usize, TcpError> {
         self.sender.send_sync(bytes)
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Receive bytes.
     pub async fn recv(&mut self, bytes: &mut [u8]) -> Result<usize, TcpError> {
         self.receiver.recv(bytes).await
     }
@@ -280,6 +291,7 @@ impl TcpStream {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Allows to make TCP connection.
     pub async fn connect(to: &Address) -> Result<Self, TcpError> {
         let ctx = Context::current();
         let registry = ctx.event_manager.tcp_registry();
@@ -289,6 +301,7 @@ impl TcpStream {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Allows to split stream into sender and receiver.
     pub fn split(self) -> (TcpSender, TcpReceiver) {
         (self.sender, self.receiver)
     }

@@ -2,9 +2,14 @@ use std::fmt::Display;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents TCP error.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TcpError {
+    /// The connection refused
     ConnectionRefused,
+
+    /// Trying to listen,
+    /// but process is already listening to the TCP connections.
     AlreadyListening,
 }
 

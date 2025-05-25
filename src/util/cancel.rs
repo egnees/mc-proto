@@ -1,7 +1,11 @@
+//! Provides utility for comfortable cancel async tasks.
+
 use crate::JoinHandle;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents wrapper over the async activity handles [`crate::JoinHandle`],
+/// which cancels them on drops (it calls to [crate::JoinHandle::abort] on drop).
 pub struct CancelSet<T> {
     handles: Vec<JoinHandle<T>>,
 }

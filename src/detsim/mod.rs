@@ -1,3 +1,5 @@
+//! Provides deterministic simulation over the system model [`crate::model`].
+
 mod driver;
 mod sim;
 

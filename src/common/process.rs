@@ -1,3 +1,5 @@
+//! Represents process abstraction.
+
 use std::{any::Any, fmt::Display, future::Future, time::Duration};
 
 use crate::{
@@ -12,13 +14,18 @@ use super::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents address of the process
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Address {
+    /// Name of the process node
     pub node: String,
+
+    /// Name of the process
     pub process: String,
 }
 
 impl Address {
+    /// Create new address from node name and process name.
     pub fn new(node: impl Into<String>, process: impl Into<String>) -> Self {
         Self {
             node: node.into(),
@@ -47,16 +54,21 @@ where
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents process trait.
 pub trait Process: Any {
+    /// Called when process receives message.
     fn on_message(&mut self, from: Address, content: String);
 
+    /// Called when process receives local message.
     fn on_local_message(&mut self, content: String);
 
+    /// Get hash of the process state.
     fn hash(&self) -> HashType;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to spawn async activity.
 pub fn spawn<F>(f: F) -> JoinHandle<F::Output>
 where
     F: Future + 'static,
@@ -67,12 +79,13 @@ where
         JoinHandle::Real(h)
     } else {
         let h = model::context::Context::current().spawn(f);
-        JoinHandle::Sim(h)
+        JoinHandle::Model(h)
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allwos to send local message to user.
 pub fn send_local(msg: impl Into<String>) {
     if is_real() {
         real::context::Context::current().send_local(msg.into());
@@ -83,6 +96,7 @@ pub fn send_local(msg: impl Into<String>) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to log some message from the process.
 pub fn log(content: impl Into<String>) {
     if is_sim() {
         let context = model::context::Context::current();
@@ -96,10 +110,11 @@ pub fn log(content: impl Into<String>) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to set time with specified duration.
 pub fn set_timer(duration: Duration) -> Timer {
     if is_sim() {
         let timer = timer::set_timer(duration);
-        Timer::Sim(timer)
+        Timer::Model(timer)
     } else {
         let timer = real::context::Context::current().set_timer(duration);
         Timer::Real(timer)
@@ -108,10 +123,14 @@ pub fn set_timer(duration: Duration) -> Timer {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to set timer with random duration from specified range.
+///
+/// In the MC [`crate::mc`], timer is handled as event, which can happen in any moment from
+/// the specified range.
 pub fn set_random_timer(min_duration: Duration, max_duration: Duration) -> Timer {
     if is_sim() {
         let timer = timer::set_random_timer(min_duration, max_duration);
-        Timer::Sim(timer)
+        Timer::Model(timer)
     } else {
         let timer = real::context::Context::current().set_random_timer(min_duration, max_duration);
         Timer::Real(timer)
@@ -120,6 +139,7 @@ pub fn set_random_timer(min_duration: Duration, max_duration: Duration) -> Timer
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to sleep on the provided time.
 pub async fn sleep(duration: Duration) {
     set_timer(duration).await;
 }

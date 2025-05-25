@@ -1,3 +1,5 @@
+//! Allows to test system model [`crate::model`] using model checking.
+
 mod checker;
 mod search;
 mod tracker;

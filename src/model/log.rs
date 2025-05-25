@@ -682,6 +682,7 @@ impl Display for NodeShutdown {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub enum LogEntry {
     TcpMessageSent(TcpMessageSent),
@@ -747,20 +748,18 @@ impl Display for LogEntry {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents log of the system model events.
 #[derive(Debug, Clone, Default)]
 pub struct Log {
     data: Vec<LogEntry>,
 }
 
 impl Log {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn add_entry(&mut self, log_entry: LogEntry) {
+    pub(crate) fn add_entry(&mut self, log_entry: LogEntry) {
         self.data.push(log_entry);
     }
 
+    /// Allows to iterate over the happen events.
     pub fn iter(&self) -> impl Iterator<Item = &LogEntry> {
         self.data.iter()
     }

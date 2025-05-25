@@ -1,0 +1,43 @@
+name: Docs
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  rustdoc:
+    name: Build and deploy docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install needed packages
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libpango1.0-dev libatk1.0-dev libgtk-3-dev
+          version: 1.0
+
+      - name: Install protobuf
+        run: sudo apt install protobuf-compiler
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Build docs
+        run: cargo doc --lib --no-deps
+
+      - name: Deploy docs
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: docs
+          publish_dir: ./target/doc
+          destination_dir: docs

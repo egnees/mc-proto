@@ -96,6 +96,7 @@ impl Default for Config {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Allows to send UDP message.
 pub fn send_message(to: &Address, content: impl Into<String>) {
     Context::current().register_udp_message(to, content.into());
 }

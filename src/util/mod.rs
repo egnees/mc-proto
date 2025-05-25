@@ -1,7 +1,9 @@
-pub mod append;
+//! Provides common crate utilities.
+
+pub(crate) mod append;
 pub mod cancel;
-pub mod hash;
+pub(crate) mod hash;
 pub mod oneshot;
-pub mod send;
-pub mod trigger;
-pub mod unbounded;
+pub(crate) mod send;
+pub(crate) mod trigger;
+pub(crate) mod unbounded;

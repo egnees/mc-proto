@@ -95,6 +95,9 @@ impl Display for StateTrace {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents view of the search state,
+/// which includes state trace (which led to the state)
+/// and corresponding model of the system.
 #[derive(Clone)]
 pub struct StateView {
     system: SystemHandle,
@@ -109,10 +112,12 @@ impl StateView {
         }
     }
 
+    /// Get system model corresponding to the search state.
     pub fn system(&self) -> SystemHandle {
         self.system.clone()
     }
 
+    /// Get depth of the trace led to state.
     pub fn depth(&self) -> usize {
         self.trace.steps.len()
     }

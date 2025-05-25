@@ -1,3 +1,5 @@
+//! Allows to import common crate type
+
 pub use super::fs::{File, FsError, FsResult};
 pub use super::process::{
     log, send_local, set_random_timer, set_timer, sleep, spawn, Address, Process,

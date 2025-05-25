@@ -2,7 +2,7 @@ mod listener;
 mod request;
 pub(crate) mod server;
 
-pub use listener::RpcListener;
+pub(crate) use listener::RpcListener;
 pub use request::RpcRequest;
 pub mod response;
 pub use response::RpcResponse;

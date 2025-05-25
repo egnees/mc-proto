@@ -1,3 +1,5 @@
+//! Errors which can in the system model during the search.
+
 use std::fmt::{Debug, Display};
 
 use crate::{model::log::Log, HashType};
@@ -6,9 +8,14 @@ use super::{log::SearchLog, state::StateTrace};
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Some process panic.
 #[derive(Clone)]
 pub struct ProcessPanic {
+    /// Trace which leads to the state, in which process panic.
+    /// Allows to rerun system in the debug mode on the failing event sequence.
     pub trace: Option<StateTrace>,
+
+    /// Log of system events
     pub log: Log,
 }
 
@@ -27,10 +34,16 @@ impl Display for ProcessPanic {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Search invariant violation (see [`crate::mc::InvariantFn`]).
 #[derive(Clone)]
 pub struct InvariantViolation {
+    /// Failure trace
     pub trace: StateTrace,
+
+    /// Log of system events
     pub log: Log,
+
+    /// Report, which is returned by user invariant func [`crate::mc::InvariantFn`].
     pub report: String,
 }
 
@@ -53,15 +66,23 @@ impl Display for InvariantViolation {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// The liveness proprety violation:
+/// goal was not achieved and there are no pending events,
+/// so the system is in the terminal state.
 #[derive(Clone)]
 pub struct LivenessViolation {
+    /// Failure trace
     pub trace: StateTrace,
+
+    /// Log of system events
     pub log: Log,
+
+    /// [`crate::mc::GoalFn`] report.
     pub report: String,
 }
 
 impl LivenessViolation {
-    pub fn new(trace: StateTrace, log: Log, report: String) -> Self {
+    pub(crate) fn new(trace: StateTrace, log: Log, report: String) -> Self {
         Self { trace, log, report }
     }
 }
@@ -87,14 +108,18 @@ impl Display for LivenessViolation {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// All states are pruned and no one state was collected.
 #[derive(Clone)]
 pub struct AllPruned {
+    /// Last pruned state.
     pub last_trace: StateTrace,
+
+    /// Log of the last pruned state.
     pub last_log: Log,
 }
 
 impl AllPruned {
-    pub fn new(last_trace: StateTrace, last_log: Log) -> Self {
+    pub(crate) fn new(last_trace: StateTrace, last_log: Log) -> Self {
         Self {
             last_trace,
             last_log,
@@ -124,15 +149,21 @@ impl Display for AllPruned {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// The system is in cycle from which can not out.
 #[derive(Clone)]
 pub struct Cycled {
+    /// Cycle trace
     pub trace: StateTrace,
+
+    /// Log of system events
     pub log: Log,
+
+    /// Hash of the state, which allows to see equivalant states, which make the cycle.
     pub hash: HashType,
 }
 
 impl Cycled {
-    pub fn new(trace: StateTrace, log: Log, hash: HashType) -> Self {
+    pub(crate) fn new(trace: StateTrace, log: Log, hash: HashType) -> Self {
         Self { trace, log, hash }
     }
 }
@@ -157,12 +188,22 @@ impl Display for Cycled {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents search error kind.
 #[derive(Clone)]
 pub enum SearchErrorKind {
+    /// Invariant violation
     InvariantViolation(InvariantViolation),
+
+    /// Liveness property violation
     LivenessViolation(LivenessViolation),
+
+    /// All states are pruned during collect.
     AllPruned(AllPruned),
+
+    /// Some process panic
     ProcessPanic(ProcessPanic),
+
+    /// System is in cycle.
     Cycled(Cycled),
 }
 
@@ -190,14 +231,18 @@ impl Debug for SearchErrorKind {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents model checking error, which happens during the search.
 #[derive(Clone)]
 pub struct SearchError {
+    /// Kind fo the error.
     pub kind: SearchErrorKind,
+
+    /// Log of the search.
     pub log: SearchLog,
 }
 
 impl SearchError {
-    pub fn new(kind: SearchErrorKind, log: &SearchLog) -> Self {
+    pub(crate) fn new(kind: SearchErrorKind, log: &SearchLog) -> Self {
         Self {
             kind,
             log: log.clone(),

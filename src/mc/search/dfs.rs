@@ -15,11 +15,13 @@ use crate::{mc::StateView, model::system::HashType};
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents dfs searcher.
 pub struct DfsSearcher {
     cfg: SearchConfig,
 }
 
 impl DfsSearcher {
+    /// Allows to make new dfs searcher with specified config.
     pub fn new(cfg: SearchConfig) -> Self {
         Self { cfg }
     }

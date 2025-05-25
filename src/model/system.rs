@@ -27,6 +27,7 @@ use super::{
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Type of hash of the system model state.
 pub type HashType = u64;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,6 +88,7 @@ impl System {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents handle on the system model.
 #[derive(Clone)]
 pub struct SystemHandle(Weak<RefCell<SystemState>>);
 
@@ -109,6 +111,7 @@ impl SystemHandle {
             .proc(&addr.process)
     }
 
+    /// Get hash of the system model state.
     pub fn hash(&self) -> HashType {
         self.state().borrow().hash()
     }
@@ -151,12 +154,14 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Allows to get handle on the network.
     pub fn network(&self) -> NetworkHandle {
         self.state().borrow().net.handle()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Send local message to the process.
     pub fn send_local(&self, to: &Address, content: impl Into<String>) -> Result<(), Error> {
         let content = content.into();
 
@@ -170,6 +175,7 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Read local messages sent by process.
     pub fn read_locals(
         &self,
         node: impl Into<String>,
@@ -181,12 +187,14 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Drain local messages sent by process.
     pub fn drain_locals(&self, proc: &Address) -> Option<Vec<String>> {
         Some(self.proc_by_addr(proc)?.drain_locals())
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Add node in the system.
     pub fn add_node(&self, node: Node) -> Result<(), Error> {
         let state = self.state();
         let mut state = state.borrow_mut();
@@ -200,6 +208,7 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Add node with specified role.
     pub fn add_node_with_role(&self, node: Node, role: impl Into<String>) -> Result<(), Error> {
         let state = self.state();
         let mut state = state.borrow_mut();
@@ -220,6 +229,7 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Setup filesystem of the node.
     pub fn setup_fs(
         &self,
         node: impl Into<String>,
@@ -237,6 +247,7 @@ impl SystemHandle {
             .setup_fs(reg, min_delay, max_delay, capacity)
     }
 
+    /// Crash node file system.
     pub fn crash_fs(&self, node: impl Into<String>) -> Result<(), Error> {
         let node = node.into();
         self.state()
@@ -248,6 +259,7 @@ impl SystemHandle {
         Ok(())
     }
 
+    /// Shutdown node filesy stem.
     pub fn shutdown_fs(&self, node: impl Into<String>) -> Result<(), Error> {
         let node = node.into();
         self.state()
@@ -260,18 +272,21 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Get event log.
     pub fn log(&self) -> Log {
         self.state().borrow().event_manager.handle().log()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Get current time in the system.
     pub fn time(&self) -> Duration {
         self.state().borrow().event_manager.handle().time()
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Get statistics of the events.
     pub fn stat(&self) -> EventStat {
         self.state().borrow().event_manager.handle().stat()
     }
@@ -286,7 +301,8 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub fn pending_events(&self) -> usize {
+    #[allow(unused)]
+    pub(crate) fn pending_events(&self) -> usize {
         self.state()
             .borrow()
             .event_manager
@@ -311,6 +327,8 @@ impl SystemHandle {
         !result
     }
 
+    /// Allows to crash node.
+    /// File system clears.
     pub fn crash_node(&self, node: impl Into<String>) -> Result<(), Error> {
         let node = node.into();
 
@@ -344,11 +362,13 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    pub fn shutdown_node_index(&self, id: usize) {
+    pub(crate) fn shutdown_node_index(&self, id: usize) {
         let node = self.state().borrow().nodes.keys().nth(id).cloned().unwrap();
         self.shutdown_node(node).unwrap()
     }
 
+    /// Allows to shutdown node.
+    /// File system is preserved.
     pub fn shutdown_node(&self, node: impl Into<String>) -> Result<(), Error> {
         let node = node.into();
 
@@ -396,6 +416,7 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Allows to restart shutdown node.
     pub fn restart_node(&self, node: impl Into<String>) -> Result<(), Error> {
         let node = node.into();
         let state = self.state();
@@ -410,6 +431,7 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Allows to add process on node.
     pub fn add_proc_on_node(
         &self,
         node_name: impl Into<String>,
@@ -429,11 +451,13 @@ impl SystemHandle {
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /// Get process handle.
     pub fn proc(&self, addr: impl Into<Address>) -> Option<ProcessHandle> {
         let addr: Address = addr.into();
         self.proc_by_addr(&addr)
     }
 
+    /// Get state of the process.
     pub fn proc_state<T: Any>(&self, addr: impl Into<Address>) -> Option<Rc<RefCell<T>>> {
         self.proc(addr).and_then(|p| p.proc_state::<T>())
     }

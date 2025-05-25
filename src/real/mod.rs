@@ -1,4 +1,7 @@
-pub mod context;
+//! Provides real mode,
+//! which allows to run system in real environment.
+
+pub(crate) mod context;
 mod error;
 mod fs;
 mod join;
@@ -11,13 +14,13 @@ mod timer;
 ////////////////////////////////////////////////////////////////////////////////
 
 pub use error::Error;
-pub use fs::file::File;
-pub use join::JoinHandle;
+pub(crate) use fs::file::File;
+pub(crate) use join::JoinHandle;
 pub use node::RealNode;
 pub use proc::{LocalReceiver, LocalSender};
 pub use route::{RouteConfig, RouteConfigBuilder};
-pub use rpc::{rpc, RpcListener, RpcRequest, RpcResponse};
-pub use timer::Timer;
+pub(crate) use rpc::{rpc, RpcListener, RpcRequest, RpcResponse};
+pub(crate) use timer::Timer;
 
 ////////////////////////////////////////////////////////////////////////////////
 

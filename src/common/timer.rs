@@ -1,3 +1,5 @@
+//! Allows to set timers.
+
 use std::future::Future;
 
 use smol::future::FutureExt;
@@ -6,8 +8,12 @@ use crate::{model, real};
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents timer.
 pub enum Timer {
-    Sim(model::Timer),
+    /// In the model of system
+    Model(model::Timer),
+
+    /// In the real environment
     Real(real::Timer),
 }
 
@@ -20,7 +26,7 @@ impl Future for Timer {
     ) -> std::task::Poll<Self::Output> {
         match &mut *self {
             Timer::Real(timer) => timer.poll(cx),
-            Timer::Sim(timer) => timer.poll(cx),
+            Timer::Model(timer) => timer.poll(cx),
         }
     }
 }

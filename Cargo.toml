@@ -27,3 +27,7 @@ members = ["examples/*", "."]
 
 [profile.bench]
 debug = true
+
+[features]
+# Treat warnings as a build error.
+strict = []

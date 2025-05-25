@@ -13,11 +13,13 @@ use crate::{mc::error::Cycled, mc::error::SearchError, mc::StateView, model::sys
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents BFS searcher.
 pub struct BfsSearcher {
     cfg: SearchConfig,
 }
 
 impl BfsSearcher {
+    /// Make new searcher with provided config.
     pub fn new(cfg: SearchConfig) -> Self {
         Self { cfg }
     }

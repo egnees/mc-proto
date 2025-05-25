@@ -171,9 +171,12 @@ impl RealNodeHandle {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents real node.
 pub struct RealNode(Rc<RefCell<RealNodeState>>);
 
 impl RealNode {
+    /// Create new node with specified name, seed and routing config.
+    /// Also mounting dirrectory for working with files must be specified.
     pub fn new(
         name: impl Into<String>,
         seed: u64,
@@ -184,6 +187,7 @@ impl RealNode {
         RealNode(Rc::new(RefCell::new(state)))
     }
 
+    /// Spawn async activity.
     pub fn spawn<F>(&self, f: F) -> JoinHandle<F::Output>
     where
         F: Future + 'static,
@@ -192,6 +196,8 @@ impl RealNode {
         self.0.borrow().spawn(f)
     }
 
+    /// Block current thread until provided async
+    /// activity not resolved.
     pub fn block_on<F>(&mut self, f: F) -> F::Output
     where
         F: Future,
@@ -208,6 +214,8 @@ impl RealNode {
         }
     }
 
+    /// Add process on the node.
+    /// Returns handles for send and receive local messages.
     pub fn add_proc(
         &mut self,
         name: impl Into<String>,
