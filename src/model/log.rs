@@ -20,8 +20,8 @@ impl Display for OpenFileRequested {
         if self.outcome.is_ok() {
             write!(
                 f,
-                "{} {:>12}   O  {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12}   O  {:<12}",
+                self.time,
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -30,7 +30,7 @@ impl Display for OpenFileRequested {
                 f,
                 "{}",
                 format!(
-                    "{} {:>12}   O  {:<12} <--- failed",
+                    "{:5?} {:>12}   O  {:<12} <--- failed",
                     self.time.as_millis(),
                     self.proc.to_string(),
                     self.file.to_string()
@@ -56,8 +56,8 @@ impl Display for CreateFileRequested {
         if self.outcome.is_ok() {
             write!(
                 f,
-                "{} {:>12}   C  {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12}   C  {:<12}",
+                self.time,
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -66,8 +66,8 @@ impl Display for CreateFileRequested {
                 f,
                 "{}",
                 format!(
-                    "{} {:>12}   C  {:<12} <--- failed",
-                    self.time.as_millis(),
+                    "{:5?} {:>12}   C  {:<12} <--- failed",
+                    self.time,
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -92,8 +92,8 @@ impl Display for DeleteFileRequested {
         if self.outcome.is_ok() {
             write!(
                 f,
-                "{} {:>12}   D  {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12}   D  {:<12}",
+                self.time,
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -102,8 +102,8 @@ impl Display for DeleteFileRequested {
                 f,
                 "{}",
                 format!(
-                    "{} {:>12}   D  {:<12} <--- failed",
-                    self.time.as_millis(),
+                    "{:5?} {:>12}   D  {:<12} <--- failed",
+                    self.time,
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -126,8 +126,8 @@ impl Display for ReadFileInitiated {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} R 🚀 {:<12}",
-            self.time.as_millis(),
+            "{:5?} {:>12} R 🚀 {:<12}",
+            self.time,
             self.proc.to_string(),
             self.file.to_string()
         )
@@ -149,8 +149,8 @@ impl Display for ReadFileCompleted {
         if self.outcome.is_ok() {
             write!(
                 f,
-                "{} {:>12} R 🚩 {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12} R 🚩 {:<12}",
+                self.time,
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -159,8 +159,8 @@ impl Display for ReadFileCompleted {
                 f,
                 "{}",
                 format!(
-                    "{} {:>12} R 🚩 {:<12} <--- failed",
-                    self.time.as_millis(),
+                    "{:5?} {:>12} R 🚩 {:<12} <--- failed",
+                    self.time,
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -183,8 +183,8 @@ impl Display for WriteFileInitiated {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} W 🚀 {:<12}",
-            self.time.as_millis(),
+            "{:5?} {:>12} W 🚀 {:<12}",
+            self.time,
             self.proc.to_string(),
             self.file.to_string()
         )
@@ -206,8 +206,8 @@ impl Display for WriteFileCompleted {
         if self.outcome.is_ok() {
             write!(
                 f,
-                "{} {:>12} W 🚩 {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12} W 🚩 {:<12}",
+                self.time,
                 self.proc.to_string(),
                 self.file.to_string()
             )
@@ -216,8 +216,8 @@ impl Display for WriteFileCompleted {
                 f,
                 "{}",
                 format!(
-                    "{} {:>12} W 🚩 {:<12} <--- failed",
-                    self.time.as_millis(),
+                    "{:5?} {:>12} W 🚩 {:<12} <--- failed",
+                    self.time,
                     self.proc.to_string(),
                     self.file.to_string()
                 )
@@ -241,8 +241,8 @@ impl Display for TcpMessageSent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} ---> {:<12} {:?}",
-            self.time.as_millis(),
+            "{:5?} {:>12} ---> {:<12} {:?}",
+            self.time,
             self.from.to_string(),
             self.to.to_string(),
             self.packet.to_string()
@@ -264,8 +264,8 @@ impl Display for TcpMessageReceived {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} <--- {:<12} {:?}",
-            self.time.as_millis(),
+            "{:5?} {:>12} <--- {:<12} {:?}",
+            self.time,
             self.to.to_string(),
             self.from.to_string(),
             self.packet.to_string()
@@ -289,8 +289,8 @@ impl Display for TcpMessageDropped {
             f,
             "{}",
             format!(
-                "{} {:>12} ---x {:<12} {:?} <-- message dropped",
-                self.time.as_millis(),
+                "{:5?} {:>12} ---x {:<12} {:?} <-- message dropped",
+                self.time,
                 self.from.to_string(),
                 self.to.to_string(),
                 self.packet.to_string()
@@ -314,8 +314,8 @@ impl Display for RpcMessageSent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} ---> {:<12} {:?}",
-            self.time.as_millis(),
+            "{:5?} {:>12} --RPC-> {:<12} {:?}",
+            self.time,
             self.from.to_string(),
             self.to.to_string(),
             String::from_utf8(self.content.clone()).unwrap()
@@ -337,8 +337,8 @@ impl Display for RpcMessageReceived {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} <--- {:<12} {:?}",
-            self.time.as_millis(),
+            "{:5?} {:>12} <-RPC-- {:<12} {:?}",
+            self.time,
             self.to.to_string(),
             self.from.to_string(),
             String::from_utf8(self.content.clone()).unwrap()
@@ -360,11 +360,15 @@ impl Display for RpcMessageDropped {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} ---x {:<12} {:?} <-- message dropped",
-            self.time.as_millis(),
-            self.from.to_string(),
-            self.to.to_string(),
-            String::from_utf8(self.content.clone()).unwrap()
+            "{}",
+            format!(
+                "{:5?} {:>12} --RPC-x {:<12} {:?} <-- message dropped",
+                self.time,
+                self.from.to_string(),
+                self.to.to_string(),
+                String::from_utf8(self.content.clone()).unwrap()
+            )
+            .red()
         )
     }
 }
@@ -383,8 +387,8 @@ impl Display for UdpMessageSent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} ---> {:<12} {:?}",
-            self.time.as_millis(),
+            "{:5?} {:>12} --UDP-> {:<12} {:?}",
+            self.time,
             self.from.to_string(),
             self.to.to_string(),
             self.content
@@ -406,8 +410,8 @@ impl Display for UdpMessageReceived {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:>12} <--- {:<12} {:?}",
-            self.time.as_millis(),
+            "{:5?} {:>12} <-UDP-- {:<12} {:?}",
+            self.time,
             self.to.to_string(),
             self.from.to_string(),
             self.content
@@ -431,8 +435,8 @@ impl Display for UdpMessageDropped {
             f,
             "{}",
             format!(
-                "{} {:>12} ---x {:<12} {:?} <-- message dropped",
-                self.time.as_millis(),
+                "{:5?} {:>12} --UDP-x {:<12} {:?} <-- message dropped",
+                self.time,
                 self.from.to_string(),
                 self.to.to_string(),
                 self.content
@@ -459,8 +463,8 @@ impl Display for FutureFellAsleep {
             f,
             "{}",
             format!(
-                "{} {:>12}  😴  {:<12} [{:.3}-{:.3}]",
-                self.time.as_millis(),
+                "{:5?} {:>12}  😴  {:<12} [{:.3}-{:.3}]",
+                self.time,
                 self.proc.to_string(),
                 self.tag.to_string(),
                 self.min_duration.as_secs_f64(),
@@ -486,8 +490,8 @@ impl Display for FutureWokeUp {
             f,
             "{}",
             format!(
-                "{} {:>12}  ⏰  {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12}  ⏰  {:<12}",
+                self.time,
                 self.proc.to_string(),
                 self.tag.to_string()
             )
@@ -513,12 +517,12 @@ impl Display for TimerSet {
             f,
             "{}",
             format!(
-                "{} {:>12}  ⏳  {:<12} [{:.3}-{:.3}]",
-                self.time.as_millis(),
+                "{:5?} {:>12}    ⏳   {:<12} [{:?}-{:?}]",
+                self.time,
                 self.proc.to_string(),
-                self.id.to_string(),
-                self.min_duration.as_secs_f64(),
-                self.max_duration.as_secs_f64()
+                format!("T{} set", self.id),
+                self.min_duration,
+                self.max_duration
             )
             .bright_blue()
         )
@@ -540,10 +544,10 @@ impl Display for TimerCancelled {
             f,
             "{}",
             format!(
-                "{} {:>12}  ❌  {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12}  ❌  {:<12}",
+                self.time,
                 self.proc.to_string(),
-                self.id.to_string(),
+                format!("T{} cancelled", self.id),
             )
             .bright_blue()
         )
@@ -565,10 +569,10 @@ impl Display for TimerFired {
             f,
             "{}",
             format!(
-                "{} {:>12}  🔥  {:<12}",
-                self.time.as_millis(),
+                "{:5?} {:>12}  🔥  {:<12}",
+                self.time,
                 self.proc.to_string(),
-                self.id.to_string(),
+                format!("T{} fired", self.id),
             )
             .bright_blue()
         )
@@ -590,8 +594,8 @@ impl Display for ProcessSentLocalMessage {
             f,
             "{}",
             format!(
-                "{} {:>12} >>>> {:<12} {:?}",
-                self.time.as_millis(),
+                "{:5?} {:>12} >>>> {:<12} {:?}",
+                self.time,
                 self.process.to_string(),
                 "local",
                 self.content
@@ -616,8 +620,8 @@ impl Display for ProcessReceivedLocalMessage {
             f,
             "{}",
             format!(
-                "{} {:>12} <<<< {:<12} {:?}",
-                self.time.as_millis(),
+                "{:5?} {:>12} <<<< {:<12} {:?}",
+                self.time,
                 self.process.to_string(),
                 "local",
                 self.content
@@ -642,8 +646,8 @@ impl Display for ProcessInfo {
             f,
             "{}",
             format!(
-                "{} {:>12} ==== {:<12?}",
-                self.time.as_millis(),
+                "{:5?} {:>12} ==== {:<12?}",
+                self.time,
                 self.process.to_string(),
                 self.content
             )
@@ -662,7 +666,7 @@ pub struct NodeCrashed {
 
 impl Display for NodeCrashed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {:>12}  💥", self.time.as_millis(), self.node)
+        write!(f, "{:5?} {:>12}  💥", self.time, self.node)
     }
 }
 
@@ -676,7 +680,7 @@ pub struct NodeShutdown {
 
 impl Display for NodeShutdown {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} {:>12}  SD", self.time, self.node)
+        write!(f, "{:5?} {:>12}  SD", self.time, self.node)
     }
 }
 

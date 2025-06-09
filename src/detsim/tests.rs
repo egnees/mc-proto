@@ -1,10 +1,16 @@
 use std::time::Duration;
 
-use crate::{detsim::Simulation, detsim::StepConfig, model::node::Node};
+use crate::{
+    detsim::Simulation, detsim::StepConfig,
+    model::node::Node,
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{model::net::send_message, send_local, sleep, spawn, Address, HashType, Process};
+use crate::{
+    model::net::send_message, send_local, sleep, spawn,
+    Address, HashType, Process,
+};
 
 use crate::model::fs::file::File;
 
@@ -15,7 +21,11 @@ pub struct Pinger {
 }
 
 impl Process for Pinger {
-    fn on_message(&mut self, from: Address, content: String) {
+    fn on_message(
+        &mut self,
+        from: Address,
+        content: String,
+    ) {
         assert_eq!(from, self.receiver);
         send_local(content);
     }
@@ -34,7 +44,11 @@ impl Process for Pinger {
 pub struct Ponger {}
 
 impl Process for Ponger {
-    fn on_message(&mut self, from: Address, content: String) {
+    fn on_message(
+        &mut self,
+        from: Address,
+        content: String,
+    ) {
         send_message(&from, content.clone());
         send_local(content);
     }
@@ -54,12 +68,17 @@ impl Process for Ponger {
 pub struct Sleeper {}
 
 impl Process for Sleeper {
-    fn on_message(&mut self, _from: Address, _content: String) {
+    fn on_message(
+        &mut self,
+        _from: Address,
+        _content: String,
+    ) {
         unreachable!()
     }
 
     fn on_local_message(&mut self, content: String) {
-        let ms = u64::from_str_radix(content.as_str(), 10).unwrap();
+        let ms = u64::from_str_radix(content.as_str(), 10)
+            .unwrap();
         spawn(async move {
             sleep(Duration::from_millis(ms)).await;
             send_local(content);
@@ -107,7 +126,11 @@ impl From<Msg> for String {
 pub struct Store {}
 
 impl Process for Store {
-    fn on_message(&mut self, _from: Address, _content: String) {
+    fn on_message(
+        &mut self,
+        _from: Address,
+        _content: String,
+    ) {
         unreachable!()
     }
 
@@ -122,11 +145,18 @@ impl Process for Store {
             }
             Msg::Read { file, offset, len } => {
                 spawn(async move {
-                    let mut file = File::open(file).unwrap();
+                    let mut file =
+                        File::open(file).unwrap();
                     let mut v = vec![0; len];
-                    let bytes = file.read(v.as_mut_slice(), offset).await.unwrap();
-                    let result =
-                        String::from_iter(v.as_slice()[..bytes].iter().map(|u| char::from(*u)));
+                    let bytes = file
+                        .read(v.as_mut_slice(), offset)
+                        .await
+                        .unwrap();
+                    let result = String::from_iter(
+                        v.as_slice()[..bytes]
+                            .iter()
+                            .map(|u| char::from(*u)),
+                    );
                     send_local(result);
                 });
             }
@@ -136,8 +166,11 @@ impl Process for Store {
                 content,
             } => {
                 spawn(async move {
-                    let mut file = File::open(file).unwrap();
-                    file.write(content.as_bytes(), offset).await.unwrap();
+                    let mut file =
+                        File::open(file).unwrap();
+                    file.write(content.as_bytes(), offset)
+                        .await
+                        .unwrap();
                 });
             }
         };
@@ -175,7 +208,10 @@ fn basic_fs() {
     let sim = build_sim();
 
     sim.system()
-        .send_local(&"n1:p1".into(), Msg::CreateFile("f1".into()))
+        .send_local(
+            &"n1:p1".into(),
+            Msg::CreateFile("f1".into()),
+        )
         .unwrap();
 
     sim.step_until_no_events(&cfg);
@@ -206,7 +242,8 @@ fn basic_fs() {
 
     sim.step_until_no_events(&cfg);
 
-    let locals = sim.system().read_locals("n1", "p1").unwrap();
+    let locals =
+        sim.system().read_locals("n1", "p1").unwrap();
     assert_eq!(locals.len(), 1);
     assert_eq!(locals[0], "hello");
 }
